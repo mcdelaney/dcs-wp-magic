@@ -28,14 +28,14 @@ def request_gaw_data(url):
 
 @app.route("/")
 def all_enemies():
-    state = request_gaw_data(core.STATE_URL)
+    state = request_gaw_data(core.PGAW_STATE_URL)
     enemies = core.construct_enemy_set(state, result_as_string=False)
     return get_enemies().serialize()
 
 
 @app.route("/as_strings")
 def as_strings():
-    state = request_gaw_data(core.STATE_URL)
+    state = request_gaw_data(core.PGAW_STATE_URL)
     return core.construct_enemy_set(state)
 
 

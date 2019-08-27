@@ -291,25 +291,14 @@ function scratchpad_load()
         keyboardLocked = true
     end
 
-    local function insertCoordinates()
-        os.execute("cd C:/Users/mcdel/dcs-wb-magic/ && python write_enemies_to_scratchpad.py")
+    local function insertCoordinatesPgaw()
+        os.execute("cd C:/Users/mcdel/dcs-wb-magic/ && python write_pgaw_to_scratchpad.py")
         -- loadPage(currentPage)
+    end
 
-        -- local coords = net.dostring_in("server", getCoordsLua)
-        -- local lineCountBefore = textarea:getLineCount()
-        --
-        -- if coords == "" then
-        --     textarea:setText(textarea:getText() .. "\nNo marks found\n")
-        -- else
-        --     textarea:setText(textarea:getText() .. coords .. "\n")
-        -- end
-        --
-        -- -- scroll to the bottom of the textarea
-        -- local lastLine = textarea:getLineCount() - 1
-        -- local lastLineChar = textarea:getLineTextLength(lastLine)
-        -- textarea:setSelectionNew(lastLine, 0, lastLine, lastLineLen)
-        -- savePage(currentPage, textarea:getText(), true)
-
+    local function insertCoordinatesGaw()
+        os.execute("cd C:/Users/mcdel/dcs-wb-magic/ && python write_gaw_to_scratchpad.py")
+        loadPage(currentPage)
     end
 
     function scratchpad.createWindow()
@@ -317,7 +306,8 @@ function scratchpad_load()
         windowDefaultSkin = window:getSkin()
         panel = window.Box
         textarea = panel.ScratchpadEditBox
-        insertCoordsBtn = panel.ScratchpadGetCoordsButton
+        insertPgawCoordsBtn = panel.ScratchpadGetPgawCoordsButton
+        insertGawCoordsBtn = panel.ScratchpadGetGawCoordsButton
         prevButton = panel.ScratchpadPrevButton
         nextButton = panel.ScratchpadNextButton
 
@@ -360,9 +350,15 @@ function scratchpad_load()
                 nextPage()
             end
         )
-        insertCoordsBtn:addMouseDownCallback(
+        insertPgawCoordsBtn:addMouseDownCallback(
             function(self)
-                insertCoordinates()
+                insertCoordinatesPgaw()
+            end
+        )
+
+        insertGawCoordsBtn:addMouseDownCallback(
+            function(self)
+                insertCoordinatesGaw()
             end
         )
 
@@ -406,12 +402,8 @@ function scratchpad_load()
         textarea:setBounds(0, 0, w, h - 20 - 20)
         prevButton:setBounds(0, h - 40, 50, 20)
         nextButton:setBounds(55, h - 40, 50, 20)
-
-        if pagesCount > 1 then
-            insertCoordsBtn:setBounds(120, h - 40, 50, 20)
-        else
-            insertCoordsBtn:setBounds(0, h - 40, 50, 20)
-        end
+        insertPgawCoordsBtn:setBounds(120, h - 40, 50, 20)
+        insertGawCoordsBtn:setBounds(175, h - 40, 50, 20)
 
         scratchpad.config.windowSize = {w = w, h = h}
         scratchpad.saveConfiguration()
@@ -435,15 +427,12 @@ function scratchpad_load()
         window:setSkin(windowDefaultSkin)
         panel:setVisible(true)
         window:setHasCursor(true)
-        insertCoordsBtn:setVisible(true)
+        insertPgawCoordsBtn:setVisible(true)
+        insertGawCoordsBtn:setVisible(true)
         -- show prev/next buttons only if we have more than one page
-        if pagesCount > 1 then
-            prevButton:setVisible(true)
-            nextButton:setVisible(true)
-        else
-            prevButton:setVisible(false)
-            nextButton:setVisible(false)
-        end
+
+        prevButton:setVisible(true)
+        nextButton:setVisible(true)
 
         isHidden = false
     end

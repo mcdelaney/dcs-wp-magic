@@ -10,7 +10,7 @@ FILE_PATH = "C:/Users/mcdel/Saved Games/DCS/Scratchpad/0000.txt"
 
 if __name__ == "__main__":
     print('Requesting enemies...')
-    resp = r.get(core.STATE_URL)
+    resp = r.get(core.PGAW_STATE_URL)
     resp.raise_for_status()
     state = resp.json()
     print('Enemies received...parsing...')
