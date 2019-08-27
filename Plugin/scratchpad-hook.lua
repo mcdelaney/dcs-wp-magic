@@ -293,7 +293,8 @@ function scratchpad_load()
 
     local function insertCoordinates()
         os.execute("cd C:/Users/mcdel/dcs-wb-magic/ && python write_enemies_to_scratchpad.py")
-        loadPage(currentPage)
+        -- loadPage(currentPage)
+
         -- local coords = net.dostring_in("server", getCoordsLua)
         -- local lineCountBefore = textarea:getLineCount()
         --
@@ -316,7 +317,7 @@ function scratchpad_load()
         windowDefaultSkin = window:getSkin()
         panel = window.Box
         textarea = panel.ScratchpadEditBox
-        insertCoordsBtn = panel.ScratchpadInsertCoordsButton
+        insertCoordsBtn = panel.ScratchpadGetCoordsButton
         prevButton = panel.ScratchpadPrevButton
         nextButton = panel.ScratchpadNextButton
 
