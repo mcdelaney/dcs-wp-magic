@@ -5,7 +5,7 @@ import sys
 from dcs import core
 
 
-FILE_PATH = "C:/Users/mcdel/Saved Games/DCS/Scratchpad/0001.txt"
+FILE_PATH = "C:/Users/mcdel/Saved Games/DCS/Scratchpad/gaw.txt"
 
 
 if __name__ == "__main__":

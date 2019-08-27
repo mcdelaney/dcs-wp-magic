@@ -20,33 +20,39 @@ CATS = {
     'RADAR': [
         "S-300PS 40B6M tr",
         "S-300PS 40B6MD sr",
+        "S-300PS 64H6E sr"
         "Kub 1S91 str",
         "1L13 EWR",
-        "Dog Ear radar"
+        "Dog Ear radar",
+        "SA-11 Buk SR 9S18M1"
     ],
     'SAM': [
         "S-300PS 5P85C ln",
         "Kub 2P25 ln",
+        "SA-11 Buk LN 9A310M1",
         "5p73 s-125 ln",
         "snr s-125 tr"
+
         "Osa 9A33 ln",
         "Strela-10M3",
         "Strela-1 9P31"
     ],
+    "AAA": [
+         "ZSU-23-4 Shilka",
+         "2S6 Tunguska",
+         "Ural-375 ZU-23",
+         "ZU-23 Emplacement Closed",
+         "SA-18 Igla-S manpad"
+    ],
     'ARMOR': [
         "Ural-375 PBU",
         "BMP-2",
-        "T-72B"
-        "SAU Msta",
-        "SA-18 Igla-S manpad"
-        "ZSU-23-4 Shilka",
-        "2S6 Tunguska",
-        "Ural-375 ZU-23",
-        "ZU-23 Emplacement Closed"
+        "T-72B",
+        "SAU Msta"
     ],
     "INFANTRY": [
         "Infantry AK"
-    ]
+    ],
 }
 
 CAT_LOOKUP = {}
