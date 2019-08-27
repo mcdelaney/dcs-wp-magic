@@ -4,12 +4,12 @@ import requests as r
 import sys
 from dcs import core
 
-FILE_PATH = "C:/Users/mcdel/Saved Games/DCS/Scripts/Scratchpad/0000.txt"
+
+FILE_PATH = "C:/Users/mcdel/Saved Games/DCS/Scratchpad/0000.txt"
 
 
 if __name__ == "__main__":
     print('Requesting enemies...')
-    resp = r.get("http://127.0.0.1:5000/as_strings")
     resp = r.get(core.STATE_URL)
     resp.raise_for_status()
     state = resp.json()
