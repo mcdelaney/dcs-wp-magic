@@ -34,7 +34,7 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("m")
+    parser.add_argument("-m")
     args = parser.parse_args()
     main(args)
     sys.exit(0)

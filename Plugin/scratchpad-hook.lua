@@ -1,4 +1,6 @@
 require "os"
+-- local http = require("socket.http")
+local io = require("io")
 
 function scratchpad_load()
     package.path = package.path .. ";.\\Scripts\\?.lua;.\\Scripts\\UI\\?.lua;"
@@ -104,7 +106,6 @@ function scratchpad_load()
             scratchpad.config = tbl.config
 
             -- config migration
-
             -- add default fontSize config
             if scratchpad.config.fontSize == nil then
                 scratchpad.config.fontSize = 14
@@ -185,15 +186,21 @@ function scratchpad_load()
     end
 
     local function updateCoordinatesPgaw()
-        -- os.execute("cd C:/Users/mcdel/dcs-wb-magic/ && python write_pgaw_to_scratchpad.py")
-        io.popen("cd C:/Users/mcdel/dcs-wb-magic/ && python update_scratchpad.py -m pgaw")
-        -- loadPage(currentPage)
+        local command = "C:/Users/mcdel/dcs-wb-magic/run_pgaw.bat"
+        os.execute(command)
+        -- os.execute('start cmd /k call "'..command..'"')
+        -- local p = assert(io.popen(command))
+        -- local result = p:read("*all")
+        -- p:close()
     end
 
     local function updateCoordinatesGaw()
-        -- os.execute("cd C:/Users/mcdel/dcs-wb-magic/ && python write_gaw_to_scratchpad.py")
-        io.popen("cd C:/Users/mcdel/dcs-wb-magic/ && python update_scratchpad.py -m gaw")
-        -- loadPage(currentPage)
+        local command = "C:/Users/mcdel/dcs-wb-magic/run_gaw.bat"
+        os.execute(command)
+        -- os.execute('start cmd /k call "'..command..'"')
+        -- local p = assert(io.popen(command))
+        -- local result = p:read("*all")
+        -- p:close()
     end
 
     function scratchpad.createWindow()
