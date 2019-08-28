@@ -7,22 +7,12 @@ from dcs import core
 
 app = Flask(__name__)
 
-LAST_REQ = None
-LAST_RESPONSE = None
-
 
 def request_gaw_data(url):
-    global LAST_RESPONSE
-    global LAST_REQ
-    if LAST_RESPONSE and (dt.datetime.now() - LAST_REQ).total_seconds() < 30:
-        print("Using cached value")
-        return LAST_RESPONSE
     resp = r.get(url)
     if resp.status_code != 200:
         raise ValueError("Respose is not 200!")
     data = resp.json()
-    LAST_RESPONSE = data
-    LAST_REQ = dt.datetime.now()
     return data
 
 
@@ -33,10 +23,22 @@ def all_enemies():
     return get_enemies().serialize()
 
 
-@app.route("/as_strings")
-def as_strings():
+@app.route("/pgaw")
+def as_strings_pgaw():
     state = request_gaw_data(core.PGAW_STATE_URL)
-    return core.construct_enemy_set(state)
+    enemies = core.construct_enemy_set(state)
+    with open(core.PGAW_PATH, 'wb') as fp:
+        fp.write(enemies)
+    return 'ok'
+
+
+@app.route("/gaw")
+def as_strings_gaw():
+    state = request_gaw_data(core.GAW_STATE_URL)
+    enemies = core.construct_enemy_set(state)
+    with open(core.GAW_PATH, 'wb') as fp:
+        fp.write(enemies)
+    return 'ok'
 
 
 if __name__=="__main__":

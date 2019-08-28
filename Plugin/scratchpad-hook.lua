@@ -1,9 +1,18 @@
 require "os"
--- local http = require("socket.http")
-local io = require("io")
 
 function scratchpad_load()
+    -- package.path = package.path .. ";.\\LuaSocket\\?.lua"
+    -- package.cpath = package.cpath .. ";.\\LuaSocket\\?.dll"
+    programPath = lfs.realpath(lfs.currentdir())
+    package.path = programPath .. "\\?.lua;" .. package.path
     package.path = package.path .. ";.\\Scripts\\?.lua;.\\Scripts\\UI\\?.lua;"
+
+    local io = require("io")
+    -- local http = require("socket.http")
+    require("LuaSocket.socket")
+    require("LuaSocket.url")
+    require("LuaSocket.http")
+    local http = require('socket.http')
 
     local lfs = require("lfs")
     local U = require("me_utilities")
@@ -186,8 +195,9 @@ function scratchpad_load()
     end
 
     local function updateCoordinatesPgaw()
-        local command = "C:/Users/mcdel/dcs-wb-magic/run_pgaw.bat"
-        os.execute(command)
+        -- local command = "C:/Users/mcdel/dcs-wb-magic/run_pgaw.bat"
+        -- os.execute(command)
+        local result = http.request("http://127.0.0.1:5000/pgaw")
         -- os.execute('start cmd /k call "'..command..'"')
         -- local p = assert(io.popen(command))
         -- local result = p:read("*all")
@@ -195,8 +205,9 @@ function scratchpad_load()
     end
 
     local function updateCoordinatesGaw()
-        local command = "C:/Users/mcdel/dcs-wb-magic/run_gaw.bat"
-        os.execute(command)
+        local result = http.request("http://127.0.0.1:5000/gaw")
+        -- local command = "C:/Users/mcdel/dcs-wb-magic/run_gaw.bat"
+        -- os.execute(command)
         -- os.execute('start cmd /k call "'..command..'"')
         -- local p = assert(io.popen(command))
         -- local result = p:read("*all")
@@ -320,9 +331,9 @@ function scratchpad_load()
     function scratchpad.show()
         if window == nil then
             local status, err = pcall(scratchpad.createWindow)
+          end
             if not status then
                 net.log("[Scratchpad] Error creating window: " .. tostring(err))
-            end
         end
 
         window:setVisible(true)

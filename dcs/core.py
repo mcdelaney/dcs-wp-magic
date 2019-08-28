@@ -3,11 +3,12 @@ import json
 PGAW_KEY = "243bd8b1-3198-4c0b-817a-fadb40decf23"
 PGAW_STATUS_URL = "https://status.hoggitworld.com/" + PGAW_KEY
 PGAW_STATE_URL = "https://state.hoggitworld.com/" + PGAW_KEY
+PGAW_PATH = "C:/Users/mcdel/Saved Games/DCS/Scratchpad/pgaw.txt"
 
 GAW_KEY = "f67eecc6-4659-44fd-a4fd-8816c993ad0e"
 GAW_STATUS_URL = "https://status.hoggitworld.com/" + GAW_KEY
 GAW_STATE_URL = "https://state.hoggitworld.com/" + GAW_KEY
-
+GAW_PATH = "C:/Users/mcdel/Saved Games/DCS/Scratchpad/gaw.txt"
 
 ENEMY_COALITION = "Allies"
 
