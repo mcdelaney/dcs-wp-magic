@@ -20,8 +20,9 @@ CATS = {
     'RADAR': [
         "S-300PS 40B6M tr",
         "S-300PS 40B6MD sr",
-        "S-300PS 64H6E sr"
+        "S-300PS 64H6E sr",
         "Kub 1S91 str",
+        "snr s-125 tr",
         "1L13 EWR",
         "Dog Ear radar",
         "SA-11 Buk SR 9S18M1"
@@ -31,8 +32,6 @@ CATS = {
         "Kub 2P25 ln",
         "SA-11 Buk LN 9A310M1",
         "5p73 s-125 ln",
-        "snr s-125 tr"
-
         "Osa 9A33 ln",
         "Strela-10M3",
         "Strela-1 9P31"
@@ -175,6 +174,8 @@ def construct_enemy_set(enemy_state, result_as_string=True):
             for elem in v:
                 group_string += elem.result_string
             results.append(group_string)
-        return '\r\n'.join(results)
+        result_string = '\r\n'.join(results)
+        result_string = result_string.encode('UTF-8')
+        return result_string
 
     return enemies
