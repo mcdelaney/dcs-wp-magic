@@ -28,7 +28,7 @@ def as_strings_pgaw():
     enemies = core.construct_enemy_set(state)
     with open(core.PGAW_PATH, 'wb') as fp:
         fp.write(enemies)
-    return 'ok'
+    return "ok"
 
 
 @app.route("/gaw")
@@ -37,8 +37,8 @@ def as_strings_gaw():
     enemies = core.construct_enemy_set(state)
     with open(core.GAW_PATH, 'wb') as fp:
         fp.write(enemies)
-    return 'ok'
+    return "ok"
 
 
 if __name__ == "__main__":
-    app.run(debug=False)
+    app.run(debug=False, threaded=True)

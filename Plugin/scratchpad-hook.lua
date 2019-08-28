@@ -194,24 +194,26 @@ function scratchpad_load()
         keyboardLocked = true
     end
 
-    local function updateCoordinatesPgaw()
-        -- local command = "C:/Users/mcdel/dcs-wb-magic/run_pgaw.bat"
-        -- os.execute(command)
-        local result = http.request("http://127.0.0.1:5000/pgaw")
-        -- os.execute('start cmd /k call "'..command..'"')
-        -- local p = assert(io.popen(command))
-        -- local result = p:read("*all")
-        -- p:close()
-    end
+    local function updateCoordinates(server)
+        if server == "gaw" then
+            local resp = http.request("http://127.0.0.1:5000/gaw")
+            file_path = lfs.writedir() .. [[Scratchpad\]] .. [[gaw.txt]]
+        else
+            local resp = http.request("http://127.0.0.1:5000/pgaw")
+            file_path = lfs.writedir() .. [[Scratchpad\]] .. [[pgaw.txt]]
+            -- local file_path = "C:/Users/mcdel/Saved Games/DCS/Scratchpad/gaw.txt"
+        end
 
-    local function updateCoordinatesGaw()
-        local result = http.request("http://127.0.0.1:5000/gaw")
-        -- local command = "C:/Users/mcdel/dcs-wb-magic/run_gaw.bat"
-        -- os.execute(command)
-        -- os.execute('start cmd /k call "'..command..'"')
-        -- local p = assert(io.popen(command))
-        -- local result = p:read("*all")
-        -- p:close()
+        file, err = io.open(file_path, "r")
+        if err then
+            scratchpad.log("Error reading file: " .. file_path)
+            return ""
+        else
+            local content = file:read("*all")
+            scratchpad.log(content)
+            return content
+        end
+
     end
 
     function scratchpad.createWindow()
@@ -265,13 +267,15 @@ function scratchpad_load()
         )
         insertPgawCoordsBtn:addMouseDownCallback(
             function(self)
-                updateCoordinatesPgaw()
+                local result = updateCoordinates("pgaw")
+                textarea:setText(result)
             end
         )
 
         insertGawCoordsBtn:addMouseDownCallback(
             function(self)
-                updateCoordinatesGaw()
+                local result = updateCoordinates("gaw")
+                textarea:setText(result)
             end
         )
 
