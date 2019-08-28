@@ -10,8 +10,7 @@ app = Flask(__name__)
 
 def request_gaw_data(url):
     resp = r.get(url)
-    if resp.status_code != 200:
-        raise ValueError("Respose is not 200!")
+    resp.raise_for_status()
     data = resp.json()
     return data
 
@@ -41,5 +40,5 @@ def as_strings_gaw():
     return 'ok'
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     app.run(debug=False)

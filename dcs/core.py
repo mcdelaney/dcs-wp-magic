@@ -13,45 +13,22 @@ GAW_PATH = "C:/Users/mcdel/Saved Games/DCS/Scratchpad/gaw.txt"
 ENEMY_COALITION = "Allies"
 
 CATS = {
-    'MOBILE_CP': [
-        "S-300PS 54K6 cp",
-        "SKP-11"
-    ],
+    'MOBILE_CP': ["S-300PS 54K6 cp", "SKP-11"],
     'RADAR': [
-        "S-300PS 40B6M tr",
-        "S-300PS 40B6MD sr",
-        "S-300PS 64H6E sr",
-        "Kub 1S91 str",
-        "snr s-125 tr",
-        "1L13 EWR",
-        "Dog Ear radar",
+        "S-300PS 40B6M tr", "S-300PS 40B6MD sr", "S-300PS 64H6E sr",
+        "Kub 1S91 str", "snr s-125 tr", "1L13 EWR", "Dog Ear radar",
         "SA-11 Buk SR 9S18M1"
     ],
     'SAM': [
-        "S-300PS 5P85C ln",
-        "Kub 2P25 ln",
-        "SA-11 Buk LN 9A310M1",
-        "5p73 s-125 ln",
-        "Osa 9A33 ln",
-        "Strela-10M3",
-        "Strela-1 9P31"
+        "S-300PS 5P85C ln", "Kub 2P25 ln", "SA-11 Buk LN 9A310M1",
+        "5p73 s-125 ln", "Osa 9A33 ln", "Strela-10M3", "Strela-1 9P31"
     ],
     "AAA": [
-         "ZSU-23-4 Shilka",
-         "2S6 Tunguska",
-         "Ural-375 ZU-23",
-         "ZU-23 Emplacement Closed",
-         "SA-18 Igla-S manpad"
+        "ZSU-23-4 Shilka", "2S6 Tunguska", "Ural-375 ZU-23",
+        "ZU-23 Emplacement Closed", "SA-18 Igla-S manpad"
     ],
-    'ARMOR': [
-        "Ural-375 PBU",
-        "BMP-2",
-        "T-72B",
-        "SAU Msta"
-    ],
-    "INFANTRY": [
-        "Infantry AK"
-    ],
+    'ARMOR': ["Ural-375 PBU", "BMP-2", "T-72B", "SAU Msta"],
+    "INFANTRY": ["Infantry AK"],
 }
 
 CAT_LOOKUP = {}
@@ -68,14 +45,15 @@ def enemy_to_string(enemy_set):
             unit = elem['cat'] + ' ' + elem['name'] + ': '
             lat = '.'.join(elem['lat_dms'])
             lon = '.'.join(elem['lon_dms'])
-            unit_str = "\t" + unit + '  '.join([lat, lon, elem['alt'] + 'm']) + "\r\n"
+            unit_str = "\t" + unit + '  '.join([lat, lon, elem['alt'] + 'm'
+                                                ]) + "\r\n"
             str_base += unit_str
         enemy_out.append(str_base)
     return '\r\n'.join(enemy_out)
 
 
 def dms2dd(degrees, minutes, seconds, direction):
-    dd = float(degrees) + float(minutes)/60 + float(seconds)/(60*60);
+    dd = float(degrees) + float(minutes) / 60 + float(seconds) / (60 * 60)
     if direction == 'E' or direction == 'N':
         dd *= -1
     return dd
@@ -85,7 +63,7 @@ def dd2dms(deg):
     d = int(deg)
     md = abs(deg - d) * 60
     m = int(md)
-    sd = round((md - m) * 60,2)
+    sd = round((md - m) * 60, 2)
     return [f'{d:02}', f'{m:02}', f'{sd:05.2f}']
 
 
@@ -151,8 +129,9 @@ class EnemyGroups:
             yield group_name, group
 
     def serialize(self):
-        return json.dumps({k:[i.__dict__ for i in v]
-                           for k, v in self.groups.items()})
+        return json.dumps(
+            {k: [i.__dict__ for i in v]
+             for k, v in self.groups.items()})
 
 
 def construct_enemy_set(enemy_state, result_as_string=True):
