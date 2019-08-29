@@ -1,16 +1,22 @@
 import json
+import geopy.distance
+
+OUT_PATH = "C:/Users/mcdel/Saved Games/DCS/Scratchpad/coords.txt"
+
+START_UNIT = "CVN-74"
 
 PGAW_KEY = "243bd8b1-3198-4c0b-817a-fadb40decf23"
-PGAW_STATUS_URL = "https://status.hoggitworld.com/" + PGAW_KEY
-PGAW_STATE_URL = "https://state.hoggitworld.com/" + PGAW_KEY
-PGAW_PATH = "C:/Users/mcdel/Saved Games/DCS/Scratchpad/pgaw.txt"
+PGAW_STATUS_URL = f"https://status.hoggitworld.com/{PGAW_KEY}"
+PGAW_STATE_URL = f"https://state.hoggitworld.com/{PGAW_KEY}"
 
 GAW_KEY = "f67eecc6-4659-44fd-a4fd-8816c993ad0e"
-GAW_STATUS_URL = "https://status.hoggitworld.com/" + GAW_KEY
-GAW_STATE_URL = "https://state.hoggitworld.com/" + GAW_KEY
-GAW_PATH = "C:/Users/mcdel/Saved Games/DCS/Scratchpad/gaw.txt"
+GAW_STATUS_URL = f"https://status.hoggitworld.com/{GAW_KEY}"
+GAW_STATE_URL = f"https://state.hoggitworld.com/{GAW_KEY}"
+
 
 ENEMY_COALITION = "Allies"
+
+MAX_DIST = 200
 
 CATS = {
     'MOBILE_CP': ["S-300PS 54K6 cp", "SKP-11"],
@@ -69,9 +75,10 @@ def dd2dms(deg):
 
 class Enemy:
     """A single enemy unit with specific attributes."""
-    def __init__(self, item):
+    def __init__(self, item, start_coords=None):
         self.id = item["id"]
         self.name = item["Name"]
+        self.dist = 999
         try:
             self.group_name = item['GroupName']
         except KeyError:
@@ -81,7 +88,7 @@ class Enemy:
             self.unit_name = item["UnitName"]
         except KeyError:
             self.unit_name = None
-        self.alt = str(round(item["LatLongAlt"]["Alt"])) + 'm'
+        self.alt = round(item["LatLongAlt"]["Alt"])
         self.lat_raw = item["LatLongAlt"]["Lat"]
         self.lon_raw = item["LatLongAlt"]["Long"]
 
@@ -99,10 +106,16 @@ class Enemy:
         except KeyError:
             self.cat = "Unknown"
 
-        unit = self.cat + ': ' + self.name + ': '
         lat = '.'.join(self.lat_dms)
         lon = '.'.join(self.lon_dms)
-        self.result_string = f"\t{unit} {lat} {lon} {self.alt}\r\n"
+
+        if start_coords:
+            self.dist = round(
+                geopy.distance.vincenty(start_coords,
+                                        [self.lat_raw, self.lon_raw]).nm)
+
+        self.str = f"{self.cat}: {self.name} {lat}, {lon}, {self.alt}m, {self.dist}nm"
+
 
 
 class EnemyGroups:
@@ -125,8 +138,10 @@ class EnemyGroups:
         return self.total
 
     def __iter__(self):
+        """Yields tuples of (group_name, enemy_list, min_distance)"""
         for group_name, group in self.groups.items():
-            yield group_name, group
+            min_dist = min([enemy.dist for enemy in group])
+            yield group_name, group, min_dist
 
     def serialize(self):
         return json.dumps(
@@ -136,24 +151,29 @@ class EnemyGroups:
 
 def construct_enemy_set(enemy_state, result_as_string=True):
     """Parse json response from gaw state endpoint into an enemy list"""
-    enemies = EnemyGroups()
+    start_coord = None
+    for ent in enemy_state['objects']:
+        if "UnitName" in list(ent.keys()) and ent["UnitName"] == START_UNIT:
+            start_coord = [ent['LatLongAlt']['Lat'], ent['LatLongAlt']['Long']]
+            break
+
+    enemy_groups = EnemyGroups()
     for item in enemy_state['objects']:
-        if item["Coalition"] != ENEMY_COALITION:
-            continue
-        if item["Flags"]["Human"] == True:
-            print(item)
-        if item['Type']['level1'] == 2:
-            enemy = Enemy(item)
-            enemies.add(enemy)
+        if item["Coalition"] == ENEMY_COALITION and item['Type']['level1'] == 2:
+            enemy = Enemy(item, start_coord)
+            enemy_groups.add(enemy)
 
     if result_as_string:
-        results = []
-        for k, v in enemies:
-            group_string = k + '\r\n'
-            for elem in v:
-                group_string += elem.result_string
-            results.append(group_string)
-        result_string = '\r\n'.join(results)
+        results = {}
+        for grp_name, enemy_set, grp_dist in enemy_groups:
+            if grp_dist > MAX_DIST:
+                continue
+            grp_string = grp_name + '\r\n\t'
+            grp_string +='\r\n\t'.join([elem.str for elem in enemy_set])
+            results[grp_dist] = grp_string
+
+        results_string = [results[k] for k in sorted(results.keys())]
+        result_string = '\r\n\r\n'.join(results_string)
         result_string = result_string.encode('UTF-8')
         return result_string
 

@@ -7,7 +7,6 @@ from dcs import core
 
 app = Flask(__name__)
 
-
 def request_gaw_data(url):
     resp = r.get(url)
     resp.raise_for_status()
@@ -26,7 +25,7 @@ def all_enemies():
 def as_strings_pgaw():
     state = request_gaw_data(core.PGAW_STATE_URL)
     enemies = core.construct_enemy_set(state)
-    with open(core.PGAW_PATH, 'wb') as fp:
+    with open(core.OUT_PATH, 'wb') as fp:
         fp.write(enemies)
     return "ok"
 
@@ -35,7 +34,7 @@ def as_strings_pgaw():
 def as_strings_gaw():
     state = request_gaw_data(core.GAW_STATE_URL)
     enemies = core.construct_enemy_set(state)
-    with open(core.GAW_PATH, 'wb') as fp:
+    with open(core.OUT_PATH, 'wb') as fp:
         fp.write(enemies)
     return "ok"
 

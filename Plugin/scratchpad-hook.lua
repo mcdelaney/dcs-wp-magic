@@ -197,13 +197,10 @@ function scratchpad_load()
     local function updateCoordinates(server)
         if server == "gaw" then
             local resp = http.request("http://127.0.0.1:5000/gaw")
-            file_path = lfs.writedir() .. [[Scratchpad\]] .. [[gaw.txt]]
         else
             local resp = http.request("http://127.0.0.1:5000/pgaw")
-            file_path = lfs.writedir() .. [[Scratchpad\]] .. [[pgaw.txt]]
-            -- local file_path = "C:/Users/mcdel/Saved Games/DCS/Scratchpad/gaw.txt"
         end
-
+        file_path = lfs.writedir() .. [[Scratchpad\]] .. [[coords.txt]]
         file, err = io.open(file_path, "r")
         if err then
             scratchpad.log("Error reading file: " .. file_path)
