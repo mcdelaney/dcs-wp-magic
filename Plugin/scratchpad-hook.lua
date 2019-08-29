@@ -123,7 +123,7 @@ function scratchpad_load()
 
             -- move content into text file
             if scratchpad.config.content ~= nil then
-                savePage(dirPath .. [[0000.txt]], scratchpad.config.content, false)
+                -- savePage(dirPath .. [[0000.txt]], scratchpad.config.content, false)
                 scratchpad.config.content = nil
                 scratchpad.saveConfiguration()
             end
@@ -204,10 +204,12 @@ function scratchpad_load()
         file, err = io.open(file_path, "r")
         if err then
             scratchpad.log("Error reading file: " .. file_path)
+            file:close()
             return ""
         else
             local content = file:read("*all")
-            scratchpad.log(content)
+            file:close()
+            scratchpad.log("Data collected")
             return content
         end
 
@@ -228,11 +230,11 @@ function scratchpad_load()
         skin.skinData.states.released[1].text.fontSize = scratchpad.config.fontSize
         textarea:setSkin(skin)
 
-        textarea:addChangeCallback(
-            function(self)
-                savePage(currentPage, self:getText(), true)
-            end
-        )
+        -- textarea:addChangeCallback(
+        --     function(self)
+        --         savePage(currentPage, self:getText(), true)
+        --     end
+        -- )
         textarea:addFocusCallback(
             function(self)
                 if self:getFocused() then

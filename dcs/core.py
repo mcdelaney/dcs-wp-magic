@@ -1,9 +1,13 @@
 import json
 import geopy.distance
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
+log = logging.getLogger(__name__)
 
 OUT_PATH = "C:/Users/mcdel/Saved Games/DCS/Scratchpad/coords.txt"
 
-START_UNIT = "CVN-74"
+START_UNIT = ["CVN-74", "Stennis"]
 
 PGAW_KEY = "243bd8b1-3198-4c0b-817a-fadb40decf23"
 PGAW_STATUS_URL = f"https://status.hoggitworld.com/{PGAW_KEY}"
@@ -78,7 +82,7 @@ class Enemy:
     def __init__(self, item, start_coords=None):
         self.id = item["id"]
         self.name = item["Name"]
-        self.dist = 999
+        self.dist = -999
         try:
             self.group_name = item['GroupName']
         except KeyError:
@@ -153,7 +157,7 @@ def construct_enemy_set(enemy_state, result_as_string=True):
     """Parse json response from gaw state endpoint into an enemy list"""
     start_coord = None
     for ent in enemy_state['objects']:
-        if "UnitName" in list(ent.keys()) and ent["UnitName"] == START_UNIT:
+        if "UnitName" in list(ent.keys()) and ent["UnitName"] in START_UNIT:
             start_coord = [ent['LatLongAlt']['Lat'], ent['LatLongAlt']['Long']]
             break
 
@@ -166,14 +170,18 @@ def construct_enemy_set(enemy_state, result_as_string=True):
     if result_as_string:
         results = {}
         for grp_name, enemy_set, grp_dist in enemy_groups:
-            if grp_dist > MAX_DIST:
+            if start_coord and grp_dist > MAX_DIST:
+                log.info([start_coord, [enemy_set[0].lat_raw, enemy_set[0].lon_raw]])
+                log.info("Excluding %s...distance is %d...", grp_name, grp_dist)
                 continue
+            log.debug("Returning %s...distance is %d...", grp_name, grp_dist)
             grp_string = grp_name + '\r\n\t'
             grp_string +='\r\n\t'.join([elem.str for elem in enemy_set])
             results[grp_dist] = grp_string
 
         results_string = [results[k] for k in sorted(results.keys())]
         result_string = '\r\n\r\n'.join(results_string)
+
         result_string = result_string.encode('UTF-8')
         return result_string
 
