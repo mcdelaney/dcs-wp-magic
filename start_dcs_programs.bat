@@ -5,4 +5,4 @@ start "" "C:\Program Files (x86)\Steam\steamapps\common\VoiceAttack\VoiceAttack.
 
 CD "C:\Users\mcdel\dcs-wb-magic"
 call activate base
-"C:\Users\mcdel\Anaconda3\python.exe" "C:/Users/mcdel/dcs-wb-magic/start_server.py"
+"C:\Users\mcdel\Anaconda3\python.exe" "C:/Users/mcdel/dcs-wb-magic/server.py"
