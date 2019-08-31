@@ -117,7 +117,7 @@ function scratchpad_load()
             -- config migration
             -- add default fontSize config
             if scratchpad.config.fontSize == nil then
-                scratchpad.config.fontSize = 14
+                scratchpad.config.fontSize = 16
                 scratchpad.saveConfiguration()
             end
 
