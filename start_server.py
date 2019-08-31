@@ -1,16 +1,20 @@
 #!/bin/python3
 import datetime as dt
-import requests as r
+import logging
+
 from flask import Flask
+import requests as r
 
 from dcs import core
 
 app = Flask(__name__)
+log = logging.getLogger(__name__)
 
 def request_gaw_data(url):
     resp = r.get(url)
     resp.raise_for_status()
     data = resp.json()
+    log.debug(data)
     return data
 
 
@@ -18,7 +22,8 @@ def request_gaw_data(url):
 def all_enemies():
     state = request_gaw_data(core.PGAW_STATE_URL)
     enemies = core.construct_enemy_set(state, result_as_string=False)
-    return get_enemies().serialize()
+    out = enemies.serialize()
+    return out
 
 
 @app.route("/pgaw")

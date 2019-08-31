@@ -9,18 +9,22 @@ OUT_PATH = "C:/Users/mcdel/Saved Games/DCS/Scratchpad/coords.txt"
 
 START_UNIT = ["CVN-74", "Stennis"]
 
-PGAW_KEY = "243bd8b1-3198-4c0b-817a-fadb40decf23"
-PGAW_STATUS_URL = f"https://status.hoggitworld.com/{PGAW_KEY}"
-PGAW_STATE_URL = f"https://state.hoggitworld.com/{PGAW_KEY}"
+# PGAW_KEY = "243bd8b1-3198-4c0b-817a-fadb40decf23"
+# PGAW_STATE_URL = f"https://state.hoggitworld.com/{PGAW_KEY}"
+PGAW_STATE_URL = "https://pgaw.hoggitworld.com/"
 
-GAW_KEY = "f67eecc6-4659-44fd-a4fd-8816c993ad0e"
-GAW_STATUS_URL = f"https://status.hoggitworld.com/{GAW_KEY}"
-GAW_STATE_URL = f"https://state.hoggitworld.com/{GAW_KEY}"
+# GAW_KEY = "f67eecc6-4659-44fd-a4fd-8816c993ad0e"
+# GAW_STATE_URL = f"https://state.hoggitworld.com/{GAW_KEY}"
+GAW_STATE_URL = "https://dcs.hoggitworld.com/"
+EXCLUDED_TYPES = ['Air+FixedWing', 'Ground+Light+Human+Air+Parachutist', '',
+                  'Sea+Watercraft+AircraftCarrier', "Air+Rotorcraft",
+                  "Ground+Static+Aerodrome"]
 
+EXCLUDED_PILOTS = ["FARP"]
 
-ENEMY_COALITION = "Allies"
+FRIENDLY_COUNTRIES = ['us']
 
-MAX_DIST = 200
+MAX_DIST = 350
 
 CATS = {
     'MOBILE_CP': ["S-300PS 54K6 cp", "SKP-11"],
@@ -30,14 +34,14 @@ CATS = {
         "SA-11 Buk SR 9S18M1"
     ],
     'SAM': [
-        "S-300PS 5P85C ln", "Kub 2P25 ln", "SA-11 Buk LN 9A310M1",
+        "S-300PS 5P85C ln", "Kub 2P25 ln", "SA-11 Buk LN 9A310M1", 'Tor 9A331',
         "5p73 s-125 ln", "Osa 9A33 ln", "Strela-10M3", "Strela-1 9P31"
     ],
     "AAA": [
         "ZSU-23-4 Shilka", "2S6 Tunguska", "Ural-375 ZU-23",
         "ZU-23 Emplacement Closed", "SA-18 Igla-S manpad"
     ],
-    'ARMOR': ["Ural-375 PBU", "BMP-2", "T-72B", "SAU Msta"],
+    'ARMOR': ["Ural-375 PBU", "BMP-2", "T-72B", "SAU Msta", "BMP-1"],
     "INFANTRY": ["Infantry AK"],
 }
 
@@ -80,18 +84,16 @@ def dd2dms(deg):
 class Enemy:
     """A single enemy unit with specific attributes."""
     def __init__(self, item, start_coords=None):
-        self.id = item["id"]
-        self.name = item["Name"]
-        self.dist = -999
-        try:
-            self.group_name = item['GroupName']
-        except KeyError:
-            self.group_name = self.name + '-' + str(item['id'])
+        self.id = item["Id"]
+        self.name = item["Pilot"]
+        self.platform = item["Platform"]
         self.type = item["Type"]
-        try:
-            self.unit_name = item["UnitName"]
-        except KeyError:
-            self.unit_name = None
+        self.dist = 999
+
+        self.group_name = item['Group'] if item["Group"] != '' else self.name
+        if self.group_name == '':
+            self.group_name = f"{self.platform}-{self.id}"
+
         self.alt = round(item["LatLongAlt"]["Alt"])
         self.lat_raw = item["LatLongAlt"]["Lat"]
         self.lon_raw = item["LatLongAlt"]["Long"]
@@ -106,7 +108,7 @@ class Enemy:
         self.lon_dms = [lon_card] + dd2dms(self.lon_raw)
 
         try:
-            self.cat = CAT_LOOKUP[self.name]
+            self.cat = CAT_LOOKUP[self.platform]
         except KeyError:
             self.cat = "Unknown"
 
@@ -114,12 +116,18 @@ class Enemy:
         lon = '.'.join(self.lon_dms)
 
         if start_coords:
-            self.dist = round(
-                geopy.distance.vincenty(start_coords,
-                                        [self.lat_raw, self.lon_raw]).nm)
+            try:
+                self.dist = round(
+                    geopy.distance.vincenty(start_coords,
+                                            [self.lat_raw, self.lon_raw]).nm)
+            except ValueError as e:
+                log.error("Coordinates are incorrect: %f %f",
+                          self.lat_raw, self.lon_raw)
 
-        self.str = f"{self.cat}: {self.name} {lat}, {lon}, {self.alt}m, {self.dist}nm"
-
+        self.str = f"{self.cat}: {self.platform} {lat}, {lon}, {self.alt}m, {self.dist}nm"
+        log.debug(self.str)
+        log.info('Created enemy %s %d from Stennis in group %s...',
+                 self.platform, self.dist, self.group_name)
 
 
 class EnemyGroups:
@@ -157,27 +165,39 @@ def construct_enemy_set(enemy_state, result_as_string=True):
     """Parse json response from gaw state endpoint into an enemy list"""
     start_coord = None
     for ent in enemy_state['objects']:
-        if "UnitName" in list(ent.keys()) and ent["UnitName"] in START_UNIT:
+        if "Pilot" in list(ent.keys()) and ent["Pilot"] in START_UNIT:
             start_coord = [ent['LatLongAlt']['Lat'], ent['LatLongAlt']['Long']]
             break
 
     enemy_groups = EnemyGroups()
     for item in enemy_state['objects']:
-        if item["Coalition"] == ENEMY_COALITION and item['Type']['level1'] == 2:
-            enemy = Enemy(item, start_coord)
-            enemy_groups.add(enemy)
+        if item['Type'] in EXCLUDED_TYPES:
+            continue
+        if item["Country"].lower() in FRIENDLY_COUNTRIES:
+            continue
+
+        if item["Pilot"] in EXCLUDED_PILOTS:
+            continue
+
+        enemy = Enemy(item, start_coord)
+        enemy_groups.add(enemy)
 
     if result_as_string:
         results = {}
         for grp_name, enemy_set, grp_dist in enemy_groups:
-            if start_coord and grp_dist > MAX_DIST:
-                log.info([start_coord, [enemy_set[0].lat_raw, enemy_set[0].lon_raw]])
-                log.info("Excluding %s...distance is %d...", grp_name, grp_dist)
+            if start_coord and (grp_dist > MAX_DIST):
+                log.debug([
+                    start_coord, [enemy_set[0].lat_raw, enemy_set[0].lon_raw]
+                ])
+                log.info("Excluding %s...distance is %d...", grp_name,
+                         grp_dist)
                 continue
             log.debug("Returning %s...distance is %d...", grp_name, grp_dist)
-            grp_string = grp_name + '\r\n\t'
-            grp_string +='\r\n\t'.join([elem.str for elem in enemy_set])
+            grp_string = f"{grp_name} - {grp_dist}\r\n\t"
+            grp_string += '\r\n\t'.join([elem.str for elem in enemy_set])
             results[grp_dist] = grp_string
+
+        print(list(sorted(results.keys())))
 
         results_string = [results[k] for k in sorted(results.keys())]
         result_string = '\r\n\r\n'.join(results_string)
