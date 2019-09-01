@@ -1,5 +1,5 @@
 import json
-import geopy.distance
+from geopy.distance import vincenty
 import logging
 
 logging.basicConfig(level=logging.DEBUG)
@@ -22,9 +22,10 @@ EXCLUDED_TYPES = ['Air+FixedWing', 'Ground+Light+Human+Air+Parachutist', '',
 
 EXCLUDED_PILOTS = ["FARP"]
 
-FRIENDLY_COUNTRIES = ['us']
+FRIENDLY_COUNTRIES = ['us', 'fr']
+COALITION = "Enemies"
 
-MAX_DIST = 350
+MAX_DIST = 650
 
 CATS = {
     'MOBILE_CP': ["S-300PS 54K6 cp", "SKP-11"],
@@ -117,9 +118,10 @@ class Enemy:
 
         if start_coords:
             try:
-                self.dist = round(
-                    geopy.distance.vincenty(start_coords,
-                                            [self.lat_raw, self.lon_raw]).nm)
+                log.info([start_coords, (self.lat_raw, self.lon_raw)])
+                dist = vincenty(start_coords, (self.lat_raw, self.lon_raw))
+                self.dist = round(dist.nm)
+
             except ValueError as e:
                 log.error("Coordinates are incorrect: %f %f",
                           self.lat_raw, self.lon_raw)
@@ -164,19 +166,28 @@ class EnemyGroups:
 def construct_enemy_set(enemy_state, result_as_string=True):
     """Parse json response from gaw state endpoint into an enemy list"""
     start_coord = None
-    for ent in enemy_state['objects']:
-        if "Pilot" in list(ent.keys()) and ent["Pilot"] in START_UNIT:
-            start_coord = [ent['LatLongAlt']['Lat'], ent['LatLongAlt']['Long']]
+    start_pilot = 'None'
+    for pilot in ["someone_somewhere", "CVN-74"]:
+        if start_coord:
             break
+        for ent in enemy_state['objects']:
+            if ent["Pilot"] == pilot:
+                log.info("Using %s for start coords...", pilot)
+                start_coord = (ent['LatLongAlt']['Lat'], ent['LatLongAlt']['Long'])
+                start_pilot = pilot
+                break
 
     enemy_groups = EnemyGroups()
     for item in enemy_state['objects']:
         if item['Type'] in EXCLUDED_TYPES:
             continue
-        if item["Country"].lower() in FRIENDLY_COUNTRIES:
+        if item["Coalition"] == COALITION:
             continue
 
         if item["Pilot"] in EXCLUDED_PILOTS:
+            continue
+
+        if item["LatLongAlt"]["Alt"] == 0:
             continue
 
         enemy = Enemy(item, start_coord)
@@ -199,10 +210,9 @@ def construct_enemy_set(enemy_state, result_as_string=True):
 
         print(list(sorted(results.keys())))
 
-        results_string = [results[k] for k in sorted(results.keys())]
-        result_string = '\r\n\r\n'.join(results_string)
-
-        result_string = result_string.encode('UTF-8')
-        return result_string
+        results = [results[k] for k in sorted(results.keys())]
+        results = '\r\n\r\n'.join(results)
+        results = f"Start Coords: {start_pilot} {start_coord}\r\n\r\n{results}".encode('UTF-8')
+        return results
 
     return enemies

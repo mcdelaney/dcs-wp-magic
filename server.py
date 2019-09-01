@@ -8,13 +8,15 @@ import requests as r
 from dcs import core
 
 app = Flask(__name__)
+
+logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
+
 
 def request_gaw_data(url):
     resp = r.get(url)
     resp.raise_for_status()
     data = resp.json()
-    log.debug(data)
     return data
 
 
