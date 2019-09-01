@@ -196,9 +196,9 @@ function scratchpad_load()
 
     local function updateCoordinates(server)
         if server == "gaw" then
-            local resp = http.request("http://127.0.0.1:5000/gaw")
+            local resp = http.request("http://127.0.0.1:5000/gaw/dd")
         else
-            local resp = http.request("http://127.0.0.1:5000/pgaw")
+            local resp = http.request("http://127.0.0.1:5000/pgaw/dms")
         end
         file_path = lfs.writedir() .. [[Scratchpad\]] .. [[coords.txt]]
         file, err = io.open(file_path, "r")

@@ -28,19 +28,19 @@ def all_enemies():
     return out
 
 
-@app.route("/pgaw")
-def as_strings_pgaw():
+@app.route("/pgaw/<coord_fmt>")
+def as_strings_pgaw(coord_fmt):
     state = request_gaw_data(core.PGAW_STATE_URL)
-    enemies = core.construct_enemy_set(state)
+    enemies = core.construct_enemy_set(state, coord_fmt=coord_fmt)
     with open(core.OUT_PATH, 'wb') as fp:
         fp.write(enemies)
     return enemies
 
 
-@app.route("/gaw")
-def as_strings_gaw():
+@app.route("/gaw/<coord_fmt>")
+def as_strings_gaw(coord_fmt):
     state = request_gaw_data(core.GAW_STATE_URL)
-    enemies = core.construct_enemy_set(state)
+    enemies = core.construct_enemy_set(state, coord_fmt=coord_fmt)
     with open(core.OUT_PATH, 'wb') as fp:
         fp.write(enemies)
     return enemies

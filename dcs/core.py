@@ -52,26 +52,18 @@ for k, v in CATS.items():
         CAT_LOOKUP[i] = k
 
 
-def enemy_to_string(enemy_set):
-    enemy_out = []
-    for k, v in enemy_set.items():
-        str_base = k + '\r\n'
-        for elem in v:
-            unit = elem['cat'] + ' ' + elem['name'] + ': '
-            lat = '.'.join(elem['lat_dms'])
-            lon = '.'.join(elem['lon_dms'])
-            unit_str = "\t" + unit + '  '.join([lat, lon, elem['alt'] + 'm'
-                                                ]) + "\r\n"
-            str_base += unit_str
-        enemy_out.append(str_base)
-    return '\r\n'.join(enemy_out)
-
-
 def dms2dd(degrees, minutes, seconds, direction):
     dd = float(degrees) + float(minutes) / 60 + float(seconds) / (60 * 60)
     if direction == 'E' or direction == 'N':
         dd *= -1
     return dd
+
+def dd2precise(deg):
+    d = int(deg)
+    md = abs(deg - d) * 60
+    m = int(md)
+    dec = str(round((((md - m) * 60)/60)*100, 3))
+    return [f'{d:02}', f'{m:02}', dec]
 
 
 def dd2dms(deg):
@@ -84,7 +76,7 @@ def dd2dms(deg):
 
 class Enemy:
     """A single enemy unit with specific attributes."""
-    def __init__(self, item, start_coords=None):
+    def __init__(self, item, start_coords=None, coord_fmt='dms'):
         self.id = item["Id"]
         self.name = item["Pilot"]
         self.platform = item["Platform"]
@@ -102,8 +94,11 @@ class Enemy:
         lat_card = 'S' if self.lat_raw < 0 else 'N'
         lon_card = 'W' if self.lon_raw < 0 else 'E'
 
-        self.lat_dd = lat_card + str(abs(round(self.lat_raw, 3)))
-        self.lon_dd = lon_card + str(abs(round(self.lon_raw, 3)))
+        self.lat_precise = [lat_card] + dd2precise(self.lat_raw)
+        self.lon_precise = [lon_card] + dd2precise(self.lon_raw)
+
+        self.lat_dd = lat_card + '.' + str(abs(round(self.lat_raw, 6)))
+        self.lon_dd = lon_card + '.' + str(abs(round(self.lon_raw, 6)))
 
         self.lat_dms = [lat_card] + dd2dms(self.lat_raw)
         self.lon_dms = [lon_card] + dd2dms(self.lon_raw)
@@ -113,8 +108,18 @@ class Enemy:
         except KeyError:
             self.cat = "Unknown"
 
-        lat = '.'.join(self.lat_dms)
-        lon = '.'.join(self.lon_dms)
+        if coord_fmt == 'dms':
+            lat = '.'.join(self.lat_dms)
+            lon = '.'.join(self.lon_dms)
+        elif coord_fmt == 'precise':
+            lat = '.'.join(self.lat_precise)
+            lon = '.'.join(self.lon_precise)
+        elif coord_fmt == 'dd':
+            lat = self.lat_dd
+            lon = self.lon_dd
+        else:
+            lat = 0
+            lon = 0
 
         if start_coords:
             try:
@@ -163,11 +168,11 @@ class EnemyGroups:
              for k, v in self.groups.items()})
 
 
-def construct_enemy_set(enemy_state, result_as_string=True):
+def construct_enemy_set(enemy_state, result_as_string=True, coord_fmt='dms'):
     """Parse json response from gaw state endpoint into an enemy list"""
     start_coord = None
     start_pilot = 'None'
-    for pilot in ["someone_somewhere", "CVN-74"]:
+    for pilot in ["someone_somewhere", "CVN-74", "Stennis"]:
         if start_coord:
             break
         for ent in enemy_state['objects']:
@@ -181,6 +186,7 @@ def construct_enemy_set(enemy_state, result_as_string=True):
     for item in enemy_state['objects']:
         if item['Type'] in EXCLUDED_TYPES:
             continue
+
         if item["Coalition"] == COALITION:
             continue
 
@@ -190,25 +196,19 @@ def construct_enemy_set(enemy_state, result_as_string=True):
         if item["LatLongAlt"]["Alt"] == 0:
             continue
 
-        enemy = Enemy(item, start_coord)
+        enemy = Enemy(item, start_coord, coord_fmt)
         enemy_groups.add(enemy)
 
     if result_as_string:
         results = {}
         for grp_name, enemy_set, grp_dist in enemy_groups:
             if start_coord and (grp_dist > MAX_DIST):
-                log.debug([
-                    start_coord, [enemy_set[0].lat_raw, enemy_set[0].lon_raw]
-                ])
                 log.info("Excluding %s...distance is %d...", grp_name,
                          grp_dist)
                 continue
-            log.debug("Returning %s...distance is %d...", grp_name, grp_dist)
             grp_string = f"{grp_name} - {grp_dist}\r\n\t"
             grp_string += '\r\n\t'.join([elem.str for elem in enemy_set])
             results[grp_dist] = grp_string
-
-        print(list(sorted(results.keys())))
 
         results = [results[k] for k in sorted(results.keys())]
         results = '\r\n\r\n'.join(results)
