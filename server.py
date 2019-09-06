@@ -1,6 +1,7 @@
 #!/bin/python3
 import datetime as dt
 import logging
+import json
 
 from flask import Flask
 import requests as r
@@ -14,9 +15,8 @@ log = logging.getLogger(__name__)
 
 
 def request_gaw_data(url):
-    resp = r.get(url)
-    resp.raise_for_status()
-    data = resp.json()
+    with open('data/tacview_sink.json', 'r') as fp_:
+        data = json.load(fp_)
     return data
 
 
