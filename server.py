@@ -30,8 +30,12 @@ def all_enemies():
 
 @app.route("/pgaw/<coord_fmt>")
 def as_strings_pgaw(coord_fmt):
-    state = request_gaw_data(core.PGAW_STATE_URL)
-    enemies = core.construct_enemy_set(state, coord_fmt=coord_fmt)
+    try:
+        state = request_gaw_data(core.PGAW_STATE_URL)
+        enemies = core.construct_enemy_set(state, coord_fmt=coord_fmt)
+    except Exception as e:
+        enemies = "Error"
+        print(e)
     with open(core.OUT_PATH, 'wb') as fp:
         fp.write(enemies)
     return enemies
@@ -39,8 +43,12 @@ def as_strings_pgaw(coord_fmt):
 
 @app.route("/gaw/<coord_fmt>")
 def as_strings_gaw(coord_fmt):
-    state = request_gaw_data(core.GAW_STATE_URL)
-    enemies = core.construct_enemy_set(state, coord_fmt=coord_fmt)
+    try:
+        state = request_gaw_data(core.GAW_STATE_URL)
+        enemies = core.construct_enemy_set(state, coord_fmt=coord_fmt)
+    except Exception as e:
+        enemies = "Error"
+        print(e)
     with open(core.OUT_PATH, 'wb') as fp:
         fp.write(enemies)
     return enemies

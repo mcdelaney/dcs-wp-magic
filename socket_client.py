@@ -5,7 +5,8 @@ from pathlib import Path
 import json
 
 
-KEEP_KEYS = ['Pilot', 'Name', 'Type', 'Country', 'Coalition', 'Group']
+KEEP_KEYS = ['Pilot', 'Name', 'Type', 'Country', 'Coalition', 'Group',
+             'LatLongAlt', 'Id', 'Platform']
 STREAM_PROTOCOL = "XtraLib.Stream.0"
 TACVIEW_PROTOCOL = 'Tacview.RealTimeTelemetry.0'
 HANDSHAKE_TERMINATOR = "\0"
@@ -25,17 +26,25 @@ def parse_line(line):
         split_line = line.split(',')
         obj_id = split_line[0]
         obj_dict = {k:v for k, v in [l.split('=') for l in split_line[1:]]}
-        obj_dict['LatLongAlt'] = obj_dict['T'].split('|')[0:3]
+        coord = obj_dict['T'].split('|')[0:3]
+        obj_dict['LatLongAlt'] = {'Lat': float(coord[0]),
+                                  'Long': float(coord[1]),
+                                  'Alt': float(coord[2])}
+        obj_dict['Id'] = obj_id
+
+        if 'Pilot' not in list(obj_dict.keys()):
+            obj_dict['Pilot'] = obj_dict["Name"]
+        if 'Platform' not in list(obj_dict.keys()):
+            obj_dict['Platform'] = obj_dict["Name"]
 
         for k in list(obj_dict.keys()):
             if k not in KEEP_KEYS:
                 obj_dict.pop(k)
 
-        if len(list(obj_dict.keys())) < len(KEEP_KEYS)-1:
+        if len(list(obj_dict.keys())) < len(KEEP_KEYS):
             return None
         return obj_id, obj_dict
     except (KeyError, ValueError):
-        pprint(line)
         return
 
 

@@ -1,3 +1,4 @@
+from pprint import pprint
 import json
 from geopy.distance import vincenty
 import logging
@@ -175,7 +176,7 @@ def construct_enemy_set(enemy_state, result_as_string=True, coord_fmt='dms'):
     for pilot in ["someone_somewhere", "CVN-74", "Stennis"]:
         if start_coord:
             break
-        for ent in enemy_state['objects']:
+        for id, ent in enemy_state.items():
             if ent["Pilot"] == pilot:
                 log.info("Using %s for start coords...", pilot)
                 start_coord = (ent['LatLongAlt']['Lat'], ent['LatLongAlt']['Long'])
@@ -183,15 +184,18 @@ def construct_enemy_set(enemy_state, result_as_string=True, coord_fmt='dms'):
                 break
 
     enemy_groups = EnemyGroups()
-    for item in enemy_state['objects']:
+    for id, item in enemy_state.items():
         if item['Type'] in EXCLUDED_TYPES:
             continue
 
         if item["Coalition"] == COALITION:
             continue
+        try:
 
-        if item["Pilot"] in EXCLUDED_PILOTS:
-            continue
+            if item["Pilot"] in EXCLUDED_PILOTS:
+                continue
+        except:
+            pprint(item)
 
         if item["LatLongAlt"]["Alt"] == 0:
             continue
