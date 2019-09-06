@@ -4,5 +4,6 @@ start "" "SR-ClientRadio.exe"
 start "" "C:\Program Files (x86)\Steam\steamapps\common\VoiceAttack\VoiceAttack.exe"
 
 CD "C:\Users\mcdel\dcs-wb-magic"
+"C:\Users\mcdel\Anaconda3\python.exe" "C:/Users/mcdel/dcs-wb-magic/socket_client.py"
 call activate base
 "C:\Users\mcdel\Anaconda3\python.exe" "C:/Users/mcdel/dcs-wb-magic/server.py"

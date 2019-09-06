@@ -59,7 +59,7 @@ def parse_ref_lat(line):
         return None
 
 
-def parse_ref_long(line):
+def parse_ref_lon(line):
     try:
         val = line.split(',')[-1].split('=')
         if val[0] == "ReferenceLongitude":
