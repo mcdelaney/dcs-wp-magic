@@ -3,7 +3,7 @@ import json
 from geopy.distance import vincenty
 import logging
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
 OUT_PATH = "C:/Users/mcdel/Saved Games/DCS/Scratchpad/coords.txt"
@@ -134,7 +134,7 @@ class Enemy:
 
         self.str = f"{self.cat}: {self.platform} {lat}, {lon}, {self.alt}m, {self.dist}nm"
         log.debug(self.str)
-        log.info('Created enemy %s %d from Stennis in group %s...',
+        log.debug('Created enemy %s %d from Stennis in group %s...',
                  self.platform, self.dist, self.group_name)
 
 

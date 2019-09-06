@@ -19,16 +19,18 @@ HANDSHAKE = '\n'.join([STREAM_PROTOCOL,
 HANDSHAKE = HANDSHAKE.encode('utf-8')
 HOST = '127.0.0.1'
 PORT = 42674
+OBJ_SINK_PATH = Path('data/tacview_sink.json')
+OBJ_SINK_PATH_RAW = Path('data/tacview_sink_raw.txt')
 
 
-def parse_line(line):
+def parse_line(line, ref_lat, ref_lon):
     try:
         split_line = line.split(',')
         obj_id = split_line[0]
         obj_dict = {k:v for k, v in [l.split('=') for l in split_line[1:]]}
         coord = obj_dict['T'].split('|')[0:3]
-        obj_dict['LatLongAlt'] = {'Lat': float(coord[0]),
-                                  'Long': float(coord[1]),
+        obj_dict['LatLongAlt'] = {'Lat': float(coord[0]) + ref_lat,
+                                  'Long': float(coord[1]) + ref_lon,
                                   'Alt': float(coord[2])}
         obj_dict['Id'] = obj_id
 
@@ -48,12 +50,32 @@ def parse_line(line):
         return
 
 
+def parse_ref_lat(line):
+    try:
+        val = line.split(',')[-1].split('=')
+        if val[0] == "ReferenceLatitude":
+            return float(val[1])
+    except IndexError:
+        return None
+
+
+def parse_ref_long(line):
+    try:
+        val = line.split(',')[-1].split('=')
+        if val[0] == "ReferenceLongitude":
+            return float(val[1])
+    except IndexError:
+        return None
+
+
 if __name__=='__main__':
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect((HOST, PORT))
     objects = {}
-    obj_sink_path = Path('data/tacview_sink.json')
+    ref_lat = None
+    ref_lon = None
     msg = ''
+    raw_sink = open(OBJ_SINK_PATH_RAW, 'w')
     try:
         print('sending handshake')
         sock.sendall(HANDSHAKE)
@@ -62,17 +84,23 @@ if __name__=='__main__':
         while True:
             data = sock.recv(1024)
             msg += data.decode()
+
+            # raw_sink.write(data.decode())
+
             if msg[-1] != '\n':
                 continue
             msg_s = msg.split('\n')
             objs = msg_s[:len(msg_s)-1]
             msg = msg_s[-1]
             for obj in objs:
-                obj = parse_line(obj)
+                if not ref_lat or not ref_lon:
+                    ref_lat = parse_ref_lat(obj)
+                    ref_lon = parse_ref_lon(obj)
+                obj = parse_line(obj, ref_lat, ref_lon)
                 if obj:
                     objects[obj[0]] = obj[1]
-                    with open(obj_sink_path, 'w') as obj_sink:
+                    with open(OBJ_SINK_PATH, 'w') as obj_sink:
                         obj_sink.write(json.dumps(objects))
     finally:
         sys.stderr('closing socket')
-        pprint(objects)
+        raw_sink.close()
