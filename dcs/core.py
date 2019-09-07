@@ -37,14 +37,15 @@ CATS = {
     ],
     'SAM': [
         "S-300PS 5P85C ln", "Kub 2P25 ln", "SA-11 Buk LN 9A310M1", 'Tor 9A331',
-        "5p73 s-125 ln", "Osa 9A33 ln", "Strela-10M3", "Strela-1 9P31"
+        "5p73 s-125 ln", "Osa 9A33 ln", "Strela-10M3", "Strela-1 9P31",
+        'S_75M_Volhov'
     ],
     "AAA": [
         "ZSU-23-4 Shilka", "2S6 Tunguska", "Ural-375 ZU-23",
-        "ZU-23 Emplacement Closed", "SA-18 Igla-S manpad"
-    ],
+        "ZU-23 Emplacement Closed", "SA-18 Igla-S manpad",
+        "ZU-23 Closed Insurgent"],
     'ARMOR': ["Ural-375 PBU", "BMP-2", "T-72B", "SAU Msta", "BMP-1"],
-    "INFANTRY": ["Infantry AK"],
+    "INFANTRY": ["Infantry AK", "Land Rover"],
 }
 
 CAT_LOOKUP = {}
@@ -132,7 +133,7 @@ class Enemy:
                 log.error("Coordinates are incorrect: %f %f",
                           self.lat_raw, self.lon_raw)
 
-        self.str = f"{self.cat}: {self.platform} {lat}, {lon}, {self.alt}m, {self.dist}nm, {self.last_seen}mins"
+        self.str = f"{self.cat}: {self.platform} {lat}, {lon}, {self.alt}m, {self.dist}nm"
         log.debug(self.str)
         log.debug('Created enemy %s %d from Stennis in group %s...',
                  self.platform, self.dist, self.group_name)

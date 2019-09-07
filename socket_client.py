@@ -43,6 +43,7 @@ def parse_line(line, ref_lat, ref_lon, ref_time):
                                   'Alt': float(coord[2])}
         obj_dict['Id'] = split_line[0]
 
+
         if 'Pilot' not in list(obj_dict.keys()):
             obj_dict['Pilot'] = obj_dict["Name"]
         if 'Platform' not in list(obj_dict.keys()):
@@ -74,6 +75,7 @@ def parse_ref_obj(line, key):
 
 
 if __name__=='__main__':
+    open(OBJ_SINK_PATH, 'w').close()
     con = False
     while not con:
         try:
@@ -98,7 +100,7 @@ if __name__=='__main__':
         i = 0
 
         while True:
-            data = sock.recv(1024).decode()
+            data = sock.recv(5024).decode()
             msg += data
             # raw_sink.write(data)
             if msg[-1] != '\n':
@@ -116,24 +118,28 @@ if __name__=='__main__':
                     except KeyError:
                         log.debug(f'Could not find object key {obj_id}!')
 
-                if obj[0] == '#':
-                    log.debug('Found time offset val...updating ref_time...')
-                    ref_time = ref_time + dt.timedelta(seconds=float(obj[1:]))
-                    last_seen = (dt.datetime.now() - ref_time()).total_seconds()//60
-                    continue
                 if not ref_lat:
                     log.debug('Checking for ref lat...')
                     ref_lat = parse_ref_obj(obj, "ReferenceLatitude")
-                    continue
+
                 if not ref_lon:
                     log.debug('Checking for ref lon...')
                     ref_lon = parse_ref_obj(obj, "ReferenceLongitude")
-                    continue
+
                 if not ref_time:
                     log.debug('Checking for ref time...')
                     ref_time = parse_ref_obj(obj, "ReferenceTime")
-                    continue
+
                 if not ref_lat or not ref_lon or not ref_time:
+                    continue
+
+
+                if obj[0] == '#' and ref_time:
+                    secs = float(obj.split('#')[-1])
+                    log.debug(f'Found time offset val...updating ref_time by {secs}...')
+                    set_time = ref_time + dt.timedelta(seconds=secs)
+                    last_seen = int((dt.datetime.now() - set_time).total_seconds()//60)
+                    log.debug(f'Last seen minutes updating to {last_seen}')
                     continue
 
                 line = obj.strip()
