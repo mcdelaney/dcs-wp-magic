@@ -115,7 +115,8 @@ dialog = {
                     },
                     ["type"] = "Button"
                 },
-                ["ScratchpadGetPgawCoordsButton"] = {
+
+                ["ScratchpadGetCoordsButton"] = {
                     ["params"] = {
                         ["bounds"] = {
                             ["h"] = 20,
@@ -125,30 +126,8 @@ dialog = {
                         },
                         ["enabled"] = true,
                         ["tabOrder"] = 0,
-                        ["text"] = "PGAW",
-                        ["tooltip"] = "Get PGAW Coords",
-                        ["visible"] = true,
-                        ["zindex"] = 1
-                    },
-                    ["skin"] = {
-                        ["params"] = {
-                            ["name"] = "buttonSkinAwacs"
-                        }
-                    },
-                    ["type"] = "Button"
-                },
-                ["ScratchpadGetGawCoordsButton"] = {
-                    ["params"] = {
-                        ["bounds"] = {
-                            ["h"] = 20,
-                            ["w"] = 120,
-                            ["x"] = 80,
-                            ["y"] = 180
-                        },
-                        ["enabled"] = true,
-                        ["tabOrder"] = 0,
-                        ["text"] = "GAW",
-                        ["tooltip"] = "Get GAW Coords",
+                        ["text"] = "Coords",
+                        ["tooltip"] = "Get Coords",
                         ["visible"] = true,
                         ["zindex"] = 1
                     },

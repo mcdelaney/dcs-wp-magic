@@ -91,6 +91,7 @@ class Enemy:
         self.alt = round(item["LatLongAlt"]["Alt"])
         self.lat_raw = item["LatLongAlt"]["Lat"]
         self.lon_raw = item["LatLongAlt"]["Long"]
+        self.last_seen = item['LastSeenMinsAgo']
 
         lat_card = 'S' if self.lat_raw < 0 else 'N'
         lon_card = 'W' if self.lon_raw < 0 else 'E'
@@ -124,7 +125,6 @@ class Enemy:
 
         if start_coords:
             try:
-                log.info([start_coords, (self.lat_raw, self.lon_raw)])
                 dist = vincenty(start_coords, (self.lat_raw, self.lon_raw))
                 self.dist = round(dist.nm)
 
@@ -132,7 +132,7 @@ class Enemy:
                 log.error("Coordinates are incorrect: %f %f",
                           self.lat_raw, self.lon_raw)
 
-        self.str = f"{self.cat}: {self.platform} {lat}, {lon}, {self.alt}m, {self.dist}nm"
+        self.str = f"{self.cat}: {self.platform} {lat}, {lon}, {self.alt}m, {self.dist}nm, {self.last_seen}mins"
         log.debug(self.str)
         log.debug('Created enemy %s %d from Stennis in group %s...',
                  self.platform, self.dist, self.group_name)

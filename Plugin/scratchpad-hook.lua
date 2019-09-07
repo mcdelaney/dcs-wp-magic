@@ -194,12 +194,8 @@ function scratchpad_load()
         keyboardLocked = true
     end
 
-    local function updateCoordinates(server)
-        if server == "gaw" then
-            local resp = http.request("http://127.0.0.1:5000/gaw/dd")
-        else
-            local resp = http.request("http://127.0.0.1:5000/pgaw/dms")
-        end
+    local function updateCoordinates()
+        local resp = http.request("http://127.0.0.1:5000/coords/dms")
         file_path = lfs.writedir() .. [[Scratchpad\]] .. [[coords.txt]]
         file, err = io.open(file_path, "r")
         if err then
@@ -220,8 +216,7 @@ function scratchpad_load()
         windowDefaultSkin = window:getSkin()
         panel = window.Box
         textarea = panel.ScratchpadEditBox
-        insertPgawCoordsBtn = panel.ScratchpadGetPgawCoordsButton
-        insertGawCoordsBtn = panel.ScratchpadGetGawCoordsButton
+        insertCoordsBtn = panel.ScratchpadGetCoordsButton
         prevButton = panel.ScratchpadPrevButton
         nextButton = panel.ScratchpadNextButton
 
@@ -264,20 +259,12 @@ function scratchpad_load()
                 nextPage()
             end
         )
-        insertPgawCoordsBtn:addMouseDownCallback(
+        insertCoordsBtn:addMouseDownCallback(
             function(self)
-                local result = updateCoordinates("pgaw")
+                local result = updateCoordinates()
                 textarea:setText(result)
             end
         )
-
-        insertGawCoordsBtn:addMouseDownCallback(
-            function(self)
-                local result = updateCoordinates("gaw")
-                textarea:setText(result)
-            end
-        )
-
         -- setup window
         window:setBounds(
             scratchpad.config.windowPosition.x,
@@ -318,8 +305,7 @@ function scratchpad_load()
         textarea:setBounds(0, 0, w, h - 20 - 20)
         prevButton:setBounds(0, h - 40, 50, 20)
         nextButton:setBounds(55, h - 40, 50, 20)
-        insertPgawCoordsBtn:setBounds(120, h - 40, 50, 20)
-        insertGawCoordsBtn:setBounds(175, h - 40, 50, 20)
+        insertCoordsBtn:setBounds(120, h - 40, 50, 20)
 
         scratchpad.config.windowSize = {w = w, h = h}
         scratchpad.saveConfiguration()
@@ -343,8 +329,8 @@ function scratchpad_load()
         window:setSkin(windowDefaultSkin)
         panel:setVisible(true)
         window:setHasCursor(true)
-        insertPgawCoordsBtn:setVisible(true)
-        insertGawCoordsBtn:setVisible(true)
+        insertCoordsBtn:setVisible(true)
+
         -- show prev/next buttons only if we have more than one page
 
         prevButton:setVisible(true)
