@@ -26,10 +26,20 @@ def as_strings_coords(coord_fmt):
         state = request_coord_data()
         enemies = core.construct_enemy_set(state, coord_fmt=coord_fmt)
     except Exception as e:
-        enemies = "Error"
         print(e)
+        raise e
     with open(core.OUT_PATH, 'wb') as fp:
         fp.write(enemies)
+    return 'ok'
+
+@app.route("/enter/<section>/<target>")
+def enter_coords(section, target):
+    try:
+        log.info(f'Got request for section {section} and target {target}')
+        coord = core.get_cached_coords(section, target)
+        log.info(coord)
+    except Exception as e:
+        return 'error'
     return 'ok'
 
 

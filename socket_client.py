@@ -153,8 +153,8 @@ if __name__=='__main__':
                     coord = obj_dict['T'].split('|')[0:3]
                     coord = [float(c) if c != '' else '' for c in coord]
                     obj_dict['LatLongAlt'] = {
-                        'Lat': coord[0] + ref_lat if coord[0] != '' else '',
-                        'Long': coord[1] + ref_lon if coord[1] != '' else '',
+                        'Lat': coord[1] + ref_lat if coord[1] != '' else '',
+                        'Long': coord[0] + ref_lon if coord[0] != '' else '',
                         'Alt': coord[2]}
                 except Exception as e:
                     print([e, obj])

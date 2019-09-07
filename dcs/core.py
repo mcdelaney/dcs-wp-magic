@@ -6,6 +6,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
+LAST_RUN_CACHE = 'data/last_extract.json'
 OUT_PATH = "C:/Users/mcdel/Saved Games/DCS/Scratchpad/coords.txt"
 
 START_UNIT = ["CVN-74", "Stennis"]
@@ -54,6 +55,15 @@ for k, v in CATS.items():
         CAT_LOOKUP[i] = k
 
 
+def get_cached_coords(section, target):
+    log.info('Checking for coords')
+    with open(LAST_RUN_CACHE, 'r') as fp_:
+        data = json.load(fp_)
+    for item in data[int(section)-1]:
+        if item['target_num'] == int(target):
+            return (item['lat'], item['lon'], item['alt'])
+
+
 def dms2dd(degrees, minutes, seconds, direction):
     dd = float(degrees) + float(minutes) / 60 + float(seconds) / (60 * 60)
     if direction == 'E' or direction == 'N':
@@ -84,12 +94,16 @@ class Enemy:
         self.platform = item["Platform"]
         self.type = item["Type"]
         self.dist = 999
+        self.target_num = 0
+        self.start_coords = start_coords
 
         self.group_name = item['Group'] if item["Group"] != '' else self.name
         if self.group_name == '':
             self.group_name = f"{self.platform}-{self.id}"
-
-        self.alt = round(item["LatLongAlt"]["Alt"])
+        try:
+            self.alt = round(item["LatLongAlt"]["Alt"])
+        except Exception as e:
+            self.alt = 0
         self.lat_raw = item["LatLongAlt"]["Lat"]
         self.lon_raw = item["LatLongAlt"]["Long"]
         self.last_seen = item['LastSeenMinsAgo']
@@ -112,17 +126,17 @@ class Enemy:
             self.cat = "Unknown"
 
         if coord_fmt == 'dms':
-            lat = '.'.join(self.lat_dms)
-            lon = '.'.join(self.lon_dms)
+            self.lat = '.'.join(self.lat_dms)
+            self.lon = '.'.join(self.lon_dms)
         elif coord_fmt == 'precise':
-            lat = '.'.join(self.lat_precise)
-            lon = '.'.join(self.lon_precise)
+            self.lat = '.'.join(self.lat_precise)
+            self.lon = '.'.join(self.lon_precise)
         elif coord_fmt == 'dd':
-            lat = self.lat_dd
-            lon = self.lon_dd
+            self.lat = self.lat_dd
+            self.lon = self.lon_dd
         else:
-            lat = 0
-            lon = 0
+            self.lat = 0
+            self.lon = 0
 
         if start_coords:
             try:
@@ -132,11 +146,13 @@ class Enemy:
             except ValueError as e:
                 log.error("Coordinates are incorrect: %f %f",
                           self.lat_raw, self.lon_raw)
-
-        self.str = f"{self.cat}: {self.platform} {lat}, {lon}, {self.alt}m, {self.dist}nm"
-        log.debug(self.str)
+    @property
+    def str(self):
+        str = f"{self.target_num}) {self.cat}: {self.platform} {self.lat}, {self.lon}, {self.alt}m, {self.dist}nm"
+        log.debug(str)
         log.debug('Created enemy %s %d from Stennis in group %s...',
                  self.platform, self.dist, self.group_name)
+        return str
 
 
 class EnemyGroups:
@@ -147,8 +163,10 @@ class EnemyGroups:
 
     def add(self, enemy):
         try:
+            enemey.target_num = len(self.groups[enemy.group_name]) + 1
             self.groups[enemy.group_name].append(enemy)
         except KeyError:
+            enemy.target_num = 1
             self.groups[enemy.group_name] = [enemy]
         self.total += 1
 
@@ -165,9 +183,12 @@ class EnemyGroups:
             yield group_name, group, min_dist
 
     def serialize(self):
-        return json.dumps(
-            {k: [i.__dict__ for i in v]
-             for k, v in self.groups.items()})
+        output = {}
+        for k, v in self.groups.items():
+            min_dist = min([enemy.dist for enemy in v])
+            output[min_dist] = [i.__dict__ for i in v]
+        output = [output[k] for k in sorted(output.keys())]
+        return json.dumps(output)
 
 
 def construct_enemy_set(enemy_state, result_as_string=True, coord_fmt='dms'):
@@ -178,7 +199,7 @@ def construct_enemy_set(enemy_state, result_as_string=True, coord_fmt='dms'):
         if start_coord:
             break
         for id, ent in enemy_state.items():
-            if ent["Pilot"] == pilot:
+            if ent["Pilot"] == pilot or ent['Group'] == pilot:
                 log.info("Using %s for start coords...", pilot)
                 start_coord = (ent['LatLongAlt']['Lat'], ent['LatLongAlt']['Long'])
                 start_pilot = pilot
@@ -192,30 +213,34 @@ def construct_enemy_set(enemy_state, result_as_string=True, coord_fmt='dms'):
         if item["Coalition"] == COALITION:
             continue
         try:
-
             if item["Pilot"] in EXCLUDED_PILOTS:
                 continue
         except:
             pprint(item)
+        try:
+            enemy = Enemy(item, start_coord, coord_fmt)
+            enemy_groups.add(enemy)
+        except Exception as e:
+            pprint(item)
+            raise e
 
-        if item["LatLongAlt"]["Alt"] == 0:
-            continue
-
-        enemy = Enemy(item, start_coord, coord_fmt)
-        enemy_groups.add(enemy)
+    with open(LAST_RUN_CACHE, 'w') as fp_:
+        fp_.write(enemy_groups.serialize())
 
     if result_as_string:
         results = {}
+
         for grp_name, enemy_set, grp_dist in enemy_groups:
             if start_coord and (grp_dist > MAX_DIST):
                 log.info("Excluding %s...distance is %d...", grp_name,
                          grp_dist)
                 continue
-            grp_string = f"{grp_name} - {grp_dist}\r\n\t"
-            grp_string += '\r\n\t'.join([elem.str for elem in enemy_set])
-            results[grp_dist] = grp_string
+            grp_results = [e.str for e in enemy_set]
+            grp_results.insert(0, f"{grp_name} - {grp_dist}")
+            results[grp_dist] = '\r\n\t'.join(grp_results)
 
         results = [results[k] for k in sorted(results.keys())]
+        results = [f"{i+1}) {r}" for i, r in enumerate(results)]
         results = '\r\n\r\n'.join(results)
         results = f"Start Coords: {start_pilot} {start_coord}\r\n\r\n{results}".encode('UTF-8')
         return results
