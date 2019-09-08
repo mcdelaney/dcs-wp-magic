@@ -79,8 +79,8 @@ def get_cached_coords(section, target):
         if item['target_num'] == int(target):
             lat = coord_to_keys(item['lat'])
             lon = coord_to_keys(item['lon'])
-            alt = [f"num {n}" for n in str(item['alt'])]
-            alt.append('num enter')
+            alt = [f"{n}" for n in str(item['alt'])]
+            alt.append('ENT')
             return (lat, lon, alt)
 
 
@@ -88,20 +88,20 @@ def coord_to_keys(coord):
     out = []
     for char in ''.join(coord):
         if char == 'N':
-            out.append('num 8')
+            out.append('2')
         elif char == 'S':
-            out.append('num 2')
+            out.append('8')
         elif char == 'E':
-            out.append('num 6')
+            out.append('6')
         elif char == 'W':
-            out.append('num 4')
+            out.append('4')
         elif char == '.':
             continue
         else:
-            out.append(f"num {char}")
+            out.append(f"{char}")
         if len(out) == 7:
-            out.append("num enter")
-    out.append("num enter")
+            out.append("ENT")
+    out.append("ENT")
     return out
 
 
@@ -210,11 +210,13 @@ class EnemyGroups:
 
     def add(self, enemy):
         try:
-            enemey.target_num = len(self.groups[enemy.group_name]) + 1
+            # enemey.target_num = len(self.groups[enemy.group_name]) + 1
             self.groups[enemy.group_name].append(enemy)
         except (KeyError, NameError):
-            enemy.target_num = 1
+            # enemy.target_num = 1
             self.groups[enemy.group_name] = [enemy]
+        total = len(self.groups[enemy.group_name])
+        self.groups[enemy.group_name][total-1].target_num = total
         self.total += 1
 
     def names(self):

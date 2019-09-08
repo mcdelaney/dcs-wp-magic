@@ -54,23 +54,6 @@ function scratchpad_load()
         end
     end
 
-    local function savePage(path, content, override)
-        scratchpad.log("saving page " .. path)
-        lfs.mkdir(lfs.writedir() .. [[Scratchpad\]])
-        local mode = "a"
-        if override then
-            mode = "w"
-        end
-        file, err = io.open(path, mode)
-        if err then
-            scratchpad.log("Error writing file: " .. path)
-        else
-            file:write(content)
-            file:flush()
-            file:close()
-        end
-    end
-
     local function nextPage()
         if pagesCount == 0 then
             return
@@ -196,6 +179,7 @@ function scratchpad_load()
 
     local function updateCoordinates()
         local resp = http.request("http://127.0.0.1:5000/coords/dms")
+        scratchpad.log(resp)
         file_path = lfs.writedir() .. [[Scratchpad\]] .. [[coords.txt]]
         file, err = io.open(file_path, "r")
         if err then
@@ -211,6 +195,10 @@ function scratchpad_load()
     end
 
     local function enterCoordinates()
+        file_path = lfs.writedir() .. [[Scratchpad\]] .. [[target.txt]]
+        file, err = io.open(file_path, "w")
+        file:write(section_val .. "\n" .. target_val)
+        file:close()
         local resp = http.request("http://127.0.0.1:5000/enter/" .. section_val .. "/" .. target_val)
         scratchpad.log("Requesting coordinate enter for section " .. section_val .. " and target " .. target_val)
     end

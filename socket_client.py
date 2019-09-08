@@ -74,32 +74,32 @@ def parse_ref_obj(line, key):
         return None
 
 
-if __name__=='__main__':
-    open(OBJ_SINK_PATH, 'w').close()
+def open_connection():
     con = False
     while not con:
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.connect((HOST, PORT))
-            log.info('Socket connection opened...')
+            log.info('Socket connection opened...sending handshake...')
+            sock.sendall(HANDSHAKE)
             con = True
         except:
             log.info('Socket connection failed....will retry')
             time.sleep(5)
+    return sock
 
+
+if __name__=='__main__':
+    open(OBJ_SINK_PATH, 'w').close()
     objects = {}
     ref_lat = None
     ref_lon = None
     ref_time = None
     msg = ''
     # raw_sink = open(OBJ_SINK_PATH_RAW, 'w')
-    try:
-        print('sending handshake')
-        sock.sendall(HANDSHAKE)
-        result = ''
-        i = 0
-
-        while True:
+    sock = open_connection()
+    while True:
+        try:
             data = sock.recv(5024).decode()
             msg += data
             # raw_sink.write(data)
@@ -184,6 +184,7 @@ if __name__=='__main__':
                 objects[obj_dict['Id']] = obj_dict
                 with open(OBJ_SINK_PATH, 'w') as obj_sink:
                     obj_sink.write(json.dumps(objects))
-    finally:
-        sys.stderr('closing socket')
-        raw_sink.close()
+
+        except Exception as e:
+            sock = open_connection()
+        # raw_sink.close()

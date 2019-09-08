@@ -2,16 +2,29 @@
 import datetime as dt
 import logging
 import json
-
+import subprocess
 from flask import Flask
+import socket
 import requests as r
 
-from dcs import core
+from dcs import core, wp_ctrl
+import os
+
 
 app = Flask(__name__)
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
+
+
+def send_socket_request():
+    HOST = '127.0.0.1'
+    PORT = 5555
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect((HOST, PORT))
+    val = "hello".encode('UTF-8')
+    sock.sendall(val)
+    return
 
 
 def request_coord_data():
@@ -37,15 +50,13 @@ def as_strings_coords(coord_fmt):
 def enter_coords(section, target):
     try:
         log.info(f'Got request for section {section} and target {target}')
-        coords = core.get_cached_coords(section, target)
-        log.info(coords)
-        core.press_keys(coords[0])
-
+        send_socket_request()
     except Exception as e:
+        print(e)
         return 'error'
     return 'ok'
 
 
 if __name__ == "__main__":
     open(core.OUT_PATH, 'w').close()
-    app.run(debug=False, threaded=True)
+    app.run(debug=True, threaded=True)
