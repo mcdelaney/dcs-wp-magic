@@ -17,32 +17,9 @@ NUMPAD = {
     "enter": "num enter"
 }
 
-# pprint(keyboard.KeyboardEvent(event_type='down', name="num 5").__dict__)
-# keyboard.send(73)
-event = keyboard.read_event()
-
-pprint(event.__dict__)
-# keyboard.send([event])
-# keyboard.send("82")f
-# keyboard.send("79")
-# keyboard.send("75")
-
-
-# for i in ['a','b','c']:
-#     keyboard.write(i)
-#     time.sleep(0.5)
-    # keyboard.write(i, do_press=False, do_release=True)
-#
-# for i in [8,5,5,6]:
-#     keyboard.send(NUMPAD[i])
-#     time.sleep(0.5)
-# keyboard.send("Num+5")
-event1 = keyboard.parse_hotkey("decimal")
-pprint(event1)
-# for i in [8,5,5,6]:
-#     keyboard.send(NUMPAD[i], do_press=True, do_release=False)
-#     time.sleep(0.5)
-#     keyboard.send(NUMPAD[i], do_press=False, do_release=True)
+for i in ["5",'5','6',  'enter']:
+    keyboard.press_and_release(NUMPAD[i] + ', space')
+    time.sleep(0.25)
 
 # event1 = keyboard.KeyboardEvent(event_type='down', scan_code= NUMPAD[8],55
 #                                 is_keypad=True)

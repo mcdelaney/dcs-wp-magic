@@ -1,7 +1,9 @@
 from pprint import pprint
 import json
+import keyboard
 from geopy.distance import vincenty
 import logging
+import time
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -54,6 +56,20 @@ for k, v in CATS.items():
     for i in v:
         CAT_LOOKUP[i] = k
 
+NUMPAD = {
+    "0": "num 0",
+    "1": "num 1",
+    "2": "num 2",
+    "3": "num 3",
+    "4": "num 4",
+    "5": "num 5",
+    "6": "num 6",
+    "7": "num 7",
+    "8": "num 8",
+    "9": "num 9",
+    ".": "decimal",
+    "enter": "num enter"
+}
 
 def get_cached_coords(section, target):
     log.info('Checking for coords')
@@ -61,8 +77,39 @@ def get_cached_coords(section, target):
         data = json.load(fp_)
     for item in data[int(section)-1]:
         if item['target_num'] == int(target):
-            return (item['lat'], item['lon'], item['alt'])
+            lat = coord_to_keys(item['lat'])
+            lon = coord_to_keys(item['lon'])
+            alt = [f"num {n}" for n in str(item['alt'])]
+            alt.append('num enter')
+            return (lat, lon, alt)
 
+
+def coord_to_keys(coord):
+    out = []
+    for char in ''.join(coord):
+        if char == 'N':
+            out.append('num 8')
+        elif char == 'S':
+            out.append('num 2')
+        elif char == 'E':
+            out.append('num 6')
+        elif char == 'W':
+            out.append('num 4')
+        elif char == '.':
+            continue
+        else:
+            out.append(f"num {char}")
+        if len(out) == 7:
+            out.append("num enter")
+    out.append("num enter")
+    return out
+
+
+def press_keys(coord):
+    for ent in coord:
+        keyboard.press_and_release(ent)
+        time.sleep(0.25)
+    return
 
 def dms2dd(degrees, minutes, seconds, direction):
     dd = float(degrees) + float(minutes) / 60 + float(seconds) / (60 * 60)
@@ -165,7 +212,7 @@ class EnemyGroups:
         try:
             enemey.target_num = len(self.groups[enemy.group_name]) + 1
             self.groups[enemy.group_name].append(enemy)
-        except KeyError:
+        except (KeyError, NameError):
             enemy.target_num = 1
             self.groups[enemy.group_name] = [enemy]
         self.total += 1

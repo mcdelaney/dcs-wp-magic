@@ -32,12 +32,15 @@ def as_strings_coords(coord_fmt):
         fp.write(enemies)
     return 'ok'
 
+
 @app.route("/enter/<section>/<target>")
 def enter_coords(section, target):
     try:
         log.info(f'Got request for section {section} and target {target}')
-        coord = core.get_cached_coords(section, target)
-        log.info(coord)
+        coords = core.get_cached_coords(section, target)
+        log.info(coords)
+        core.press_keys(coords[0])
+
     except Exception as e:
         return 'error'
     return 'ok'
