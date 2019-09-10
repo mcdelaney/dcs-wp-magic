@@ -89,7 +89,7 @@ def open_connection():
     return sock
 
 
-if __name__=='__main__':
+def main():
     open(OBJ_SINK_PATH, 'w').close()
     objects = {}
     ref_lat = None
@@ -188,3 +188,7 @@ if __name__=='__main__':
         except Exception as e:
             sock = open_connection()
         # raw_sink.close()
+
+
+if __name__=="__main__":
+    main()

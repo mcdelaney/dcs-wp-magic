@@ -9,21 +9,23 @@ logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
 RECV_BUFFER = 4096
-PORT = 5555
+PORT = 8888
 HOST = '127.0.0.1'
+COORD_PATH = 'C:/Users/mcdel/Saved Games/DCS/ScratchPad/target.txt'
 
 
 def update_coord():
-    with open('C:/Users/mcdel/Saved Games/DCS/ScratchPad/target.txt', 'r') as fp_:
+    with open(COORD_PATH, 'r') as fp_:
         targets = fp_.readlines()
-    targets = [t.strip() for t in targets]
-    coords = core.get_cached_coords(targets[0], targets[1])
+    targets = [t.strip().split(',') for t in targets]
+    coords = [core.get_cached_coords(t[0], t[1]) for t in targets]
     driver = wp_ctrl.HornetDriver()
     driver.enter_pp_coord(coords)
+    open(COORD_PATH, 'w').close()
     return "ok"
 
 
-if __name__=="__main__":
+def main():
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         server_socket.bind((HOST, PORT))
@@ -61,3 +63,7 @@ if __name__=="__main__":
                         continue
 
     server_socket.close()
+
+
+if __name__=="__main__":
+    main()

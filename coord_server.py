@@ -19,7 +19,7 @@ log = logging.getLogger(__name__)
 
 def send_socket_request():
     HOST = '127.0.0.1'
-    PORT = 5555
+    PORT = 8888
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect((HOST, PORT))
     val = "hello".encode('UTF-8')
@@ -28,7 +28,7 @@ def send_socket_request():
 
 
 def request_coord_data():
-    with open('data/tacview_sink.json', 'r') as fp_:
+    with open('C:/Users/mcdel/dcs-wb-magic/data/tacview_sink.json', 'r') as fp_:
         data = json.load(fp_)
     return data
 
@@ -57,6 +57,10 @@ def enter_coords(section, target):
     return 'ok'
 
 
-if __name__ == "__main__":
+def main():
     open(core.OUT_PATH, 'w').close()
-    app.run(debug=True, threaded=True)
+    app.run(debug=False, threaded=False)
+
+
+if __name__ == "__main__":
+    main()

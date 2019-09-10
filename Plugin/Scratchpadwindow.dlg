@@ -146,7 +146,7 @@ dialog = {
                             ["x"] = 80,
                             ["y"] = 180
                         },
-                        ["enabled"] = true,
+                        ["enabled"] = false,
                         ["tabOrder"] = 0,
                         ["text"] = "Enter",
                         ["tooltip"] = "Enter Coords",
@@ -160,10 +160,32 @@ dialog = {
                     },
                     ["type"] = "Button"
                 },
-                ["CoordSection1"] = {
+                ["ScratchpadSendCoordsButton"] = {
                     ["params"] = {
                         ["bounds"] = {
                             ["h"] = 20,
+                            ["w"] = 120,
+                            ["x"] = 80,
+                            ["y"] = 180
+                        },
+                        ["enabled"] = true,
+                        ["tabOrder"] = 0,
+                        ["text"] = "Send",
+                        ["tooltip"] = "Send Coords",
+                        ["visible"] = true,
+                        ["zindex"] = 1
+                    },
+                    ["skin"] = {
+                        ["params"] = {
+                            ["name"] = "buttonSkinAwacs"
+                        }
+                    },
+                    ["type"] = "Button"
+                },
+                ["CoordSection1"] = {
+                    ["params"] = {
+                        ["bounds"] = {
+                            ["h"] = 25,
                             ["w"] = 120,
                             ["x"] = 80,
                             ["y"] = 180
@@ -185,7 +207,7 @@ dialog = {
                 ["CoordSection2"] = {
                     ["params"] = {
                         ["bounds"] = {
-                            ["h"] = 20,
+                            ["h"] = 25,
                             ["w"] = 120,
                             ["x"] = 80,
                             ["y"] = 180
@@ -207,7 +229,7 @@ dialog = {
                 ["CoordSection3"] = {
                     ["params"] = {
                         ["bounds"] = {
-                            ["h"] = 20,
+                            ["h"] = 25,
                             ["w"] = 120,
                             ["x"] = 80,
                             ["y"] = 180
@@ -229,7 +251,7 @@ dialog = {
                 ["CoordSection4"] = {
                     ["params"] = {
                         ["bounds"] = {
-                            ["h"] = 20,
+                            ["h"] = 25,
                             ["w"] = 120,
                             ["x"] = 80,
                             ["y"] = 180
@@ -251,7 +273,7 @@ dialog = {
                 ["CoordSection5"] = {
                     ["params"] = {
                         ["bounds"] = {
-                            ["h"] = 20,
+                            ["h"] = 25,
                             ["w"] = 120,
                             ["x"] = 80,
                             ["y"] = 180
@@ -273,7 +295,7 @@ dialog = {
                 ["CoordSection6"] = {
                     ["params"] = {
                         ["bounds"] = {
-                            ["h"] = 20,
+                            ["h"] = 25,
                             ["w"] = 120,
                             ["x"] = 80,
                             ["y"] = 180
@@ -295,7 +317,7 @@ dialog = {
                 ["CoordSection7"] = {
                     ["params"] = {
                         ["bounds"] = {
-                            ["h"] = 20,
+                            ["h"] = 25,
                             ["w"] = 120,
                             ["x"] = 80,
                             ["y"] = 180
@@ -317,7 +339,7 @@ dialog = {
                 ["CoordSection8"] = {
                     ["params"] = {
                         ["bounds"] = {
-                            ["h"] = 20,
+                            ["h"] = 25,
                             ["w"] = 120,
                             ["x"] = 80,
                             ["y"] = 180
@@ -339,7 +361,7 @@ dialog = {
                 ["CoordSection9"] = {
                     ["params"] = {
                         ["bounds"] = {
-                            ["h"] = 20,
+                            ["h"] = 25,
                             ["w"] = 120,
                             ["x"] = 80,
                             ["y"] = 180
@@ -361,7 +383,7 @@ dialog = {
                 ["CoordSection10"] = {
                     ["params"] = {
                         ["bounds"] = {
-                            ["h"] = 20,
+                            ["h"] = 25,
                             ["w"] = 120,
                             ["x"] = 80,
                             ["y"] = 180
@@ -384,7 +406,7 @@ dialog = {
                 ["CoordTarget1"] = {
                     ["params"] = {
                         ["bounds"] = {
-                            ["h"] = 20,
+                            ["h"] = 25,
                             ["w"] = 120,
                             ["x"] = 80,
                             ["y"] = 180
@@ -406,7 +428,7 @@ dialog = {
                 ["CoordTarget2"] = {
                     ["params"] = {
                         ["bounds"] = {
-                            ["h"] = 20,
+                            ["h"] = 25,
                             ["w"] = 120,
                             ["x"] = 80,
                             ["y"] = 180
@@ -428,7 +450,7 @@ dialog = {
                 ["CoordTarget3"] = {
                     ["params"] = {
                         ["bounds"] = {
-                            ["h"] = 20,
+                            ["h"] = 25,
                             ["w"] = 120,
                             ["x"] = 80,
                             ["y"] = 180
@@ -450,7 +472,7 @@ dialog = {
                 ["CoordTarget4"] = {
                     ["params"] = {
                         ["bounds"] = {
-                            ["h"] = 20,
+                            ["h"] = 25,
                             ["w"] = 120,
                             ["x"] = 80,
                             ["y"] = 180
@@ -472,7 +494,7 @@ dialog = {
                 ["CoordTarget5"] = {
                     ["params"] = {
                         ["bounds"] = {
-                            ["h"] = 20,
+                            ["h"] = 25,
                             ["w"] = 120,
                             ["x"] = 80,
                             ["y"] = 180
@@ -494,7 +516,7 @@ dialog = {
                 ["CoordTarget6"] = {
                     ["params"] = {
                         ["bounds"] = {
-                            ["h"] = 20,
+                            ["h"] = 25,
                             ["w"] = 120,
                             ["x"] = 80,
                             ["y"] = 180
@@ -516,7 +538,7 @@ dialog = {
                 ["CoordTarget7"] = {
                     ["params"] = {
                         ["bounds"] = {
-                            ["h"] = 20,
+                            ["h"] = 25,
                             ["w"] = 120,
                             ["x"] = 80,
                             ["y"] = 180
@@ -538,7 +560,7 @@ dialog = {
                 ["CoordTarget8"] = {
                     ["params"] = {
                         ["bounds"] = {
-                            ["h"] = 20,
+                            ["h"] = 25,
                             ["w"] = 120,
                             ["x"] = 80,
                             ["y"] = 180
@@ -560,7 +582,7 @@ dialog = {
                 ["CoordTarget9"] = {
                     ["params"] = {
                         ["bounds"] = {
-                            ["h"] = 20,
+                            ["h"] = 25,
                             ["w"] = 120,
                             ["x"] = 80,
                             ["y"] = 180
@@ -582,7 +604,7 @@ dialog = {
                 ["CoordTarget10"] = {
                     ["params"] = {
                         ["bounds"] = {
-                            ["h"] = 20,
+                            ["h"] = 25,
                             ["w"] = 120,
                             ["x"] = 80,
                             ["y"] = 180
@@ -590,6 +612,116 @@ dialog = {
                         ["enabled"] = true,
                         ["tabOrder"] = 0,
                         ["text"] = "10",
+                        ["tooltip"] = "",
+                        ["visible"] = true,
+                        ["zindex"] = 1
+                    },
+                    ["skin"] = {
+                        ["params"] = {
+                            ["name"] = "toggleButtonSkinAwacs"
+                        }
+                    },
+                    ["type"] = "ToggleButton"
+                },
+                ["CoordTarget11"] = {
+                    ["params"] = {
+                        ["bounds"] = {
+                            ["h"] = 25,
+                            ["w"] = 120,
+                            ["x"] = 80,
+                            ["y"] = 180
+                        },
+                        ["enabled"] = true,
+                        ["tabOrder"] = 0,
+                        ["text"] = "11",
+                        ["tooltip"] = "",
+                        ["visible"] = true,
+                        ["zindex"] = 1
+                    },
+                    ["skin"] = {
+                        ["params"] = {
+                            ["name"] = "toggleButtonSkinAwacs"
+                        }
+                    },
+                    ["type"] = "ToggleButton"
+                },
+                ["CoordTarget12"] = {
+                    ["params"] = {
+                        ["bounds"] = {
+                            ["h"] = 25,
+                            ["w"] = 120,
+                            ["x"] = 80,
+                            ["y"] = 180
+                        },
+                        ["enabled"] = true,
+                        ["tabOrder"] = 0,
+                        ["text"] = "12",
+                        ["tooltip"] = "",
+                        ["visible"] = true,
+                        ["zindex"] = 1
+                    },
+                    ["skin"] = {
+                        ["params"] = {
+                            ["name"] = "toggleButtonSkinAwacs"
+                        }
+                    },
+                    ["type"] = "ToggleButton"
+                },
+                ["CoordTarget13"] = {
+                    ["params"] = {
+                        ["bounds"] = {
+                            ["h"] = 25,
+                            ["w"] = 120,
+                            ["x"] = 80,
+                            ["y"] = 180
+                        },
+                        ["enabled"] = true,
+                        ["tabOrder"] = 0,
+                        ["text"] = "13",
+                        ["tooltip"] = "",
+                        ["visible"] = true,
+                        ["zindex"] = 1
+                    },
+                    ["skin"] = {
+                        ["params"] = {
+                            ["name"] = "toggleButtonSkinAwacs"
+                        }
+                    },
+                    ["type"] = "ToggleButton"
+                },
+                ["CoordTarget14"] = {
+                    ["params"] = {
+                        ["bounds"] = {
+                            ["h"] = 25,
+                            ["w"] = 120,
+                            ["x"] = 80,
+                            ["y"] = 180
+                        },
+                        ["enabled"] = true,
+                        ["tabOrder"] = 0,
+                        ["text"] = "14",
+                        ["tooltip"] = "",
+                        ["visible"] = true,
+                        ["zindex"] = 1
+                    },
+                    ["skin"] = {
+                        ["params"] = {
+                            ["name"] = "toggleButtonSkinAwacs"
+                        }
+                    },
+                    ["type"] = "ToggleButton"
+                },
+                ["CoordTarget15"] = {
+                    ["params"] = {
+                        ["bounds"] = {
+                            ["h"] = 25,
+                            ["w"] = 120,
+                            ["x"] = 80,
+                            ["y"] = 180
+                        },
+                        ["enabled"] = true,
+                        ["tabOrder"] = 0,
+                        ["text"] = "15",
                         ["tooltip"] = "",
                         ["visible"] = true,
                         ["zindex"] = 1

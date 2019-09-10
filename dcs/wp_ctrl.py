@@ -42,7 +42,6 @@ class Driver:
         sleep(delay_after)
         return
 
-
     def stop(self):
         self.s.close()
 
@@ -86,31 +85,32 @@ class HornetDriver(Driver):
         for char in long:
             self.ufc(char)
 
-        sleep(1)
-        self.lmdi("14") # TGT UFT
         sleep(0.5)
         self.lmdi("14") # TGT UFT
-        sleep(0.2)
+        sleep(0.1)
+        self.lmdi("14") # TGT UFT
+        sleep(0.1)
         self.ufc("OS4") # UFT ELEV
-        sleep(0.2)
+        sleep(0.1)
         self.ufc("OS4")  # UFC FT
-        sleep(0.2)
+        sleep(0.1)
         for char in str(elev):
             self.ufc(char)
-        sleep(0.5)
+        sleep(0.2)
         self.ufc('ENT')
         self.ufc('CLR')
         self.ufc('CLR')
         return
 
-
-    def enter_pp_coord(self, coord):
-        return self.enter_pp_msn(coord, n=0)
-
-
-def enter_the_coords(coords):
-    driver = HornetDriver()
-    driver.enter_pp_coord(coords)
+    def enter_pp_coord(self, coords):
+        for i, coord in enumerate(coords):
+            if i == 0:
+                pass
+            elif (i % 2) != 0:
+                self.lmdi("7") #PP2
+            else:
+                self.lmdi("13") # STEP
+            self.enter_pp_msn(coord, n=0)
 
     # def enter_missions(self, missions):
     #     def stations_order(x):

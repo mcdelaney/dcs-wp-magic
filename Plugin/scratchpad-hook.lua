@@ -28,6 +28,8 @@ function scratchpad_load()
     local textarea = nil
     local section_val = nil
     local target_val = nil
+    local sections = {}
+    local targets = {}
 
     local scratchpad = {
         logFile = io.open(lfs.writedir() .. [[Logs\Scratchpad.log]], "w")
@@ -196,14 +198,21 @@ function scratchpad_load()
 
     local function enterCoordinates()
         file_path = lfs.writedir() .. [[Scratchpad\]] .. [[target.txt]]
-        file, err = io.open(file_path, "w")
-        file:write(section_val .. "\n" .. target_val)
+        file, err = io.open(file_path, "a")
+        file:write(section_val .. "," .. target_val .. "\n")
         file:close()
+    end
+
+    local function sendCoordinates()
         local resp = http.request("http://127.0.0.1:5000/enter/" .. section_val .. "/" .. target_val)
         scratchpad.log("Requesting coordinate enter for section " .. section_val .. " and target " .. target_val)
     end
 
     function scratchpad.createWindow()
+        local file_path = lfs.writedir() .. [[Scratchpad\]] .. [[target.txt]]
+        local file, err = io.open(file_path, "w")
+        file:close()
+
         window = DialogLoader.spawnDialogFromFile(lfs.writedir() .. "Scripts\\Scratchpad\\ScratchpadWindow.dlg", cdata)
         windowDefaultSkin = window:getSkin()
         panel = window.Box
@@ -212,6 +221,7 @@ function scratchpad_load()
         nextButton = panel.ScratchpadNextButton
         insertCoordsBtn = panel.ScratchpadGetCoordsButton
         enterCoordsBtn = panel.ScratchpadEnterCoordsButton
+        sendCoordsBtn = panel.ScratchpadSendCoordsButton
 
         section1 = panel.CoordSection1
         section2 = panel.CoordSection2
@@ -223,6 +233,17 @@ function scratchpad_load()
         section8 = panel.CoordSection8
         section9 = panel.CoordSection9
         section10 = panel.CoordSection10
+        scratchpad.log("Inserting coordsections to table...")
+        table.insert(sections, section1)
+        table.insert(sections, section2)
+        table.insert(sections, section3)
+        table.insert(sections, section4)
+        table.insert(sections, section5)
+        table.insert(sections, section6)
+        table.insert(sections, section7)
+        table.insert(sections, section8)
+        table.insert(sections, section9)
+        table.insert(sections, section10)
 
         target1 = panel.CoordTarget1
         target2 = panel.CoordTarget2
@@ -234,12 +255,18 @@ function scratchpad_load()
         target8 = panel.CoordTarget8
         target9 = panel.CoordTarget9
         target10 = panel.CoordTarget10
+        target11 = panel.CoordTarget11
+        target12 = panel.CoordTarget12
+        target13 = panel.CoordTarget13
+        target14 = panel.CoordTarget14
+        target15 = panel.CoordTarget15
 
         -- setup textarea
         local skin = textarea:getSkin()
         skin.skinData.states.released[1].text.fontSize = scratchpad.config.fontSize
         textarea:setSkin(skin)
 
+        scratchpad.log("Configuring callbacks...")
         textarea:addFocusCallback(
             function(self)
                 if self:getFocused() then
@@ -282,56 +309,23 @@ function scratchpad_load()
             end
         )
 
-        section1:addMouseDownCallback(
+        sendCoordsBtn:addMouseDownCallback(
             function(self)
-                section_val = "1"
+                local result = sendCoordinates()
             end
         )
-        section2:addMouseDownCallback(
-            function(self)
-                section_val = "2"
-            end
-        )
-        section3:addMouseDownCallback(
-            function(self)
-                section_val = "3"
-            end
-        )
-        section4:addMouseDownCallback(
-            function(self)
-                section_val = "4"
-            end
-        )
-        section5:addMouseDownCallback(
-            function(self)
-                section_val = "5"
-            end
-        )
-        section6:addMouseDownCallback(
-            function(self)
-                section_val = "6"
-            end
-        )
-        section7:addMouseDownCallback(
-            function(self)
-                section_val = "7"
-            end
-        )
-        section8:addMouseDownCallback(
-            function(self)
-                section_val = "8"
-            end
-        )
-        section9:addMouseDownCallback(
-            function(self)
-                section_val = "9"
-            end
-        )
-        section10:addMouseDownCallback(
-            function(self)
-                section_val = "10"
-            end
-        )
+
+        scratchpad.log("Adding section callbacks...")
+        for k, v in pairs(sections) do
+            sections[k]:addMouseDownCallback(
+                function(self)
+                    section_val = tostring(k)
+                    if not (target_val == nil) then
+                        enterCoordsBtn:setEnabled(true)
+                    end
+                end
+            )
+        end
 
         target1:addMouseDownCallback(
             function(self)
@@ -383,6 +377,31 @@ function scratchpad_load()
                 target_val = "10"
             end
         )
+        target11:addMouseDownCallback(
+            function(self)
+                target_val = "11"
+            end
+        )
+        target12:addMouseDownCallback(
+            function(self)
+                target_val = "12"
+            end
+        )
+        target13:addMouseDownCallback(
+            function(self)
+                target_val = "13"
+            end
+        )
+        target4:addMouseDownCallback(
+            function(self)
+                target_val = "14"
+            end
+        )
+        target15:addMouseDownCallback(
+            function(self)
+                target_val = "15"
+            end
+        )
         -- setup window
         window:setBounds(
             scratchpad.config.windowPosition.x,
@@ -425,6 +444,7 @@ function scratchpad_load()
         nextButton:setBounds(55, h - 120, 50, 20)
         insertCoordsBtn:setBounds(105, h - 120, 50, 20)
         enterCoordsBtn:setBounds(160, h - 120, 50, 20)
+        sendCoordsBtn:setBounds(210, h - 120, 50, 20)
 
         section1:setBounds(0, h - 80, 40, 10)
         section2:setBounds(40, h - 80, 40, 10)
@@ -437,6 +457,11 @@ function scratchpad_load()
         section9:setBounds(320, h - 80, 40, 10)
         section10:setBounds(360, h - 80, 40, 10)
 
+        -- for val=1,15 do
+        --     local f = loadstring("target"..val)
+        --     local w_start = (val-1) * 40
+        --     f():setBounds(w_val, h - 60, 40, 10)
+        -- end
         target1:setBounds(0, h - 60, 40, 10)
         target2:setBounds(40, h - 60, 40, 10)
         target3:setBounds(80, h - 60, 40, 10)
@@ -447,6 +472,11 @@ function scratchpad_load()
         target8:setBounds(280, h - 60, 40, 10)
         target9:setBounds(320, h - 60, 40, 10)
         target10:setBounds(360, h - 60, 40, 10)
+        target11:setBounds(400, h - 60, 40, 10)
+        target12:setBounds(440, h - 60, 40, 10)
+        target13:setBounds(480, h - 60, 40, 10)
+        target14:setBounds(520, h - 60, 40, 10)
+        target15:setBounds(560, h - 60, 40, 10)
 
         scratchpad.config.windowSize = {w = w, h = h}
         scratchpad.saveConfiguration()
@@ -499,6 +529,7 @@ function scratchpad_load()
         if not window then
             scratchpad.log("Creating Scratchpad window hidden...")
             scratchpad.createWindow()
+            scratchpad.log("Window created successfully...")
         end
     end
 
