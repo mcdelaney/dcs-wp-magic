@@ -126,7 +126,7 @@ dialog = {
                         },
                         ["enabled"] = true,
                         ["tabOrder"] = 0,
-                        ["text"] = "Coords",
+                        ["text"] = "Get",
                         ["tooltip"] = "Get Coords",
                         ["visible"] = true,
                         ["zindex"] = 1
@@ -148,8 +148,8 @@ dialog = {
                         },
                         ["enabled"] = false,
                         ["tabOrder"] = 0,
-                        ["text"] = "Enter",
-                        ["tooltip"] = "Enter Coords",
+                        ["text"] = "Stage",
+                        ["tooltip"] = "Stage Coords",
                         ["visible"] = true,
                         ["zindex"] = 1
                     },
@@ -182,10 +182,32 @@ dialog = {
                     },
                     ["type"] = "Button"
                 },
+                ["ScratchpadClearCoordsButton"] = {
+                    ["params"] = {
+                        ["bounds"] = {
+                            ["h"] = 20,
+                            ["w"] = 120,
+                            ["x"] = 80,
+                            ["y"] = 180
+                        },
+                        ["enabled"] = true,
+                        ["tabOrder"] = 0,
+                        ["text"] = "Clear",
+                        ["tooltip"] = "Clear Coords",
+                        ["visible"] = true,
+                        ["zindex"] = 1
+                    },
+                    ["skin"] = {
+                        ["params"] = {
+                            ["name"] = "buttonSkinAwacs"
+                        }
+                    },
+                    ["type"] = "Button"
+                },
                 ["CoordSection1"] = {
                     ["params"] = {
                         ["bounds"] = {
-                            ["h"] = 25,
+                            ["h"] = 30,
                             ["w"] = 120,
                             ["x"] = 80,
                             ["y"] = 180

@@ -6,13 +6,12 @@ import datetime as dt
 import json
 import time
 import logging
+import tempfile
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger(__name__)
 
 
-KEEP_KEYS = ['Pilot', 'Name', 'Type', 'Country', 'Coalition', 'Group',
-             'LatLongAlt', 'Id', 'Platform', 'LastSeenMinsAgo']
 STREAM_PROTOCOL = "XtraLib.Stream.0"
 TACVIEW_PROTOCOL = 'Tacview.RealTimeTelemetry.0'
 HANDSHAKE_TERMINATOR = "\0"
@@ -28,6 +27,7 @@ PORT = 42674
 OBJ_SINK_PATH = Path('data/tacview_sink.json')
 OBJ_SINK_PATH_RAW = Path('data/tacview_sink_raw.txt')
 REF_TIME_FMT = '%Y-%m-%dT%H:%M:%SZ'
+COORD_KEYS = ["lat", "long", "alt", "roll", "flat_coord", "agl", "hdg", "ias"]
 
 
 def parse_line(line, ref_lat, ref_lon, ref_time):
@@ -37,25 +37,25 @@ def parse_line(line, ref_lat, ref_lon, ref_time):
             log.debug("Line starts with #. Should be frame offset...skipping...")
         split_line = line.split(',')
         obj_dict = {k:v for k, v in [l.split('=') for l in split_line[1:]]}
-        coord = obj_dict['T'].split('|')[0:3]
-        obj_dict['LatLongAlt'] = {'Lat': float(coord[0]) + ref_lat,
-                                  'Long': float(coord[1]) + ref_lon,
-                                  'Alt': float(coord[2])}
         obj_dict['Id'] = split_line[0]
+        coord = obj_dict.pop('T')
+        coord = coord.split('|')
+        for i, c in enumerate(COORD_KEYS):
+            try:
+                if i == 0:
+                    obj_dict[c] = float(coord[i]) + ref_lat
+                elif i == 1:
+                    obj_dict[c] = float(coord[i]) + ref_lon
+                else:
+                    obj_dict[c] = float(coord[i])
+            except (IndexError, ValueError, TypeError):
+                obj_dict[c] = ''
 
         if 'Pilot' not in list(obj_dict.keys()):
-            obj_dict['Pilot'] = obj_dict["Name"]
-        if 'Platform' not in list(obj_dict.keys()):
-            obj_dict['Platform'] = obj_dict["Name"]
+            obj_dict['Pilot'] = ''
 
-        for k in list(obj_dict.keys()):
-            if k not in KEEP_KEYS:
-                obj_dict.pop(k)
-
-        if len(obj_dict.keys()) < len(KEEP_KEYS):
-            return None
         return obj_dict
-    except (KeyError, ValueError):
+    except (KeyError, ValueError, TypeError) as e:
         return
 
 
@@ -69,8 +69,9 @@ def parse_ref_obj(line, key):
             else:
                 return dt.datetime.strptime(kv, REF_TIME_FMT)
             return val[1]
-    except IndexError:
-        return None
+    except IndexError as e:
+        log.error(e)
+        return
 
 
 def open_connection():
@@ -95,13 +96,13 @@ def main():
     ref_lon = None
     ref_time = None
     msg = ''
-    # raw_sink = open(OBJ_SINK_PATH_RAW, 'w')
+    raw_sink = open(OBJ_SINK_PATH_RAW, 'w')
     sock = open_connection()
     while True:
         try:
             data = sock.recv(256).decode()
             msg += data
-            # raw_sink.write(data)
+            raw_sink.write(data)
             if msg[-1] != '\n':
                 continue
             msg_s = msg.split('\n')
@@ -140,53 +141,27 @@ def main():
                     log.debug(f'Last seen minutes updating to {last_seen}')
                     continue
 
-                line = obj.strip()
-                split_line = line.split(',')
-                obj_id = split_line[0]
                 try:
-                    obj_dict = {k:v for k, v in [l.split('=') for l in split_line[1:]]}
-                    obj_dict['LastSeenMinsAgo'] = last_seen
-                    if 'T' not in obj_dict.keys():
-                        continue
-                    coord = obj_dict['T'].split('|')[0:3]
-                    coord = [float(c) if c != '' else '' for c in coord]
-                    obj_dict['LatLongAlt'] = {
-                        'Lat': coord[1] + ref_lat if coord[1] != '' else '',
-                        'Long': coord[0] + ref_lon if coord[0] != '' else '',
-                        'Alt': coord[2]}
+                    obj_dict = parse_line(obj, ref_lat, ref_lon, ref_time)
+                    if obj_dict['Id'] in objects.keys():
+                        log.debug('Updating existing object...')
+                        for k, v in obj_dict.items():
+                            objects[obj_dict['Id']][k] = v
+                    else:
+                        log.debug('Adding new object...')
+                        objects[obj_dict['Id']] = obj_dict
                 except Exception as e:
-                    print([e, obj])
-                    continue
+                    log.error([e, obj, obj_dict])
 
-                if obj_id in objects.keys():
-                    log.debug('Updating existing object...')
-                    for k, v in obj_dict['LatLongAlt'].items():
-                        if v != '':
-                            objects[obj_id]['LatLongAlt'][k] = v
-                    continue
-                try:
-                    obj_dict['Id'] = split_line[0]
-                    if 'Pilot' not in list(obj_dict.keys()):
-                        obj_dict['Pilot'] = obj_dict["Name"]
-                    if 'Platform' not in list(obj_dict.keys()):
-                        obj_dict['Platform'] = obj_dict["Name"]
-                except KeyError:
-                    continue
-                for k in list(obj_dict.keys()):
-                    if k not in KEEP_KEYS:
-                        obj_dict.pop(k)
-
-                if len(obj_dict.keys()) < len(KEEP_KEYS):
-                    continue
-
-                objects[obj_dict['Id']] = obj_dict
+                obj_json = json.dumps(objects)
                 with open(OBJ_SINK_PATH, 'w') as obj_sink:
-                    obj_sink.write(json.dumps(objects))
+                    obj_sink.write(obj_json)
 
         except Exception as e:
-            sock.close()
+            log.error(e)
             sock = open_connection()
-        # raw_sink.close()
+
+    raw_sink.close()
 
 
 if __name__=="__main__":

@@ -179,6 +179,23 @@ function scratchpad_load()
         keyboardLocked = true
     end
 
+    local function savePage(path, content, override)
+        scratchpad.log("saving page " .. path)
+        lfs.mkdir(lfs.writedir() .. [[Scratchpad\]])
+        local mode = "a"
+        if override then
+            mode = "w"
+        end
+        file, err = io.open(path, mode)
+        if err then
+            scratchpad.log("Error writing file: " .. path)
+        else
+            file:write(content)
+            file:flush()
+            file:close()
+        end
+    end
+
     local function updateCoordinates()
         local resp = http.request("http://127.0.0.1:5000/coords/dms")
         scratchpad.log(resp)
@@ -208,6 +225,12 @@ function scratchpad_load()
         scratchpad.log("Requesting coordinate enter for section " .. section_val .. " and target " .. target_val)
     end
 
+    local function clearCoordinates()
+      local file_path = lfs.writedir() .. [[Scratchpad\]] .. [[target.txt]]
+      local file, err = io.open(file_path, "w")
+      file:close()
+    end
+
     function scratchpad.createWindow()
         local file_path = lfs.writedir() .. [[Scratchpad\]] .. [[target.txt]]
         local file, err = io.open(file_path, "w")
@@ -222,6 +245,7 @@ function scratchpad_load()
         insertCoordsBtn = panel.ScratchpadGetCoordsButton
         enterCoordsBtn = panel.ScratchpadEnterCoordsButton
         sendCoordsBtn = panel.ScratchpadSendCoordsButton
+        clearCoordsBtn = panel.ScratchpadClearCoordsButton
 
         section1 = panel.CoordSection1
         section2 = panel.CoordSection2
@@ -260,6 +284,22 @@ function scratchpad_load()
         target13 = panel.CoordTarget13
         target14 = panel.CoordTarget14
         target15 = panel.CoordTarget15
+
+        table.insert(targets, target1)
+        table.insert(targets, target2)
+        table.insert(targets, target3)
+        table.insert(targets, target4)
+        table.insert(targets, target5)
+        table.insert(targets, target6)
+        table.insert(targets, target7)
+        table.insert(targets, target8)
+        table.insert(targets, target9)
+        table.insert(targets, target10)
+        table.insert(targets, target11)
+        table.insert(targets, target12)
+        table.insert(targets, target13)
+        table.insert(targets, target14)
+        table.insert(targets, target15)
 
         -- setup textarea
         local skin = textarea:getSkin()
@@ -315,6 +355,12 @@ function scratchpad_load()
             end
         )
 
+        clearCoordsBtn:addMouseDownCallback(
+            function(self)
+                local result = clearCoordinates()
+            end
+        )
+
         scratchpad.log("Adding section callbacks...")
         for k, v in pairs(sections) do
             sections[k]:addMouseDownCallback(
@@ -323,85 +369,32 @@ function scratchpad_load()
                     if not (target_val == nil) then
                         enterCoordsBtn:setEnabled(true)
                     end
+                    for key, val in pairs(sections) do
+                        if not (key == k) then
+                            sections[key]:setState(false)
+                        end
+                    end
                 end
             )
         end
 
-        target1:addMouseDownCallback(
-            function(self)
-                target_val = "1"
-            end
-        )
-        target2:addMouseDownCallback(
-            function(self)
-                target_val = "2"
-            end
-        )
-        target3:addMouseDownCallback(
-            function(self)
-                target_val = "3"
-            end
-        )
-        target4:addMouseDownCallback(
-            function(self)
-                target_val = "4"
-            end
-        )
-        target5:addMouseDownCallback(
-            function(self)
-                target_val = "5"
-            end
-        )
-        target6:addMouseDownCallback(
-            function(self)
-                target_val = "6"
-            end
-        )
-        target7:addMouseDownCallback(
-            function(self)
-                target_val = "7"
-            end
-        )
-        target8:addMouseDownCallback(
-            function(self)
-                target_val = "8"
-            end
-        )
-        target9:addMouseDownCallback(
-            function(self)
-                target_val = "9"
-            end
-        )
-        target10:addMouseDownCallback(
-            function(self)
-                target_val = "10"
-            end
-        )
-        target11:addMouseDownCallback(
-            function(self)
-                target_val = "11"
-            end
-        )
-        target12:addMouseDownCallback(
-            function(self)
-                target_val = "12"
-            end
-        )
-        target13:addMouseDownCallback(
-            function(self)
-                target_val = "13"
-            end
-        )
-        target4:addMouseDownCallback(
-            function(self)
-                target_val = "14"
-            end
-        )
-        target15:addMouseDownCallback(
-            function(self)
-                target_val = "15"
-            end
-        )
+        scratchpad.log("Adding section callbacks...")
+        for k, v in pairs(targets) do
+            targets[k]:addMouseDownCallback(
+                function(self)
+                    target_val = tostring(k)
+                    if not (section_val == nil) then
+                        enterCoordsBtn:setEnabled(true)
+                    end
+                    for key, val in pairs(targets) do
+                        if not (key == k) then
+                            targets[key]:setState(false)
+                        end
+                    end
+                end
+            )
+        end
+
         -- setup window
         window:setBounds(
             scratchpad.config.windowPosition.x,
@@ -440,43 +433,24 @@ function scratchpad_load()
 
         panel:setBounds(0, 0, w, h - 20)
         textarea:setBounds(0, 0, w, h - 20 - 20 - 20 - 20 - 40)
-        prevButton:setBounds(0, h - 120, 50, 20)
-        nextButton:setBounds(55, h - 120, 50, 20)
-        insertCoordsBtn:setBounds(105, h - 120, 50, 20)
-        enterCoordsBtn:setBounds(160, h - 120, 50, 20)
-        sendCoordsBtn:setBounds(210, h - 120, 50, 20)
+        prevButton:setBounds(0, h - 120, 40, 10)
+        nextButton:setBounds(55, h - 120, 40, 10)
+        insertCoordsBtn:setBounds(105, h - 120, 40, 10)
+        enterCoordsBtn:setBounds(160, h - 120, 40, 10)
+        sendCoordsBtn:setBounds(210, h - 120, 40, 10)
+        clearCoordsBtn:setBounds(265, h - 120, 40, 10)
 
-        section1:setBounds(0, h - 80, 40, 10)
-        section2:setBounds(40, h - 80, 40, 10)
-        section3:setBounds(80, h - 80, 40, 10)
-        section4:setBounds(120, h - 80, 40, 10)
-        section5:setBounds(160, h - 80, 40, 10)
-        section6:setBounds(200, h - 80, 40, 10)
-        section7:setBounds(240, h - 80, 40, 10)
-        section8:setBounds(280, h - 80, 40, 10)
-        section9:setBounds(320, h - 80, 40, 10)
-        section10:setBounds(360, h - 80, 40, 10)
+        local w = -40
+        for k, v in pairs(sections) do
+            w = w + 40
+            sections[k]:setBounds(w, h - 80, 40, 10)
+        end
 
-        -- for val=1,15 do
-        --     local f = loadstring("target"..val)
-        --     local w_start = (val-1) * 40
-        --     f():setBounds(w_val, h - 60, 40, 10)
-        -- end
-        target1:setBounds(0, h - 60, 40, 10)
-        target2:setBounds(40, h - 60, 40, 10)
-        target3:setBounds(80, h - 60, 40, 10)
-        target4:setBounds(120, h - 60, 40, 10)
-        target5:setBounds(160, h - 60, 40, 10)
-        target6:setBounds(200, h - 60, 40, 10)
-        target7:setBounds(240, h - 60, 40, 10)
-        target8:setBounds(280, h - 60, 40, 10)
-        target9:setBounds(320, h - 60, 40, 10)
-        target10:setBounds(360, h - 60, 40, 10)
-        target11:setBounds(400, h - 60, 40, 10)
-        target12:setBounds(440, h - 60, 40, 10)
-        target13:setBounds(480, h - 60, 40, 10)
-        target14:setBounds(520, h - 60, 40, 10)
-        target15:setBounds(560, h - 60, 40, 10)
+        local w = -40
+        for k, v in pairs(targets) do
+            w = w + 40
+            targets[k]:setBounds(w, h - 60, 40, 10)
+        end
 
         scratchpad.config.windowSize = {w = w, h = h}
         scratchpad.saveConfiguration()
@@ -503,7 +477,6 @@ function scratchpad_load()
         insertCoordsBtn:setVisible(true)
 
         -- show prev/next buttons only if we have more than one page
-
         prevButton:setVisible(true)
         nextButton:setVisible(true)
 

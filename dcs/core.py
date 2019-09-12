@@ -148,9 +148,9 @@ class Enemy:
         if self.group_name == '':
             self.group_name = f"{self.platform}-{self.id}"
         try:
-            self.alt = round(item["LatLongAlt"]["Alt"])
+            self.alt = max([1, round((item["LatLongAlt"]["Alt"]) * 3.28084)])
         except Exception as e:
-            self.alt = 0
+            self.alt = 1
         self.lat_raw = item["LatLongAlt"]["Lat"]
         self.lon_raw = item["LatLongAlt"]["Long"]
         self.last_seen = item['LastSeenMinsAgo']
@@ -195,7 +195,7 @@ class Enemy:
                           self.lat_raw, self.lon_raw)
     @property
     def str(self):
-        str = f"{self.target_num}) {self.cat}: {self.platform} {self.lat}, {self.lon}, {self.alt}m, {self.dist}nm"
+        str = f"{self.target_num}) {self.cat}: {self.platform} {self.lat}, {self.lon}, {self.alt}ft, {self.dist}nm"
         log.debug(str)
         log.debug('Created enemy %s %d from Stennis in group %s...',
                  self.platform, self.dist, self.group_name)
