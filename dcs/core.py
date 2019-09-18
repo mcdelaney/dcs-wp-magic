@@ -20,9 +20,9 @@ PGAW_STATE_URL = "https://pgaw.hoggitworld.com/"
 # GAW_KEY = "f67eecc6-4659-44fd-a4fd-8816c993ad0e"
 # GAW_STATE_URL = f"https://state.hoggitworld.com/{GAW_KEY}"
 GAW_STATE_URL = "https://dcs.hoggitworld.com/"
+
 EXCLUDED_TYPES = ['Air+FixedWing', 'Ground+Light+Human+Air+Parachutist', '',
-                  'Sea+Watercraft+AircraftCarrier', "Air+Rotorcraft",
-                  "Ground+Static+Aerodrome"]
+                  "Air+Rotorcraft", "Ground+Static+Aerodrome"]
 
 EXCLUDED_PILOTS = ["FARP"]
 
@@ -36,7 +36,7 @@ CATS = {
     'RADAR': [
         "S-300PS 40B6M tr", "S-300PS 40B6MD sr", "S-300PS 64H6E sr",
         "Kub 1S91 str", "snr s-125 tr", "1L13 EWR", "Dog Ear radar",
-        "SA-11 Buk SR 9S18M1"
+        "SA-11 Buk SR 9S18M1", "SA-18 Igla-S comm"
     ],
     'SAM': [
         "S-300PS 5P85C ln", "Kub 2P25 ln", "SA-11 Buk LN 9A310M1", 'Tor 9A331',
@@ -47,29 +47,24 @@ CATS = {
         "ZSU-23-4 Shilka", "2S6 Tunguska", "Ural-375 ZU-23",
         "ZU-23 Emplacement Closed", "SA-18 Igla-S manpad",
         "ZU-23 Closed Insurgent"],
-    'ARMOR': ["Ural-375 PBU", "BMP-2", "T-72B", "SAU Msta", "BMP-1"],
-    "INFANTRY": ["Infantry AK", "Land Rover"],
+    'ARMOR': ["Ural-375 PBU", "BMP-2", "T-72B", "SAU Msta", "BMP-1", "BMD-1",
+              "BTR-80"],
+    "INFANTRY": ["Infantry AK", "Land Rover", "Zil-4331"],
 }
+
+CAT_ORDER = {'MOBILE_CP': 1,
+             'RADAR': 2,
+             "SAM": 3,
+             'Unknown': 4,
+             'AAA': 5,
+             'ARMOR': 6,
+             'INFANTRY': 7}
 
 CAT_LOOKUP = {}
 for k, v in CATS.items():
     for i in v:
         CAT_LOOKUP[i] = k
 
-NUMPAD = {
-    "0": "num 0",
-    "1": "num 1",
-    "2": "num 2",
-    "3": "num 3",
-    "4": "num 4",
-    "5": "num 5",
-    "6": "num 6",
-    "7": "num 7",
-    "8": "num 8",
-    "9": "num 9",
-    ".": "decimal",
-    "enter": "num enter"
-}
 
 def get_cached_coords(section, target):
     log.info('Checking for coords')
@@ -104,12 +99,6 @@ def coord_to_keys(coord):
     out.append("ENT")
     return out
 
-
-def press_keys(coord):
-    for ent in coord:
-        keyboard.press_and_release(ent)
-        time.sleep(0.25)
-    return
 
 def dms2dd(degrees, minutes, seconds, direction):
     dd = float(degrees) + float(minutes) / 60 + float(seconds) / (60 * 60)
@@ -172,6 +161,8 @@ class Enemy:
         except KeyError:
             self.cat = "Unknown"
 
+        self.order_id = f"{CAT_ORDER[self.cat]}.{self.target_num}"
+
         if coord_fmt == 'dms':
             self.lat = '.'.join(self.lat_dms)
             self.lon = '.'.join(self.lon_dms)
@@ -193,9 +184,10 @@ class Enemy:
             except ValueError as e:
                 log.error("Coordinates are incorrect: %f %f",
                           self.lat_raw, self.lon_raw)
-    @property
-    def str(self):
-        str = f"{self.target_num}) {self.cat}: {self.platform} {self.lat}, {self.lon}, {self.alt}ft, {self.dist}nm"
+    def str(self, i=None):
+        if not i:
+            i = self.target_num
+        str = f"{i}) {self.cat}: {self.platform} {self.lat}, {self.lon}, {self.alt}ft, {self.dist}nm"
         log.debug(str)
         log.debug('Created enemy %s %d from Stennis in group %s...',
                  self.platform, self.dist, self.group_name)
@@ -210,10 +202,8 @@ class EnemyGroups:
 
     def add(self, enemy):
         try:
-            # enemey.target_num = len(self.groups[enemy.group_name]) + 1
             self.groups[enemy.group_name].append(enemy)
         except (KeyError, NameError):
-            # enemy.target_num = 1
             self.groups[enemy.group_name] = [enemy]
         total = len(self.groups[enemy.group_name])
         self.groups[enemy.group_name][total-1].target_num = total
@@ -235,7 +225,13 @@ class EnemyGroups:
         output = {}
         for k, v in self.groups.items():
             min_dist = min([enemy.dist for enemy in v])
-            output[min_dist] = [i.__dict__ for i in v]
+            out_dict = {}
+            for i in v:
+                val = i.__dict__
+                out_dict[float(f"{CAT_ORDER[i.cat]}.{i.target_num}")] = val
+            log.debug(sorted(out_dict.keys()))
+            grp_vals = [out_dict[k] for k in sorted(out_dict.keys())]
+            output[min_dist] = grp_vals
         output = [output[k] for k in sorted(output.keys())]
         return json.dumps(output)
 
@@ -249,7 +245,7 @@ def construct_enemy_set(enemy_state, result_as_string=True, coord_fmt='dms'):
             break
         for id, ent in enemy_state.items():
             if ent["Pilot"] == pilot or ent['Group'] == pilot:
-                log.info("Using %s for start coords...", pilot)
+                log.info(f"Using {pilot} for start coords...")
                 start_coord = (ent['LatLongAlt']['Lat'], ent['LatLongAlt']['Long'])
                 start_pilot = pilot
                 break
@@ -284,7 +280,9 @@ def construct_enemy_set(enemy_state, result_as_string=True, coord_fmt='dms'):
                 log.info("Excluding %s...distance is %d...", grp_name,
                          grp_dist)
                 continue
-            grp_results = [e.str for e in enemy_set]
+
+            grp_val = {i.order_id: i for i in enemy_set}
+            grp_results = [grp_val[k].str(i=i+1) for i, k in enumerate(sorted(grp_val.keys()))]
             grp_results.insert(0, f"{grp_name} - {grp_dist}")
             results[grp_dist] = '\r\n\t'.join(grp_results)
 
