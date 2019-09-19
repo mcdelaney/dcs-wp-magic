@@ -433,23 +433,23 @@ function scratchpad_load()
 
         panel:setBounds(0, 0, w, h - 20)
         textarea:setBounds(0, 0, w, h - 20 - 20 - 20 - 20 - 40)
-        prevButton:setBounds(0, h - 120, 40, 10)
-        nextButton:setBounds(55, h - 120, 40, 10)
-        insertCoordsBtn:setBounds(105, h - 120, 40, 10)
-        enterCoordsBtn:setBounds(160, h - 120, 40, 10)
-        sendCoordsBtn:setBounds(210, h - 120, 40, 10)
-        clearCoordsBtn:setBounds(265, h - 120, 40, 10)
+        prevButton:setBounds(0, h - 120, 40, 20)
+        nextButton:setBounds(40, h - 120, 40, 20)
+        insertCoordsBtn:setBounds(105, h - 120, 50, 20)
+        enterCoordsBtn:setBounds(160, h - 120, 50, 20)
+        sendCoordsBtn:setBounds(210, h - 120, 50, 20)
+        clearCoordsBtn:setBounds(265, h - 120, 50, 20)
 
         local w = -40
         for k, v in pairs(sections) do
             w = w + 40
-            sections[k]:setBounds(w, h - 80, 40, 10)
+            sections[k]:setBounds(w, h - 100, 40, 20)
         end
 
         local w = -40
         for k, v in pairs(targets) do
             w = w + 40
-            targets[k]:setBounds(w, h - 60, 40, 10)
+            targets[k]:setBounds(w, h - 80, 40, 20)
         end
 
         scratchpad.config.windowSize = {w = w, h = h}

@@ -1,5 +1,6 @@
 from pprint import pprint
 import json
+import datetime as dt
 import keyboard
 from geopy.distance import vincenty
 import logging
@@ -238,6 +239,7 @@ class EnemyGroups:
 
 def construct_enemy_set(enemy_state, result_as_string=True, coord_fmt='dms'):
     """Parse json response from gaw state endpoint into an enemy list"""
+    last_recv = enemy_state.pop('last_recv')
     start_coord = None
     start_pilot = 'None'
     for pilot in ["someone_somewhere", "CVN-74", "Stennis"]:
@@ -257,16 +259,18 @@ def construct_enemy_set(enemy_state, result_as_string=True, coord_fmt='dms'):
 
         if item["Coalition"] == COALITION:
             continue
+
         try:
             if item["Pilot"] in EXCLUDED_PILOTS:
                 continue
         except:
-            pprint(item)
+            log.error(item)
+
         try:
             enemy = Enemy(item, start_coord, coord_fmt)
             enemy_groups.add(enemy)
         except Exception as e:
-            pprint(item)
+            log.error(item)
             raise e
 
     with open(LAST_RUN_CACHE, 'w') as fp_:
@@ -289,7 +293,7 @@ def construct_enemy_set(enemy_state, result_as_string=True, coord_fmt='dms'):
         results = [results[k] for k in sorted(results.keys())]
         results = [f"{i+1}) {r}" for i, r in enumerate(results)]
         results = '\r\n\r\n'.join(results)
-        results = f"Start Coords: {start_pilot} {start_coord}\r\n\r\n{results}".encode('UTF-8')
+        results = f"Start Coords: {start_pilot} {(round(start_coord[0], 3), round(start_coord[1], 3))} {last_recv}\r\n\r\n{results}".encode('UTF-8')
         return results
 
     return enemies
