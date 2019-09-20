@@ -94,7 +94,7 @@ class Enemy:
         self.platform = item["Platform"]
         self.type = item["Type"]
         self.dist = 999
-        self.target_num = 0
+        self.target_num = 1
         self.start_coords = start_coords
 
         self.group_name = item['Group'] if item["Group"] != '' else self.name
@@ -122,14 +122,12 @@ class Enemy:
 
         try:
             self.cat = CAT_LOOKUP[self.platform]
+            self.order_val = CAT_ORDER[self.cat]
         except KeyError:
             self.cat = self.type
+            self.order_val = 4
 
-        if self.cat not in CAT_LOOKUP.keys():
-            order_val = 4
-        else:
-            order_val = CAT_ORDER[self.cat]
-        self.order_id = f"{order_val}.{self.target_num}"
+        self.order_id = float(f"{self.order_val}.{self.target_num}")
 
         if coord_fmt == 'dms':
             self.lat = '.'.join(self.lat_dms)
@@ -152,10 +150,12 @@ class Enemy:
             except ValueError as e:
                 log.error("Coordinates are incorrect: %f %f",
                           self.lat_raw, self.lon_raw)
-    def str(self, i=None):
-        if not i:
-            i = self.target_num
-        str = f"{i}) {self.cat}: {self.platform} {self.lat}, "\
+    def set_target_order(self, target_num):
+        self.target_num = target_num
+        self.order_id = float(f"{self.order_val}.{self.target_num}")
+
+    def str(self):
+        str = f"{self.target_num}) {self.cat}: {self.platform} {self.lat}, "\
               f"{self.lon}, {self.alt}m, {self.dist}nm"
         log.debug(str)
         log.debug('Created enemy %s %d from Stennis in group %s...',
@@ -171,15 +171,29 @@ class EnemyGroups:
 
     def add(self, enemy):
         try:
+            targets = len(self.groups[enemy.group_name])
+            enemy.set_target_order(targets + 1)
             self.groups[enemy.group_name].append(enemy)
-        except (KeyError, NameError):
+
+        except (KeyError, NameError, TypeError):
             self.groups[enemy.group_name] = [enemy]
         total = len(self.groups[enemy.group_name])
         self.groups[enemy.group_name][total-1].target_num = total
         self.total += 1
+        self.sort()
 
     def names(self):
         return list(self.groups.keys())
+
+    def sort(self):
+        for k in list(self.groups.keys()):
+            ents = {e.order_id: e for e in self.groups[k]}
+            tmp = []
+            for i, k in enumerate(sorted(ents.keys())):
+                ents[k].set_target_order(i)
+                tmp.append(ents[k])
+            self.groups[k] = tmp
+            # self.groups[k] = [ents[i] for i in sorted(ents.keys())]
 
     def __len__(self):
         return self.total
@@ -191,13 +205,14 @@ class EnemyGroups:
             yield group_name, group, min_dist
 
     def serialize(self):
+        log.debug("Serializing enemy groups...")
         output = {}
         for k, v in self.groups.items():
             min_dist = min([enemy.dist for enemy in v])
             out_dict = {}
             for i in v:
                 val = i.__dict__
-                out_dict[float(f"{i.order_id}")] = val
+                out_dict[float(f"{i.order_val}.{i.target_num}")] = val
             log.debug(sorted(out_dict.keys()))
             grp_vals = [out_dict[k] for k in sorted(out_dict.keys())]
             output[min_dist] = grp_vals
@@ -242,6 +257,7 @@ def construct_enemy_set(enemy_state, result_as_string=True, coord_fmt='dms'):
             log.error(item)
             raise e
 
+    enemy_groups.sort()
     with open(LAST_RUN_CACHE, 'w') as fp_:
         fp_.write(enemy_groups.serialize())
 
@@ -254,9 +270,10 @@ def construct_enemy_set(enemy_state, result_as_string=True, coord_fmt='dms'):
                          grp_dist)
                 continue
 
-            grp_val = {i.order_id: i for i in enemy_set}
-            grp_results = [grp_val[k].str(i=i+1)
-                           for i, k in enumerate(sorted(grp_val.keys()))]
+            # grp_val = {i.order_id: i for i in enemy_set}
+            # grp_results = [grp_val[k].str()
+            #                for i, k in enumerate(sorted(grp_val.keys()))]
+            grp_results = [g.str() for g in enemy_set]
             grp_results.insert(0, f"{grp_name}")
             results[grp_dist] = '\r\n\t'.join(grp_results)
 

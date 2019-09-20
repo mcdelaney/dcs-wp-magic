@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import socket
 import time
+import sys
 
 DEBUG = False
 
@@ -40,7 +41,7 @@ def parse_line(obj, ref, last_seen):
     line = obj.strip()
     split_line = line.split(',')
     try:
-        obj_dict = {k:v for k, v in [l.split('=') for l in split_line[1:]]}
+        obj_dict = {k:v for k, v in [l.split('=', 1) for l in split_line[1:]]}
         obj_dict['Id'] = split_line[0]
         obj_dict['LastSeenMinsAgo'] = last_seen
         if 'T' not in obj_dict.keys():
@@ -58,7 +59,8 @@ def parse_line(obj, ref, last_seen):
                     obj_dict[val] = obj_dict['Name']
 
         if 'Group' not in obj_dict.keys():
-            obj_dict['Group'] = ''
+            if 'Name' in obj_dict.keys():
+                obj_dict['Group'] = obj_dict['Name'] + '-' + obj_dict['Id']
 
         for k in list(obj_dict.keys()):
             if k not in KEEP_KEYS:
@@ -66,7 +68,11 @@ def parse_line(obj, ref, last_seen):
 
         return obj_dict
     except Exception as e:
-        log.error("Error parsing object: %s" % obj)
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        log.error("Error parsing object: %s on line %s" % (obj, str(exc_tb.tb_lineno)))
+        for s in split_line:
+            log.error(s)
         log.error(e)
 
 

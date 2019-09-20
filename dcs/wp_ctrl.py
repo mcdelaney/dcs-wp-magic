@@ -122,26 +122,36 @@ class HornetDriver(Driver):
         return 'ok'
 
 
-
 def get_cached_coords(section, target):
     log.info('Checking for coords')
     with open(LAST_RUN_CACHE, 'r') as fp_:
         data = json.load(fp_)
     for item in data[int(section)-1]:
+        log.debug('Checking item: ', item)
         if item['target_num'] == int(target):
             lat = coord_to_keys(item['lat'])
             lon = coord_to_keys(item['lon'])
             alt = [f"{n}" for n in str(item['alt'])]
+            log.info(f"Coord to enter: {''.join(lat)} {''.join(lon)} {alt}")
             alt.append('ENT')
             return (lat, lon, alt)
+    log.error(f"Could not find target for {section} - {target}")
 
 
 def update_coord():
     with open(COORD_PATH, 'r') as fp_:
         targets = fp_.readlines()
-    targets = [t.strip().split(',') for t in targets]
-    open(COORD_PATH, 'w').close()
-    coords = [get_cached_coords(t[0], t[1]) for t in targets]
+    coords = []
+    for tar in targets:
+        log.info('Looking up target %s' % tar)
+        tar = tar.strip().split(',')
+        c = get_cached_coords(tar[0], tar[1])
+        if c:
+            coords.append(c)
+        else:
+            log.error("Could not find coords!")
+            return "ok"
     driver = HornetDriver()
     driver.enter_pp_coord(coords)
+    open(COORD_PATH, 'w').close()
     return "ok"
