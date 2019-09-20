@@ -70,12 +70,13 @@ def dms2dd(degrees, minutes, seconds, direction):
         dd *= -1
     return dd
 
-def dd2precise(deg):
-    d = int(deg)
-    md = abs(deg - d) * 60
-    m = int(md)
-    dec = str(round((((md - m) * 60)/60)*100, 3))
-    return [f'{d:02}', f'{m:02}', dec]
+
+# def dd2precise(deg):
+#     d = int(deg)
+#     md = abs(deg - d) * 60
+#     m = int(md)
+#     dec = str(round((((md - m) * 60)/60)*100, 3))
+#     return [f'{d:02}', f'{m:02}', dec]
 
 
 def dd2dms(deg):
@@ -88,6 +89,7 @@ def dd2dms(deg):
 
 class Enemy:
     """A single enemy unit with specific attributes."""
+
     def __init__(self, item, start_coords=None, coord_fmt='dms'):
         self.id = item["Id"]
         self.name = item["Pilot"]
@@ -96,6 +98,7 @@ class Enemy:
         self.dist = 999
         self.target_num = 1
         self.start_coords = start_coords
+        self.order_val = None
 
         self.group_name = item['Group'] if item["Group"] != '' else self.name
         if self.group_name == '':
@@ -209,13 +212,7 @@ class EnemyGroups:
         output = {}
         for k, v in self.groups.items():
             min_dist = min([enemy.dist for enemy in v])
-            out_dict = {}
-            for i in v:
-                val = i.__dict__
-                out_dict[float(f"{i.order_val}.{i.target_num}")] = val
-            log.debug(sorted(out_dict.keys()))
-            grp_vals = [out_dict[k] for k in sorted(out_dict.keys())]
-            output[min_dist] = grp_vals
+            output[min_dist] = [i.__dict__ for i in v]
         output = [output[k] for k in sorted(output.keys())]
         return json.dumps(output)
 
@@ -270,10 +267,7 @@ def construct_enemy_set(enemy_state, result_as_string=True, coord_fmt='dms'):
                          grp_dist)
                 continue
 
-            # grp_val = {i.order_id: i for i in enemy_set}
-            # grp_results = [grp_val[k].str()
-            #                for i, k in enumerate(sorted(grp_val.keys()))]
-            grp_results = [g.str() for g in enemy_set]
+            grp_val = [e.str() for e in enemy_set]
             grp_results.insert(0, f"{grp_name}")
             results[grp_dist] = '\r\n\t'.join(grp_results)
 
