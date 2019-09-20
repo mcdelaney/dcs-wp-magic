@@ -20,7 +20,7 @@ GAW_STATE_URL = "https://dcs.hoggitworld.com/"
 EXCLUDED_TYPES = ['Air+FixedWing', 'Ground+Light+Human+Air+Parachutist', '',
                   "Air+Rotorcraft", "Ground+Static+Aerodrome",
                   "Misc+Shrapnel", 'Weapon+Missile', 'Projectile+Shell',
-                  'Misc+Containers']
+                  'Misc+Container']
 
 EXCLUDED_PILOTS = ["FARP"]
 
@@ -34,10 +34,11 @@ CATS = {
     'RADAR': [
         "S-300PS 40B6M tr", "S-300PS 40B6MD sr", "S-300PS 64H6E sr",
         "Kub 1S91 str", "snr s-125 tr", "1L13 EWR", "Dog Ear radar",
-        "SA-11 Buk SR 9S18M1", "SA-18 Igla-S comm"
+        "SA-11 Buk SR 9S18M1", "SA-18 Igla-S comm", "SNR_75V"
     ],
     'SAM': [
-        "S-300PS 5P85C ln", "Kub 2P25 ln", "SA-11 Buk LN 9A310M1", 'Tor 9A331',
+        "S-300PS 5P85C ln", "S-300PS 5P85D ln", "Kub 2P25 ln",
+        "SA-11 Buk LN 9A310M1", 'Tor 9A331',
         "5p73 s-125 ln", "Osa 9A33 ln", "Strela-10M3", "Strela-1 9P31",
         'S_75M_Volhov'
     ],
@@ -71,12 +72,12 @@ def dms2dd(degrees, minutes, seconds, direction):
     return dd
 
 
-# def dd2precise(deg):
-#     d = int(deg)
-#     md = abs(deg - d) * 60
-#     m = int(md)
-#     dec = str(round((((md - m) * 60)/60)*100, 3))
-#     return [f'{d:02}', f'{m:02}', dec]
+def dd2precise(deg):
+    d = int(deg)
+    md = abs(deg - d) * 60
+    m = int(md)
+    dec = str(round((((md - m) * 60)/60)*100, 3))
+    return [f'{d:02}', f'{m:02}', dec]
 
 
 def dd2dms(deg):
@@ -98,7 +99,6 @@ class Enemy:
         self.dist = 999
         self.target_num = 1
         self.start_coords = start_coords
-        self.order_val = None
 
         self.group_name = item['Group'] if item["Group"] != '' else self.name
         if self.group_name == '':
@@ -158,7 +158,7 @@ class Enemy:
         self.order_id = float(f"{self.order_val}.{self.target_num}")
 
     def str(self):
-        str = f"{self.target_num}) {self.cat}: {self.platform} {self.lat}, "\
+        str = f"{self.target_num}) {self.order_id} {self.cat}: {self.platform} {self.lat}, "\
               f"{self.lon}, {self.alt}m, {self.dist}nm"
         log.debug(str)
         log.debug('Created enemy %s %d from Stennis in group %s...',
@@ -183,20 +183,25 @@ class EnemyGroups:
         total = len(self.groups[enemy.group_name])
         self.groups[enemy.group_name][total-1].target_num = total
         self.total += 1
-        self.sort()
+        # self.sort()
 
     def names(self):
         return list(self.groups.keys())
 
     def sort(self):
-        for k in list(self.groups.keys()):
-            ents = {e.order_id: e for e in self.groups[k]}
-            tmp = []
+        result = {}
+        for group_key in list(self.groups.keys()):
+            ents = {e.order_id: e for e in self.groups[group_key]}
+            tmp = {}
             for i, k in enumerate(sorted(ents.keys())):
-                ents[k].set_target_order(i)
-                tmp.append(ents[k])
-            self.groups[k] = tmp
-            # self.groups[k] = [ents[i] for i in sorted(ents.keys())]
+                ents[k].set_target_order(i+1)
+                tmp[ents[k].target_num] = ents[k]
+
+            out_lst = [None] * len(list(tmp.keys()))
+            for i, k in enumerate(sorted(tmp.keys())):
+                out_lst[i]  = tmp[k]
+            result[group_key] = out_lst
+        self.groups = result
 
     def __len__(self):
         return self.total
@@ -268,8 +273,8 @@ def construct_enemy_set(enemy_state, result_as_string=True, coord_fmt='dms'):
                 continue
 
             grp_val = [e.str() for e in enemy_set]
-            grp_results.insert(0, f"{grp_name}")
-            results[grp_dist] = '\r\n\t'.join(grp_results)
+            grp_val.insert(0, f"{grp_name}")
+            results[grp_dist] = '\r\n\t'.join(grp_val)
 
         results = [results[k] for k in sorted(results.keys())]
         results = [f"{i+1}) {r}" for i, r in enumerate(results)]
