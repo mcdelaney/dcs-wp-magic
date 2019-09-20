@@ -11,18 +11,7 @@ log = logging.getLogger(__name__)
 RECV_BUFFER = 4096
 PORT = 8888
 HOST = '127.0.0.1'
-COORD_PATH = 'C:/Users/mcdel/Saved Games/DCS/ScratchPad/target.txt'
 
-
-def update_coord():
-    with open(COORD_PATH, 'r') as fp_:
-        targets = fp_.readlines()
-    targets = [t.strip().split(',') for t in targets]
-    coords = [core.get_cached_coords(t[0], t[1]) for t in targets]
-    driver = wp_ctrl.HornetDriver()
-    driver.enter_pp_coord(coords)
-    open(COORD_PATH, 'w').close()
-    return "ok"
 
 
 def main():
@@ -56,7 +45,7 @@ def main():
                         data = sock.recv(RECV_BUFFER)
                         if data:
                             log.info(data)
-                            update_coord()
+                            wp_ctrl.update_coord()
                     except:
                         sock.close()
                         CONNECTION_LIST.remove(sock)

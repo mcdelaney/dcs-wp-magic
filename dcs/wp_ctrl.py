@@ -2,10 +2,34 @@ import logging
 import socket
 import re
 from time import sleep
+import json
 
+COORD_PATH = 'C:/Users/mcdel/Saved Games/DCS/ScratchPad/target.txt'
+LAST_RUN_CACHE = 'data/last_extract.json'
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
+
+
+def coord_to_keys(coord):
+    out = []
+    for char in ''.join(coord):
+        if char == 'N':
+            out.append('2')
+        elif char == 'S':
+            out.append('8')
+        elif char == 'E':
+            out.append('6')
+        elif char == 'W':
+            out.append('4')
+        elif char == '.':
+            continue
+        else:
+            out.append(f"{char}")
+        if len(out) == 7:
+            out.append("ENT")
+    out.append("ENT")
+    return out
 
 
 class Driver:
@@ -14,7 +38,7 @@ class Driver:
         self.s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.host, self.port = host, port
         self.limits = dict()
-        self.delay_after = 0.3
+        self.delay_after = 0.2
         self.delay_release = 0.15
 
     def press_with_delay(self, key, raw=False):
@@ -58,7 +82,7 @@ class HornetDriver(Driver):
         lat = coord[0]
         long = coord[1]
         elev = coord[2]
-        self.log.info(f"Entering coords string: {'.'.join(lat)}, {'.'.join(long)}")
+        self.log.info(f"Entering coords: {'.'.join(lat)}, {'.'.join(long)}")
 
         if n > 1:
             self.lmdi("13") # STEP
@@ -82,7 +106,7 @@ class HornetDriver(Driver):
         # sleep(0.1)
         self.ufc("OS4") # UFT ELEV
         # sleep(0.1)
-        self.ufc("OS3")  # UFC FT
+        self.ufc("OS4")  # UFC METERS
         # sleep(0.1)
         for char in str(elev):
             self.ufc(char)
@@ -96,3 +120,28 @@ class HornetDriver(Driver):
         for i, coord in enumerate(coords):
             self.enter_pp_msn(coord, n=i+1)
         return 'ok'
+
+
+
+def get_cached_coords(section, target):
+    log.info('Checking for coords')
+    with open(LAST_RUN_CACHE, 'r') as fp_:
+        data = json.load(fp_)
+    for item in data[int(section)-1]:
+        if item['target_num'] == int(target):
+            lat = coord_to_keys(item['lat'])
+            lon = coord_to_keys(item['lon'])
+            alt = [f"{n}" for n in str(item['alt'])]
+            alt.append('ENT')
+            return (lat, lon, alt)
+
+
+def update_coord():
+    with open(COORD_PATH, 'r') as fp_:
+        targets = fp_.readlines()
+    targets = [t.strip().split(',') for t in targets]
+    open(COORD_PATH, 'w').close()
+    coords = [get_cached_coords(t[0], t[1]) for t in targets]
+    driver = HornetDriver()
+    driver.enter_pp_coord(coords)
+    return "ok"

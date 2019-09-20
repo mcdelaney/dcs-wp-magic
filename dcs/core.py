@@ -14,16 +14,13 @@ OUT_PATH = "C:/Users/mcdel/Saved Games/DCS/Scratchpad/coords.txt"
 
 START_UNIT = ["CVN-74", "Stennis"]
 
-# PGAW_KEY = "243bd8b1-3198-4c0b-817a-fadb40decf23"
-# PGAW_STATE_URL = f"https://state.hoggitworld.com/{PGAW_KEY}"
 PGAW_STATE_URL = "https://pgaw.hoggitworld.com/"
-
-# GAW_KEY = "f67eecc6-4659-44fd-a4fd-8816c993ad0e"
-# GAW_STATE_URL = f"https://state.hoggitworld.com/{GAW_KEY}"
 GAW_STATE_URL = "https://dcs.hoggitworld.com/"
 
 EXCLUDED_TYPES = ['Air+FixedWing', 'Ground+Light+Human+Air+Parachutist', '',
-                  "Air+Rotorcraft", "Ground+Static+Aerodrome"]
+                  "Air+Rotorcraft", "Ground+Static+Aerodrome",
+                  "Misc+Shrapnel", 'Weapon+Missile', 'Projectile+Shell',
+                  'Misc+Containers']
 
 EXCLUDED_PILOTS = ["FARP"]
 
@@ -67,40 +64,6 @@ for k, v in CATS.items():
         CAT_LOOKUP[i] = k
 
 
-def get_cached_coords(section, target):
-    log.info('Checking for coords')
-    with open(LAST_RUN_CACHE, 'r') as fp_:
-        data = json.load(fp_)
-    for item in data[int(section)-1]:
-        if item['target_num'] == int(target):
-            lat = coord_to_keys(item['lat'])
-            lon = coord_to_keys(item['lon'])
-            alt = [f"{n}" for n in str(item['alt'])]
-            alt.append('ENT')
-            return (lat, lon, alt)
-
-
-def coord_to_keys(coord):
-    out = []
-    for char in ''.join(coord):
-        if char == 'N':
-            out.append('2')
-        elif char == 'S':
-            out.append('8')
-        elif char == 'E':
-            out.append('6')
-        elif char == 'W':
-            out.append('4')
-        elif char == '.':
-            continue
-        else:
-            out.append(f"{char}")
-        if len(out) == 7:
-            out.append("ENT")
-    out.append("ENT")
-    return out
-
-
 def dms2dd(degrees, minutes, seconds, direction):
     dd = float(degrees) + float(minutes) / 60 + float(seconds) / (60 * 60)
     if direction == 'E' or direction == 'N':
@@ -138,7 +101,7 @@ class Enemy:
         if self.group_name == '':
             self.group_name = f"{self.platform}-{self.id}"
         try:
-            self.alt = max([1, round((item["LatLongAlt"]["Alt"]) * 3.28084)])
+            self.alt = max([1, round((item["LatLongAlt"]["Alt"]))])
         except Exception as e:
             self.alt = 1
         self.lat_raw = item["LatLongAlt"]["Lat"]
@@ -160,9 +123,13 @@ class Enemy:
         try:
             self.cat = CAT_LOOKUP[self.platform]
         except KeyError:
-            self.cat = "Unknown"
+            self.cat = self.type
 
-        self.order_id = f"{CAT_ORDER[self.cat]}.{self.target_num}"
+        if self.cat not in CAT_LOOKUP.keys():
+            order_val = 4
+        else:
+            order_val = CAT_ORDER[self.cat]
+        self.order_id = f"{order_val}.{self.target_num}"
 
         if coord_fmt == 'dms':
             self.lat = '.'.join(self.lat_dms)
@@ -188,7 +155,8 @@ class Enemy:
     def str(self, i=None):
         if not i:
             i = self.target_num
-        str = f"{i}) {self.cat}: {self.platform} {self.lat}, {self.lon}, {self.alt}ft, {self.dist}nm"
+        str = f"{i}) {self.cat}: {self.platform} {self.lat}, "\
+              f"{self.lon}, {self.alt}m, {self.dist}nm"
         log.debug(str)
         log.debug('Created enemy %s %d from Stennis in group %s...',
                  self.platform, self.dist, self.group_name)
@@ -229,7 +197,7 @@ class EnemyGroups:
             out_dict = {}
             for i in v:
                 val = i.__dict__
-                out_dict[float(f"{CAT_ORDER[i.cat]}.{i.target_num}")] = val
+                out_dict[float(f"{i.order_id}")] = val
             log.debug(sorted(out_dict.keys()))
             grp_vals = [out_dict[k] for k in sorted(out_dict.keys())]
             output[min_dist] = grp_vals
@@ -248,7 +216,8 @@ def construct_enemy_set(enemy_state, result_as_string=True, coord_fmt='dms'):
         for id, ent in enemy_state.items():
             if ent["Pilot"] == pilot or ent['Group'] == pilot:
                 log.info(f"Using {pilot} for start coords...")
-                start_coord = (ent['LatLongAlt']['Lat'], ent['LatLongAlt']['Long'])
+                start_coord = (ent['LatLongAlt']['Lat'],
+                               ent['LatLongAlt']['Long'])
                 start_pilot = pilot
                 break
 
@@ -263,7 +232,7 @@ def construct_enemy_set(enemy_state, result_as_string=True, coord_fmt='dms'):
         try:
             if item["Pilot"] in EXCLUDED_PILOTS:
                 continue
-        except:
+        except KeyError:
             log.error(item)
 
         try:
@@ -286,14 +255,17 @@ def construct_enemy_set(enemy_state, result_as_string=True, coord_fmt='dms'):
                 continue
 
             grp_val = {i.order_id: i for i in enemy_set}
-            grp_results = [grp_val[k].str(i=i+1) for i, k in enumerate(sorted(grp_val.keys()))]
-            grp_results.insert(0, f"{grp_name} - {grp_dist}")
+            grp_results = [grp_val[k].str(i=i+1)
+                           for i, k in enumerate(sorted(grp_val.keys()))]
+            grp_results.insert(0, f"{grp_name}")
             results[grp_dist] = '\r\n\t'.join(grp_results)
 
         results = [results[k] for k in sorted(results.keys())]
         results = [f"{i+1}) {r}" for i, r in enumerate(results)]
         results = '\r\n\r\n'.join(results)
-        results = f"Start Coords: {start_pilot} {(round(start_coord[0], 3), round(start_coord[1], 3))} {last_recv}\r\n\r\n{results}".encode('UTF-8')
-        return results
+        results = f"Start Ref: {start_pilot} "\
+                  f"{(round(start_coord[0], 3), round(start_coord[1], 3))}"\
+                  f" {last_recv}\r\n\r\n{results}"
+        return results.encode('UTF-8')
 
     return enemies

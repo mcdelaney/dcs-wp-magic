@@ -221,8 +221,12 @@ function scratchpad_load()
     end
 
     local function sendCoordinates()
-        local resp = http.request("http://127.0.0.1:5000/enter/" .. section_val .. "/" .. target_val)
-        scratchpad.log("Requesting coordinate enter for section " .. section_val .. " and target " .. target_val)
+        local resp = http.request("http://127.0.0.1:5000/start")
+        scratchpad.log("Requesting coordinate entry...")
+    end
+
+    local function stopCoordinates()
+        local resp = http.request("http://127.0.0.1:5000/stop")
     end
 
     local function clearCoordinates()
@@ -246,6 +250,7 @@ function scratchpad_load()
         enterCoordsBtn = panel.ScratchpadEnterCoordsButton
         sendCoordsBtn = panel.ScratchpadSendCoordsButton
         clearCoordsBtn = panel.ScratchpadClearCoordsButton
+        stopCoordsBtn = panel.ScratchpadStopCoordsButton
 
         section1 = panel.CoordSection1
         section2 = panel.CoordSection2
@@ -257,7 +262,11 @@ function scratchpad_load()
         section8 = panel.CoordSection8
         section9 = panel.CoordSection9
         section10 = panel.CoordSection10
-        scratchpad.log("Inserting coordsections to table...")
+        section11 = panel.CoordSection11
+        section12 = panel.CoordSection12
+        section13 = panel.CoordSection13
+        section14 = panel.CoordSection14
+        section15 = panel.CoordSection15
         table.insert(sections, section1)
         table.insert(sections, section2)
         table.insert(sections, section3)
@@ -268,6 +277,11 @@ function scratchpad_load()
         table.insert(sections, section8)
         table.insert(sections, section9)
         table.insert(sections, section10)
+        table.insert(sections, section11)
+        table.insert(sections, section12)
+        table.insert(sections, section13)
+        table.insert(sections, section14)
+        table.insert(sections, section15)
 
         target1 = panel.CoordTarget1
         target2 = panel.CoordTarget2
@@ -361,6 +375,12 @@ function scratchpad_load()
             end
         )
 
+        stopCoordsBtn:addMouseDownCallback(
+            function(self)
+                local result = stopCoordinates()
+            end
+        )
+
         scratchpad.log("Adding section callbacks...")
         for k, v in pairs(sections) do
             sections[k]:addMouseDownCallback(
@@ -439,6 +459,7 @@ function scratchpad_load()
         enterCoordsBtn:setBounds(160, h - 120, 50, 20)
         sendCoordsBtn:setBounds(210, h - 120, 50, 20)
         clearCoordsBtn:setBounds(265, h - 120, 50, 20)
+        stopCoordsBtn:setBounds(265+55, h - 120, 50, 20)
 
         local w = -40
         for k, v in pairs(sections) do

@@ -204,6 +204,28 @@ dialog = {
                     },
                     ["type"] = "Button"
                 },
+                ["ScratchpadStopCoordsButton"] = {
+                    ["params"] = {
+                        ["bounds"] = {
+                            ["h"] = 20,
+                            ["w"] = 120,
+                            ["x"] = 80,
+                            ["y"] = 180
+                        },
+                        ["enabled"] = true,
+                        ["tabOrder"] = 0,
+                        ["text"] = "Stop",
+                        ["tooltip"] = "Stop Entry",
+                        ["visible"] = true,
+                        ["zindex"] = 1
+                    },
+                    ["skin"] = {
+                        ["params"] = {
+                            ["name"] = "buttonSkinAwacs"
+                        }
+                    },
+                    ["type"] = "Button"
+                },
                 ["CoordSection1"] = {
                     ["params"] = {
                         ["bounds"] = {
@@ -413,6 +435,116 @@ dialog = {
                         ["enabled"] = true,
                         ["tabOrder"] = 0,
                         ["text"] = "10",
+                        ["tooltip"] = "",
+                        ["visible"] = true,
+                        ["zindex"] = 1
+                    },
+                    ["skin"] = {
+                        ["params"] = {
+                            ["name"] = "toggleButtonSkinAwacs"
+                        }
+                    },
+                    ["type"] = "ToggleButton"
+                },
+                ["CoordSection11"] = {
+                    ["params"] = {
+                        ["bounds"] = {
+                            ["h"] = 40,
+                            ["w"] = 120,
+                            ["x"] = 80,
+                            ["y"] = 180
+                        },
+                        ["enabled"] = true,
+                        ["tabOrder"] = 0,
+                        ["text"] = "11",
+                        ["tooltip"] = "",
+                        ["visible"] = true,
+                        ["zindex"] = 1
+                    },
+                    ["skin"] = {
+                        ["params"] = {
+                            ["name"] = "toggleButtonSkinAwacs"
+                        }
+                    },
+                    ["type"] = "ToggleButton"
+                },
+                ["CoordSection12"] = {
+                    ["params"] = {
+                        ["bounds"] = {
+                            ["h"] = 40,
+                            ["w"] = 120,
+                            ["x"] = 80,
+                            ["y"] = 180
+                        },
+                        ["enabled"] = true,
+                        ["tabOrder"] = 0,
+                        ["text"] = "12",
+                        ["tooltip"] = "",
+                        ["visible"] = true,
+                        ["zindex"] = 1
+                    },
+                    ["skin"] = {
+                        ["params"] = {
+                            ["name"] = "toggleButtonSkinAwacs"
+                        }
+                    },
+                    ["type"] = "ToggleButton"
+                },
+                ["CoordSection13"] = {
+                    ["params"] = {
+                        ["bounds"] = {
+                            ["h"] = 40,
+                            ["w"] = 120,
+                            ["x"] = 80,
+                            ["y"] = 180
+                        },
+                        ["enabled"] = true,
+                        ["tabOrder"] = 0,
+                        ["text"] = "13",
+                        ["tooltip"] = "",
+                        ["visible"] = true,
+                        ["zindex"] = 1
+                    },
+                    ["skin"] = {
+                        ["params"] = {
+                            ["name"] = "toggleButtonSkinAwacs"
+                        }
+                    },
+                    ["type"] = "ToggleButton"
+                },
+                ["CoordSection14"] = {
+                    ["params"] = {
+                        ["bounds"] = {
+                            ["h"] = 40,
+                            ["w"] = 120,
+                            ["x"] = 80,
+                            ["y"] = 180
+                        },
+                        ["enabled"] = true,
+                        ["tabOrder"] = 0,
+                        ["text"] = "14",
+                        ["tooltip"] = "",
+                        ["visible"] = true,
+                        ["zindex"] = 1
+                    },
+                    ["skin"] = {
+                        ["params"] = {
+                            ["name"] = "toggleButtonSkinAwacs"
+                        }
+                    },
+                    ["type"] = "ToggleButton"
+                },
+                ["CoordSection15"] = {
+                    ["params"] = {
+                        ["bounds"] = {
+                            ["h"] = 40,
+                            ["w"] = 120,
+                            ["x"] = 80,
+                            ["y"] = 180
+                        },
+                        ["enabled"] = true,
+                        ["tabOrder"] = 0,
+                        ["text"] = "15",
                         ["tooltip"] = "",
                         ["visible"] = true,
                         ["zindex"] = 1
