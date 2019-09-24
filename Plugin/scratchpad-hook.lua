@@ -236,6 +236,7 @@ function scratchpad_load()
     function scratchpad.createWindow()
         local file_path = lfs.writedir() .. [[Scratchpad\]] .. [[target.txt]]
         local file, err = io.open(file_path, "w")
+        file:write("")
         file:close()
 
         window = DialogLoader.spawnDialogFromFile(lfs.writedir() .. "Scripts\\Scratchpad\\ScratchpadWindow.dlg", cdata)
@@ -250,68 +251,37 @@ function scratchpad_load()
         clearCoordsBtn = panel.ScratchpadClearCoordsButton
         stopCoordsBtn = panel.ScratchpadStopCoordsButton
 
-        section1 = panel.CoordSection1
-        section2 = panel.CoordSection2
-        section3 = panel.CoordSection3
-        section4 = panel.CoordSection4
-        section5 = panel.CoordSection5
-        section6 = panel.CoordSection6
-        section7 = panel.CoordSection7
-        section8 = panel.CoordSection8
-        section9 = panel.CoordSection9
-        section10 = panel.CoordSection10
-        section11 = panel.CoordSection11
-        section12 = panel.CoordSection12
-        section13 = panel.CoordSection13
-        section14 = panel.CoordSection14
-        section15 = panel.CoordSection15
-        table.insert(sections, section1)
-        table.insert(sections, section2)
-        table.insert(sections, section3)
-        table.insert(sections, section4)
-        table.insert(sections, section5)
-        table.insert(sections, section6)
-        table.insert(sections, section7)
-        table.insert(sections, section8)
-        table.insert(sections, section9)
-        table.insert(sections, section10)
-        table.insert(sections, section11)
-        table.insert(sections, section12)
-        table.insert(sections, section13)
-        table.insert(sections, section14)
-        table.insert(sections, section15)
+        table.insert(sections, panel.CoordSection1)
+        table.insert(sections, panel.CoordSection2)
+        table.insert(sections, panel.CoordSection3)
+        table.insert(sections, panel.CoordSection4)
+        table.insert(sections, panel.CoordSection5)
+        table.insert(sections, panel.CoordSection6)
+        table.insert(sections, panel.CoordSection7)
+        table.insert(sections, panel.CoordSection8)
+        table.insert(sections, panel.CoordSection9)
+        table.insert(sections, panel.CoordSection10)
+        table.insert(sections, panel.CoordSection11)
+        table.insert(sections, panel.CoordSection12)
+        table.insert(sections, panel.CoordSection13)
+        table.insert(sections, panel.CoordSection14)
+        table.insert(sections, panel.CoordSection15)
 
-        target1 = panel.CoordTarget1
-        target2 = panel.CoordTarget2
-        target3 = panel.CoordTarget3
-        target4 = panel.CoordTarget4
-        target5 = panel.CoordTarget5
-        target6 = panel.CoordTarget6
-        target7 = panel.CoordTarget7
-        target8 = panel.CoordTarget8
-        target9 = panel.CoordTarget9
-        target10 = panel.CoordTarget10
-        target11 = panel.CoordTarget11
-        target12 = panel.CoordTarget12
-        target13 = panel.CoordTarget13
-        target14 = panel.CoordTarget14
-        target15 = panel.CoordTarget15
-
-        table.insert(targets, target1)
-        table.insert(targets, target2)
-        table.insert(targets, target3)
-        table.insert(targets, target4)
-        table.insert(targets, target5)
-        table.insert(targets, target6)
-        table.insert(targets, target7)
-        table.insert(targets, target8)
-        table.insert(targets, target9)
-        table.insert(targets, target10)
-        table.insert(targets, target11)
-        table.insert(targets, target12)
-        table.insert(targets, target13)
-        table.insert(targets, target14)
-        table.insert(targets, target15)
+        table.insert(targets, panel.CoordTarget1)
+        table.insert(targets, panel.CoordTarget2)
+        table.insert(targets, panel.CoordTarget3)
+        table.insert(targets, panel.CoordTarget4)
+        table.insert(targets, panel.CoordTarget5)
+        table.insert(targets, panel.CoordTarget6)
+        table.insert(targets, panel.CoordTarget7)
+        table.insert(targets, panel.CoordTarget8)
+        table.insert(targets, panel.CoordTarget9)
+        table.insert(targets, panel.CoordTarget10)
+        table.insert(targets, panel.CoordTarget11)
+        table.insert(targets, panel.CoordTarget12)
+        table.insert(targets, panel.CoordTarget13)
+        table.insert(targets, panel.CoordTarget14)
+        table.insert(targets, panel.CoordTarget15)
 
         -- setup textarea
         local skin = textarea:getSkin()
