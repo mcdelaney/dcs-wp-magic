@@ -71,49 +71,49 @@ dialog = {
     ["children"] = {
         ["Box"] = {
             ["children"] = {
-                ["ScratchpadPrevButton"] = {
+                ["ScratchpadCoordButton"] = {
                     ["params"] = {
                         ["bounds"] = {
-                            ["h"] = 20,
-                            ["w"] = 50,
-                            ["x"] = 0,
-                            ["y"] = 180
+                          ["h"] = 20,
+                          ["w"] = 140,
+                          ["x"] = 80,
+                          ["y"] = 180
                         },
                         ["enabled"] = true,
                         ["tabOrder"] = 0,
-                        ["text"] = "←",
-                        ["tooltip"] = "Previous Page",
+                        ["text"] = "Coord",
+                        ["tooltip"] = "Coords",
                         ["visible"] = true,
                         ["zindex"] = 1
                     },
                     ["skin"] = {
                         ["params"] = {
-                            ["name"] = "buttonSkinAwacs"
+                            ["name"] = "toggleButtonSkinAwacs"
                         }
                     },
-                    ["type"] = "Button"
+                    ["type"] = "ToggleButton"
                 },
-                ["ScratchpadNextButton"] = {
+                ["ScratchpadTargetButton"] = {
                     ["params"] = {
                         ["bounds"] = {
-                            ["h"] = 20,
-                            ["w"] = 50,
-                            ["x"] = 55,
-                            ["y"] = 180
+                          ["h"] = 20,
+                          ["w"] = 140,
+                          ["x"] = 80,
+                          ["y"] = 180
                         },
                         ["enabled"] = true,
                         ["tabOrder"] = 0,
-                        ["text"] = "→",
-                        ["tooltip"] = "Next Page",
+                        ["text"] = "Tar",
+                        ["tooltip"] = "Targets",
                         ["visible"] = true,
                         ["zindex"] = 1
                     },
                     ["skin"] = {
                         ["params"] = {
-                            ["name"] = "buttonSkinAwacs"
+                            ["name"] = "toggleButtonSkinAwacs"
                         }
                     },
-                    ["type"] = "Button"
+                    ["type"] = "ToggleButton"
                 },
 
                 ["ScratchpadGetCoordsButton"] = {

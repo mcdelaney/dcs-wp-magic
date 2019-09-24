@@ -20,7 +20,7 @@ function scratchpad_load()
     local Input = require("Input")
 
     local isHidden = true
-    local keyboardLocked = false
+    -- local keyboardLocked = false
     local window = nil
     local windowDefaultSkin = nil
     local windowSkinHidden = Skin.windowSkinChatMin()
@@ -28,67 +28,33 @@ function scratchpad_load()
     local textarea = nil
     local section_val = nil
     local target_val = nil
+    local coord_data = ""
+    local target_data = ""
     local coord_request = ""
     local sections = {}
     local targets = {}
+    local current_page = 'coords'
 
     local scratchpad = {
         logFile = io.open(lfs.writedir() .. [[Logs\Scratchpad.log]], "w")
     }
 
     local dirPath = lfs.writedir() .. [[Scratchpad\]]
-    local currentPage = nil
-    local pagesCount = 0
-    local pages = {}
 
-    local function loadPage(page)
-        scratchpad.log("loading page " .. page.path)
-        file, err = io.open(page.path, "r")
-        if err then
-            scratchpad.log("Error reading file: " .. page.path)
-            return ""
-        else
-            local content = file:read("*all")
-            file:close()
-            textarea:setText(content)
-            -- update title
-            window:setText(page.name)
-        end
+    local function loadCoords()
+        current_page = 'coords'
+        scratchpad.log("loading page coordinates...")
+        textarea:setText(coord_data)
+        -- targetarea:setText(target_data)
+        window:setText("Coords")
     end
 
-    local function nextPage()
-        if pagesCount == 0 then
-            return
-        end
-
-        local lastPage = nil
-        for _, page in pairs(pages) do
-            if currentPage == nil or (lastPage ~= nil and lastPage.path == currentPage) then
-                loadPage(page)
-                currentPage = page.path
-                return
-            end
-            lastPage = page
-        end
-
-        -- restart at the beginning
-        loadPage(pages[1])
-        currentPage = pages[1].path
-    end
-
-    local function prevPage()
-        local lastPage = nil
-        for i, page in pairs(pages) do
-            if currentPage == nil or (page.path == currentPage and i ~= 1) then
-                loadPage(lastPage)
-                currentPage = lastPage.path
-                return
-            end
-            lastPage = page
-        end
-        -- restart at the end
-        loadPage(pages[pagesCount])
-        currentPage = pages[pagesCount].path
+    local function loadTargets()
+        current_page = "targets"
+        scratchpad.log("loading page targets...")
+        textarea:setText(target_data)
+        -- targetarea:setText(target_data)
+        window:setText("Targets")
     end
 
     function scratchpad.loadConfiguration()
@@ -118,29 +84,6 @@ function scratchpad_load()
             }
             scratchpad.saveConfiguration()
         end
-
-        -- scan scratchpad dir for pages
-        for name in lfs.dir(dirPath) do
-            local path = dirPath .. name
-            scratchpad.log(path)
-            if lfs.attributes(path, "mode") == "file" then
-                if name:sub(-4) ~= ".txt" then
-                    scratchpad.log("Ignoring file " .. name .. ", because of it doesn't seem to be a text file (.txt)")
-                elseif lfs.attributes(path, "size") > 1024 * 1024 then
-                    scratchpad.log("Ignoring file " .. name .. ", because of its file size of more than 1MB")
-                else
-                    scratchpad.log("found page " .. path)
-                    table.insert(
-                        pages,
-                        {
-                            name = name:sub(1, -5),
-                            path = path
-                        }
-                    )
-                    pagesCount = pagesCount + 1
-                end
-            end
-        end
     end
 
     function scratchpad.saveConfiguration()
@@ -157,49 +100,21 @@ function scratchpad_load()
         end
     end
 
-    local function unlockKeyboardInput(releaseKeyboardKeys)
-        if keyboardLocked then
-            DCS.unlockKeyboardInput(releaseKeyboardKeys)
-            keyboardLocked = false
-        end
-    end
-
-    local function lockKeyboardInput()
-        if keyboardLocked then
-            return
-        end
-
-        local keyboardEvents = Input.getDeviceKeys(Input.getKeyboardDeviceName())
-        DCS.lockKeyboardInput(keyboardEvents)
-        keyboardLocked = true
-    end
-
     local function updateCoordinates()
         local resp, status, err = http.request("http://127.0.0.1:5000/coords/dms")
-        scratchpad.log(resp)
         if status ~= 200 then
             return "Error updating coordinates!"
         end
-        file_path = lfs.writedir() .. [[Scratchpad\]] .. [[coords.txt]]
-        file, err = io.open(file_path, "r")
-        if err then
-            scratchpad.log("Error reading file: " .. file_path)
-            file:close()
-            return ""
-        else
-            local content = file:read("*all")
-            file:close()
-            scratchpad.log("Data collected")
-            return content
-        end
+        return resp
     end
 
     local function enterCoordinates()
         coord_request = coord_request .. section_val .. "," .. target_val .. "|"
-        file_path = lfs.writedir() .. [[Scratchpad\]] .. [[target.txt]]
-        file, err = io.open(file_path, "a")
-        file:write(section_val .. "," .. target_val .. "\n")
-        file:close()
+        target_data = target_data .. section_val .. "," .. target_val .. "\n"
+        -- targetarea:setText(target_data)
+        if current_page == 'targets' then
+          textarea:setText(target_data)
+        end
     end
 
     local function sendCoordinates()
@@ -231,6 +146,9 @@ function scratchpad_load()
       target_val = nil
       section_val = nil
       coord_request = ""
+      if current_page == "targets" then
+        loadTargets()
+      end
     end
 
     function scratchpad.createWindow()
@@ -243,8 +161,11 @@ function scratchpad_load()
         windowDefaultSkin = window:getSkin()
         panel = window.Box
         textarea = panel.ScratchpadEditBox
-        prevButton = panel.ScratchpadPrevButton
-        nextButton = panel.ScratchpadNextButton
+        -- targetarea = panel.ScratchpadTargetBox
+        coordButton = panel.ScratchpadCoordButton
+        coordButton:setState(true)
+
+        targetButton = panel.ScratchpadTargetButton
         insertCoordsBtn = panel.ScratchpadGetCoordsButton
         enterCoordsBtn = panel.ScratchpadEnterCoordsButton
         sendCoordsBtn = panel.ScratchpadSendCoordsButton
@@ -287,40 +208,27 @@ function scratchpad_load()
         local skin = textarea:getSkin()
         skin.skinData.states.released[1].text.fontSize = scratchpad.config.fontSize
         textarea:setSkin(skin)
+        -- targetarea:setSkin(skin)
 
         scratchpad.log("Configuring callbacks...")
-        textarea:addFocusCallback(
+        coordButton:addMouseDownCallback(
             function(self)
-                if self:getFocused() then
-                    lockKeyboardInput()
-                else
-                    unlockKeyboardInput(true)
-                end
-            end
-        )
-        textarea:addKeyDownCallback(
-            function(self, keyName, unicode)
-                if keyName == "escape" then
-                    self:setFocused(false)
-                    unlockKeyboardInput(true)
-                end
+                loadCoords()
+                targetButton:setState(false)
             end
         )
 
-        -- setup button callbacks
-        prevButton:addMouseDownCallback(
+        targetButton:addMouseDownCallback(
             function(self)
-                prevPage()
+                loadTargets()
+                coordButton:setState(false)
             end
         )
-        nextButton:addMouseDownCallback(
-            function(self)
-                nextPage()
-            end
-        )
+
         insertCoordsBtn:addMouseDownCallback(
             function(self)
                 local result = updateCoordinates()
+                coord_data = result
                 textarea:setText(result)
             end
         )
@@ -407,7 +315,7 @@ function scratchpad_load()
         window:addPositionCallback(scratchpad.handleMove)
 
         window:setVisible(true)
-        nextPage()
+        loadCoords()
 
         scratchpad.hide()
         scratchpad.log("Scratchpad Window created")
@@ -419,16 +327,28 @@ function scratchpad_load()
 
     function scratchpad.handleResize(self)
         local w, h = self:getSize()
-
         panel:setBounds(0, 0, w, h - 20)
+        -- local local_base_offset = 120
+        -- -- local text2 = 100
+        -- local text2 = 0
+        -- textarea:setBounds(0, 0, w, h - base_offset - text2)
+        -- targetarea:setBounds(0, h - base_offset - text2, w, 60)
         textarea:setBounds(0, 0, w, h - 20 - 20 - 20 - 20 - 40)
-        prevButton:setBounds(0, h - 120, 40, 20)
-        nextButton:setBounds(40, h - 120, 40, 20)
-        insertCoordsBtn:setBounds(105, h - 120, 50, 20)
-        enterCoordsBtn:setBounds(160, h - 120, 50, 20)
-        sendCoordsBtn:setBounds(210, h - 120, 50, 20)
-        clearCoordsBtn:setBounds(265, h - 120, 50, 20)
-        stopCoordsBtn:setBounds(265+55, h - 120, 50, 20)
+
+        offset = 0
+        coordButton:setBounds(offset, h - 120, 60, 20)
+        local offset = offset+60+20
+        targetButton:setBounds(offset, h - 120, 60, 20)
+        local offset = offset+50+20
+        insertCoordsBtn:setBounds(offset, h - 120, 50, 20)
+        local offset = offset+50+20
+        enterCoordsBtn:setBounds(offset, h - 120, 50, 20)
+        local offset = offset+50+20
+        sendCoordsBtn:setBounds(offset, h - 120, 50, 20)
+        local offset = offset+50+20
+        clearCoordsBtn:setBounds(offset, h - 120, 50, 20)
+        local offset = offset+50+20
+        stopCoordsBtn:setBounds(offset, h - 120, 50, 20)
 
         local w = -40
         for k, v in pairs(sections) do
@@ -465,10 +385,8 @@ function scratchpad_load()
         panel:setVisible(true)
         window:setHasCursor(true)
         insertCoordsBtn:setVisible(true)
-
-        -- show prev/next buttons only if we have more than one page
-        prevButton:setVisible(true)
-        nextButton:setVisible(true)
+        coordButton:setVisible(true)
+        targetButton:setVisible(true)
 
         isHidden = false
     end
@@ -477,9 +395,10 @@ function scratchpad_load()
         window:setSkin(windowSkinHidden)
         panel:setVisible(false)
         textarea:setFocused(false)
+        -- targetarea:setFocused(false)
         window:setHasCursor(false)
         -- window.setVisible(false) -- if you make the window invisible, its destroyed
-        unlockKeyboardInput(true)
+        -- unlockKeyboardInput(true)
         -- window = nil
         isHidden = true
     end

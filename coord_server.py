@@ -40,9 +40,7 @@ def as_strings_coords(coord_fmt):
     try:
         state = core.read_coord_sink()
         enemies = core.construct_enemy_set(state, coord_fmt=coord_fmt)
-        with open(core.OUT_PATH, 'wb') as fp:
-            fp.write(enemies)
-        return 'ok'
+        return enemies
     except Exception as e:
         app.logger.error(e)
         return abort(500)
