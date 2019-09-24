@@ -51,7 +51,6 @@ function scratchpad_load()
             local content = file:read("*all")
             file:close()
             textarea:setText(content)
-
             -- update title
             window:setText(page.name)
         end
@@ -104,10 +103,8 @@ function scratchpad_load()
                 scratchpad.config.fontSize = 16
                 scratchpad.saveConfiguration()
             end
-
             -- move content into text file
             if scratchpad.config.content ~= nil then
-                -- savePage(dirPath .. [[0000.txt]], scratchpad.config.content, false)
                 scratchpad.config.content = nil
                 scratchpad.saveConfiguration()
             end
@@ -154,7 +151,6 @@ function scratchpad_load()
         if not str then
             return
         end
-
         if scratchpad.logFile then
             scratchpad.logFile:write("[" .. os.date("%H:%M:%S") .. "] " .. str .. "\r\n")
             scratchpad.logFile:flush()
@@ -176,23 +172,6 @@ function scratchpad_load()
         local keyboardEvents = Input.getDeviceKeys(Input.getKeyboardDeviceName())
         DCS.lockKeyboardInput(keyboardEvents)
         keyboardLocked = true
-    end
-
-    local function savePage(path, content, override)
-        scratchpad.log("saving page " .. path)
-        lfs.mkdir(lfs.writedir() .. [[Scratchpad\]])
-        local mode = "a"
-        if override then
-            mode = "w"
-        end
-        file, err = io.open(path, mode)
-        if err then
-            scratchpad.log("Error writing file: " .. path)
-        else
-            file:write(content)
-            file:flush()
-            file:close()
-        end
     end
 
     local function updateCoordinates()
