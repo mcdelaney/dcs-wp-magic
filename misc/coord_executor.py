@@ -13,7 +13,6 @@ PORT = 8888
 HOST = '127.0.0.1'
 
 
-
 def main():
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
