@@ -67,12 +67,14 @@ class HornetDriver(Driver):
     def ufc(self, num):
         key = f"UFC_{num}"
         self.press_with_delay(key)
-        if num == 'ENT':
+        if num in ['ENT', 'OS3', 'OS1', 'OS4']:
             sleep(0.2)
 
     def lmdi(self, pb):
         key = f"LEFT_DDI_PB_{pb.zfill(2)}"
         self.press_with_delay(key)
+        if pb == "14":
+            sleep(0.09)
 
     def ampcd(self, pb):
         key = f"AMPCD_PB_{pb.zfill(2)}"
@@ -83,9 +85,15 @@ class HornetDriver(Driver):
         long = coord[1]
         elev = coord[2]
         self.log.info(f"Entering coords: {'.'.join(lat)}, {'.'.join(long)}")
+        # if n == 1:
+        #     self.lmdi("6") # PP1
 
         if n > 1:
             self.lmdi("13") # STEP
+
+        # if n <= 4:
+        #     self.lmdi("6") # PP1
+
         if n > 4:
             self.lmdi("7") # PP2
 
@@ -99,18 +107,14 @@ class HornetDriver(Driver):
         for char in long:
             self.ufc(char)
 
-        # sleep(0.5)
         self.lmdi("14") # TGT UFT
-        # sleep(0.1)
         self.lmdi("14") # TGT UFT
-        # sleep(0.1)
         self.ufc("OS4") # UFT ELEV
-        # sleep(0.1)
         self.ufc("OS4")  # UFC METERS
-        # sleep(0.1)
+
         for char in str(elev):
             self.ufc(char)
-        # sleep(0.2)
+
         self.ufc('ENT')
         self.ufc('CLR')
         self.ufc('CLR')
@@ -122,11 +126,9 @@ class HornetDriver(Driver):
         return 'ok'
 
 
-def get_cached_coords(section, target):
+def get_cached_coords(section, target, coord_data):
     log.info('Checking for coords')
-    with open(LAST_RUN_CACHE, 'r') as fp_:
-        data = json.load(fp_)
-    for item in data[int(section)-1]:
+    for item in coord_data[int(section)-1]:
         log.debug('Checking item: ', item)
         if item['target_num'] == int(target):
             lat = coord_to_keys(item['lat'])
@@ -138,20 +140,33 @@ def get_cached_coords(section, target):
     log.error(f"Could not find target for {section} - {target}")
 
 
-def update_coord():
-    with open(COORD_PATH, 'r') as fp_:
-        targets = fp_.readlines()
+def update_coord(coords, *args):
+    driver = HornetDriver()
+    driver.enter_pp_coord(coords)
+    return "ok"
+
+
+def lookup_coords(coord_string):
+    log.info('Reading selected coords from file...')
+    targets = list(set(coord_string.strip().split('|')))
+    if targets[-1] == '|':
+        targets.pop(-1)
+    if targets[0] == '':
+        targets.pop(0)
+    if not targets:
+        return 'ok'
+    log.info(targets)
+    with open(LAST_RUN_CACHE, 'r') as fp_:
+        coord_data = json.load(fp_)
+
     coords = []
     for tar in targets:
         log.info('Looking up target %s' % tar)
-        tar = tar.strip().split(',')
-        c = get_cached_coords(tar[0], tar[1])
+        section, target = tar.strip().split(',')
+        c = get_cached_coords(section, target, coord_data)
         if c:
             coords.append(c)
         else:
-            log.error("Could not find coords!")
-            return "ok"
-    driver = HornetDriver()
-    driver.enter_pp_coord(coords)
-    open(COORD_PATH, 'w').close()
-    return "ok"
+            log.error(f"Could not find coord {tar}")
+            raise ValueError("Could not find coord!")
+    return coords

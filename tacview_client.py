@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 import logging
-import json
+import ujson as json
 import os
 from pathlib import Path
 import socket
@@ -9,6 +9,7 @@ import time
 import sys
 
 DEBUG = False
+BULK_MODE = False
 
 if DEBUG:
     logging.basicConfig(level=logging.DEBUG)
@@ -35,15 +36,23 @@ OBJ_SINK_PATH = Path('data/tacview_sink.json')
 OBJ_SINK_PATH_TMP = Path('data/tacview_sink_tmp.json')
 OBJ_SINK_PATH_RAW = Path('data/tacview_sink_raw.txt')
 REF_TIME_FMT = '%Y-%m-%dT%H:%M:%SZ'
-
+EXCLUDED_TYPES = ['Ground+Light+Human+Air+Parachutist', '',
+                  "Air+Rotorcraft", "Ground+Static+Aerodrome",
+                  "Misc+Shrapnel", 'Weapon+Missile', 'Projectile+Shell',
+                  'Misc+Container']
 
 def parse_line(obj, ref, last_seen):
     line = obj.strip()
     split_line = line.split(',')
     try:
         obj_dict = {k:v for k, v in [l.split('=', 1) for l in split_line[1:]]}
+        try:
+            if obj_dict['Type'] in EXCLUDED_TYPES:
+                return
+        except KeyError:
+            pass
         obj_dict['Id'] = split_line[0]
-        obj_dict['LastSeenMinsAgo'] = last_seen
+        obj_dict['LastSeen'] = last_seen
         if 'T' not in obj_dict.keys():
             return
         coord = obj_dict['T'].split('|')[0:3]
@@ -61,10 +70,6 @@ def parse_line(obj, ref, last_seen):
         if 'Group' not in obj_dict.keys():
             if 'Name' in obj_dict.keys():
                 obj_dict['Group'] = obj_dict['Name'] + '-' + obj_dict['Id']
-
-        for k in list(obj_dict.keys()):
-            if k not in KEEP_KEYS:
-                obj_dict.pop(k)
 
         return obj_dict
     except Exception as e:
@@ -94,6 +99,7 @@ def open_connection():
     """Attempt creation of a socket connection + handshake to Tacview."""
     while True:
         try:
+            log.info("Attemping to connect to tacview server...")
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.connect((HOST, PORT))
             log.info('Socket connection opened...sending handshake...')
@@ -119,6 +125,7 @@ class Ref:
 
 def main():
     open(OBJ_SINK_PATH, 'w').close()  # Clear contents of existing file.
+    open(OBJ_SINK_PATH_TMP, 'w').close()  # Clear contents of existing tmp.
     objects = {"last_recv": None}
     ref = Ref()
     msg = ''
@@ -127,7 +134,7 @@ def main():
     sock = open_connection()
     while True:
         try:
-            data = sock.recv(1024).decode()
+            data = sock.recv(4056).decode()
             log.debug('Read new messages...')
             objects['last_recv'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             msg += data
@@ -135,10 +142,12 @@ def main():
                 raw_sink.write(data)
             # If no new line at end of msg, keep reading
             if msg[-1] != '\n':
+                # log.info('Message does not end with newline...continuing...')
                 continue
             # Split on newline to get objects.
             msg_s = msg.split('\n')
             objs = msg_s[:len(msg_s)-1]
+
             msg = msg_s[-1]
             for obj in objs:
                 if obj[-1] == '\\':
@@ -152,7 +161,7 @@ def main():
                         continue
                     except Exception as e:
                         log.debug(f'Could not find object key!')
-                        log.debug(obj)
+                        # log.debug(obj)
                         continue
 
                 if not ref.lat:
@@ -171,15 +180,9 @@ def main():
 
                 if not ref.all_set():
                     log.debug('All ref values not found...continuing...')
-                # if not ref.time or not ref.lon or not ref.time:
                     continue
 
                 if obj[0] == '#':
-                    secs = float(obj.split('#')[-1])
-                    log.debug(f'Found time offset...updating ref by {secs}...')
-                    set_time = ref.time + timedelta(seconds=secs)
-                    last_seen = int((datetime.now() - set_time).total_seconds()//60)
-                    log.debug(f'Last seen minutes updating to {last_seen}')
                     continue
 
                 obj_dict = parse_line(obj, ref, last_seen)
@@ -198,16 +201,29 @@ def main():
                     objects[obj_dict['Id']] = obj_dict
 
                 log.debug("Writing objects to file...")
-                with open(OBJ_SINK_PATH_TMP, 'w') as obj_sink:
-                    obj_sink.write(json.dumps(objects))
-                os.replace(str(OBJ_SINK_PATH_TMP), str(OBJ_SINK_PATH))
+                try:
+                    with open(OBJ_SINK_PATH_TMP, 'w') as obj_sink:
+                        obj_sink.write(json.dumps(objects))
+                    os.replace(str(OBJ_SINK_PATH_TMP), str(OBJ_SINK_PATH))
+                except Exception:
+                    try:
+                        with open(OBJ_SINK_PATH_TMP, 'w') as obj_sink:
+                            obj_sink.write(json.dumps(objects))
+                        os.replace(str(OBJ_SINK_PATH_TMP), str(OBJ_SINK_PATH))
+                    except Exception as e:
+                        raise e
+                if BULK_MODE:
+                    sock.close()
+                    time.sleep(10)
+                    sock = open_connection()
 
         except Exception as e:
+            msg = ''
             log.error('Closing socket due to exception...')
             log.error(e)
             sock.close()
             sock = open_connection()
-            msg = ''
+
 
     if DEBUG:
         raw_sink.close()

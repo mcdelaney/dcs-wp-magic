@@ -1,7 +1,5 @@
-from pprint import pprint
-import json
+import ujson as json
 import datetime as dt
-import keyboard
 from geopy.distance import vincenty
 import logging
 import time
@@ -99,6 +97,10 @@ class Enemy:
         self.dist = 999
         self.target_num = 1
         self.start_coords = start_coords
+        try:
+            self.last_seen = item['LastSeen']
+        except KeyError:
+            pass
 
         self.group_name = item['Group'] if item["Group"] != '' else self.name
         if self.group_name == '':
@@ -107,21 +109,9 @@ class Enemy:
             self.alt = max([1, round((item["LatLongAlt"]["Alt"]))])
         except Exception as e:
             self.alt = 1
+
         self.lat_raw = item["LatLongAlt"]["Lat"]
         self.lon_raw = item["LatLongAlt"]["Long"]
-        self.last_seen = item['LastSeenMinsAgo']
-
-        lat_card = 'S' if self.lat_raw < 0 else 'N'
-        lon_card = 'W' if self.lon_raw < 0 else 'E'
-
-        self.lat_precise = [lat_card] + dd2precise(self.lat_raw)
-        self.lon_precise = [lon_card] + dd2precise(self.lon_raw)
-
-        self.lat_dd = lat_card + '.' + str(abs(round(self.lat_raw, 6)))
-        self.lon_dd = lon_card + '.' + str(abs(round(self.lon_raw, 6)))
-
-        self.lat_dms = [lat_card] + dd2dms(self.lat_raw)
-        self.lon_dms = [lon_card] + dd2dms(self.lon_raw)
 
         try:
             self.cat = CAT_LOOKUP[self.platform]
@@ -132,13 +122,22 @@ class Enemy:
 
         self.order_id = float(f"{self.order_val}.{self.target_num}")
 
+        lat_card = 'S' if self.lat_raw < 0 else 'N'
+        lon_card = 'W' if self.lon_raw < 0 else 'E'
         if coord_fmt == 'dms':
+            self.lat_dms = [lat_card] + dd2dms(self.lat_raw)
+            self.lon_dms = [lon_card] + dd2dms(self.lon_raw)
             self.lat = '.'.join(self.lat_dms)
             self.lon = '.'.join(self.lon_dms)
         elif coord_fmt == 'precise':
+            self.lat_precise = [lat_card] + dd2precise(self.lat_raw)
+            self.lon_precise = [lon_card] + dd2precise(self.lon_raw)
             self.lat = '.'.join(self.lat_precise)
             self.lon = '.'.join(self.lon_precise)
         elif coord_fmt == 'dd':
+            self.lat_dd = lat_card + '.' + str(abs(round(self.lat_raw, 6)))
+            self.lon_dd = lon_card + '.' + str(abs(round(self.lon_raw, 6)))
+
             self.lat = self.lat_dd
             self.lon = self.lon_dd
         else:
@@ -153,15 +152,16 @@ class Enemy:
             except ValueError as e:
                 log.error("Coordinates are incorrect: %f %f",
                           self.lat_raw, self.lon_raw)
+
     def set_target_order(self, target_num):
         self.target_num = target_num
         self.order_id = float(f"{self.order_val}.{self.target_num}")
 
     def str(self):
-        str = f"{self.target_num}) {self.order_id} {self.cat}: {self.platform} {self.lat}, "\
+        str = f"{self.target_num}) {self.cat}: {self.platform} {self.lat}, "\
               f"{self.lon}, {self.alt}m, {self.dist}nm"
         log.debug(str)
-        log.debug('Created enemy %s %d from Stennis in group %s...',
+        log.debug('Created enemy %s %d from start point in group %s...',
                  self.platform, self.dist, self.group_name)
         return str
 
@@ -170,7 +170,6 @@ class EnemyGroups:
     """Dataset of named enemy groups."""
     def __init__(self):
         self.groups = {}
-        self.total = 0
 
     def add(self, enemy):
         try:
@@ -182,8 +181,6 @@ class EnemyGroups:
             self.groups[enemy.group_name] = [enemy]
         total = len(self.groups[enemy.group_name])
         self.groups[enemy.group_name][total-1].target_num = total
-        self.total += 1
-        # self.sort()
 
     def names(self):
         return list(self.groups.keys())
@@ -222,8 +219,28 @@ class EnemyGroups:
         return json.dumps(output)
 
 
-def construct_enemy_set(enemy_state, result_as_string=True, coord_fmt='dms'):
+def create_enemy_groups(enemy_state, start_coord, coord_fmt='dms'):
     """Parse json response from gaw state endpoint into an enemy list"""
+    enemy_groups = EnemyGroups()
+    for id, item in enemy_state.items():
+        try:
+            if (item['Type'] in EXCLUDED_TYPES or
+                item['Coalition'] == COALITION or
+                item["Pilot"] in EXCLUDED_PILOTS):
+                continue
+        except KeyError:
+            log.error(item)
+
+        try:
+            enemy = Enemy(item, start_coord, coord_fmt)
+            enemy_groups.add(enemy)
+        except Exception as e:
+            log.error(item)
+            raise e
+    return enemy_groups
+
+
+def construct_enemy_set(enemy_state, result_as_string=True, coord_fmt='dms'):
     last_recv = enemy_state.pop('last_recv')
     start_coord = None
     start_pilot = 'None'
@@ -237,39 +254,16 @@ def construct_enemy_set(enemy_state, result_as_string=True, coord_fmt='dms'):
                                ent['LatLongAlt']['Long'])
                 start_pilot = pilot
                 break
-
-    enemy_groups = EnemyGroups()
-    for id, item in enemy_state.items():
-        if item['Type'] in EXCLUDED_TYPES:
-            continue
-
-        if item["Coalition"] == COALITION:
-            continue
-
-        try:
-            if item["Pilot"] in EXCLUDED_PILOTS:
-                continue
-        except KeyError:
-            log.error(item)
-
-        try:
-            enemy = Enemy(item, start_coord, coord_fmt)
-            enemy_groups.add(enemy)
-        except Exception as e:
-            log.error(item)
-            raise e
-
+    enemy_groups = create_enemy_groups(enemy_state, start_coord, coord_fmt=coord_fmt)
     enemy_groups.sort()
     with open(LAST_RUN_CACHE, 'w') as fp_:
         fp_.write(enemy_groups.serialize())
 
     if result_as_string:
         results = {}
-
         for grp_name, enemy_set, grp_dist in enemy_groups:
             if start_coord and (grp_dist > MAX_DIST):
-                log.info("Excluding %s...distance is %d...", grp_name,
-                         grp_dist)
+                log.info(f"Excluding {grp_name}...distance is {grp_dist}...")
                 continue
 
             grp_val = [e.str() for e in enemy_set]
@@ -284,4 +278,16 @@ def construct_enemy_set(enemy_state, result_as_string=True, coord_fmt='dms'):
                   f" {last_recv}\r\n\r\n{results}"
         return results.encode('UTF-8')
 
-    return enemies
+    return enemy_groups
+
+
+def read_coord_sink():
+    tries = 0
+    while tries < 2:
+        try:
+            with open('data/tacview_sink.json', 'r') as fp_:
+                data = json.load(fp_)
+            return data
+        except Exception as e:
+            tries += 1
+    raise ValueError('Could not read tacview_sink.json')

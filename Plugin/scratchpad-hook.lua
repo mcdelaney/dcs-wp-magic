@@ -28,6 +28,7 @@ function scratchpad_load()
     local textarea = nil
     local section_val = nil
     local target_val = nil
+    local coord_request = ""
     local sections = {}
     local targets = {}
 
@@ -86,7 +87,6 @@ function scratchpad_load()
             end
             lastPage = page
         end
-
         -- restart at the end
         loadPage(pages[pagesCount])
         currentPage = pages[pagesCount].path
@@ -98,7 +98,6 @@ function scratchpad_load()
         if (tbl and tbl.config) then
             scratchpad.log("Configuration exists...")
             scratchpad.config = tbl.config
-
             -- config migration
             -- add default fontSize config
             if scratchpad.config.fontSize == nil then
@@ -197,8 +196,11 @@ function scratchpad_load()
     end
 
     local function updateCoordinates()
-        local resp = http.request("http://127.0.0.1:5000/coords/dms")
+        local resp, status, err = http.request("http://127.0.0.1:5000/coords/dms")
         scratchpad.log(resp)
+        if status ~= 200 then
+            return "Error updating coordinates!"
+        end
         file_path = lfs.writedir() .. [[Scratchpad\]] .. [[coords.txt]]
         file, err = io.open(file_path, "r")
         if err then
@@ -214,6 +216,7 @@ function scratchpad_load()
     end
 
     local function enterCoordinates()
+        coord_request = coord_request .. section_val .. "," .. target_val .. "|"
         file_path = lfs.writedir() .. [[Scratchpad\]] .. [[target.txt]]
         file, err = io.open(file_path, "a")
         file:write(section_val .. "," .. target_val .. "\n")
@@ -221,8 +224,13 @@ function scratchpad_load()
     end
 
     local function sendCoordinates()
-        local resp = http.request("http://127.0.0.1:5000/start")
+        local resp, status, err = http.request("http://127.0.0.1:5000/enter_coords/" .. coord_request)
+        scratchpad.log(status)
         scratchpad.log("Requesting coordinate entry...")
+        if status == 200 then
+        else
+          textarea:setText("Error entering coordinates!")
+        end
     end
 
     local function stopCoordinates()
@@ -232,7 +240,18 @@ function scratchpad_load()
     local function clearCoordinates()
       local file_path = lfs.writedir() .. [[Scratchpad\]] .. [[target.txt]]
       local file, err = io.open(file_path, "w")
+      file:write("")
       file:close()
+      -- Unselect any section or target boxes that are pressed
+      for key, val in pairs(sections) do
+          sections[key]:setState(false)
+      end
+      for key, val in pairs(targets) do
+          targets[key]:setState(false)
+      end
+      target_val = nil
+      section_val = nil
+      coord_request = ""
     end
 
     function scratchpad.createWindow()
@@ -366,6 +385,7 @@ function scratchpad_load()
         sendCoordsBtn:addMouseDownCallback(
             function(self)
                 local result = sendCoordinates()
+                clearCoordinates()
             end
         )
 

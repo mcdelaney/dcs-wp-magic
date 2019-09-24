@@ -1,90 +1,51 @@
 #!/bin/python3
-import datetime as dt
-import logging
-import json
-import subprocess
-from flask import Flask
-import socket
-import requests as r
-import threading
+import ujson as json
+from flask import Flask, abort
 from multiprocessing import Process
-import os
 
 from dcs import core, wp_ctrl
 
-
-app = Flask(__name__)
-
-logging.basicConfig(level=logging.INFO)
-log = logging.getLogger(__name__)
-JOBS = []
-
-
-def send_socket_request():
-    HOST = '127.0.0.1'
-    PORT = 8888
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.connect((HOST, PORT))
-    val = "hello".encode('UTF-8')
-    sock.sendall(val)
-    return
-
-
-def get_coord_data():
-    with open('data/tacview_sink.json', 'r') as fp_:
-        data = json.load(fp_)
-    return data
+app = Flask('coord_server')
+JOB = None
 
 
 @app.route("/stop")
-def stop_entry():
-    log.info('Attempting to kill thread...')
+def stop_job():
+    global JOB
     try:
-        log.info("Terminating thread...")
-        j = JOBS.pop(0)
-        j.terminate()
+        if JOB:
+            app.logger.info("Terminating thread...")
+            JOB.terminate()
+            JOB = None
     except Exception as e:
-        log.error(e)
+        app.logger.error(e)
     return 'ok'
 
-@app.route('/start')
-def start_entry():
-    if JOBS:
-        try:
-            log.info("Removing job from list...")
-            j = JOBS.pop(0)
-            j.terminate()
-        except Exception as e:
-            log.error(e)
 
-    log.info("Starting process and appending to global...")
-    t = Process(target=wp_ctrl.update_coord)
-    t.start()
-    JOBS.append(t)
-    return "ok"
+@app.route('/enter_coords/<coord_string>')
+def start_entry(coord_string):
+    global JOB
+    try:
+        stop_job()
+        coords = wp_ctrl.lookup_coords(coord_string)
+        JOB = Process(target=wp_ctrl.update_coord, args=(coords,))
+        JOB.start()
+        return "ok"
+    except Exception:
+        return abort(500)
 
 
 @app.route("/coords/<coord_fmt>")
 def as_strings_coords(coord_fmt):
     try:
-        state = get_coord_data()
+        state = core.read_coord_sink()
         enemies = core.construct_enemy_set(state, coord_fmt=coord_fmt)
+        with open(core.OUT_PATH, 'wb') as fp:
+            fp.write(enemies)
+        return 'ok'
     except Exception as e:
-        log.error(e)
-        raise e
-    with open(core.OUT_PATH, 'wb') as fp:
-        fp.write(enemies)
-    return 'ok'
-
-
-@app.route("/enter")
-def enter_coords():
-    try:
-        send_socket_request()
-    except Exception as e:
-        log.error(e)
-        return 'error'
-    return 'ok'
+        app.logger.error(e)
+        return abort(500)
 
 
 def main():
