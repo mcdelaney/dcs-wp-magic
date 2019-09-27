@@ -1,12 +1,9 @@
 import dcs.core as core
 import datetime as dt
 
-data = core.read_coord_sink()
+data = core.read_coord_sink("tests/tacview_sink.json")
 t1 = dt.datetime.now()
-results = core.construct_enemy_set(data, result_as_string=True)
-t2 = dt.datetime.now()
-print((t2-t1).total_seconds())
-results
+results = core.construct_enemy_set(data, result_as_string=False)
 
 
 
@@ -25,7 +22,8 @@ for pilot in ["someone_somewhere", "CVN-74", "Stennis"]:
                            ent['LatLongAlt']['Long'])
             start_pilot = pilot
             break
-enemy_groups = core.create_enemy_groups(enemy_state, start_coord, coord_fmt=coord_fmt)
+enemy_groups = core.create_enemy_groups(enemy_state, start_coord,
+                                        coord_fmt=coord_fmt)
 t2 = dt.datetime.now()
 print((t2-t1).total_seconds())
 

@@ -22,13 +22,13 @@ def stop_job():
     return 'ok'
 
 
-@app.route('/enter_coords/<coord_string>')
-def start_entry(coord_string):
+@app.route('/enter_coords/<rack>/<coord_string>')
+def start_entry(rack, coord_string):
     global JOB
     try:
         stop_job()
         coords = wp_ctrl.lookup_coords(coord_string)
-        JOB = Process(target=wp_ctrl.update_coord, args=(coords,))
+        JOB = Process(target=wp_ctrl.update_coord, args=(rack, coords,))
         JOB.start()
         return "ok"
     except Exception:

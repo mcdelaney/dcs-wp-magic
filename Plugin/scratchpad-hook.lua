@@ -34,6 +34,7 @@ function scratchpad_load()
     local sections = {}
     local targets = {}
     local current_page = 'coords'
+    local fmt = "dms"
 
     local scratchpad = {
         logFile = io.open(lfs.writedir() .. [[Logs\Scratchpad.log]], "w")
@@ -101,27 +102,34 @@ function scratchpad_load()
     end
 
     local function updateCoordinates()
-        local resp, status, err = http.request("http://127.0.0.1:5000/coords/dms")
+        local resp, status, err = http.request("http://127.0.0.1:5000/coords/" .. fmt)
         if status ~= 200 then
             return "Error updating coordinates!"
         end
-        return resp
+        coord_data = resp
     end
 
     local function enterCoordinates()
         coord_request = coord_request .. section_val .. "," .. target_val .. "|"
         target_data = target_data .. section_val .. "," .. target_val .. "\n"
-        -- targetarea:setText(target_data)
         if current_page == 'targets' then
           textarea:setText(target_data)
         end
     end
 
     local function sendCoordinates()
-        local resp, status, err = http.request("http://127.0.0.1:5000/enter_coords/" .. coord_request)
+        -- if singleRackBtn:getState() == true then
+        --     local rack = "1"
+        -- else
+        --     local rack = "2"
+        -- end
+        local rack = "2"
+        local resp, status, err = http.request("http://127.0.0.1:5000/enter_coords/" .. rack .. "/" .. coord_request)
         scratchpad.log(status)
         scratchpad.log("Requesting coordinate entry...")
         if status == 200 then
+          target_data = ""
+          coord_data = ""
         else
           textarea:setText("Error entering coordinates!")
         end
@@ -132,10 +140,6 @@ function scratchpad_load()
     end
 
     local function clearCoordinates()
-      local file_path = lfs.writedir() .. [[Scratchpad\]] .. [[target.txt]]
-      local file, err = io.open(file_path, "w")
-      file:write("")
-      file:close()
       -- Unselect any section or target boxes that are pressed
       for key, val in pairs(sections) do
           sections[key]:setState(false)
@@ -145,6 +149,7 @@ function scratchpad_load()
       end
       target_val = nil
       section_val = nil
+      target_data = ""
       coord_request = ""
       if current_page == "targets" then
         loadTargets()
@@ -166,11 +171,14 @@ function scratchpad_load()
         coordButton:setState(true)
 
         targetButton = panel.ScratchpadTargetButton
-        insertCoordsBtn = panel.ScratchpadGetCoordsButton
         enterCoordsBtn = panel.ScratchpadEnterCoordsButton
         sendCoordsBtn = panel.ScratchpadSendCoordsButton
         clearCoordsBtn = panel.ScratchpadClearCoordsButton
         stopCoordsBtn = panel.ScratchpadStopCoordsButton
+        preciseCoordsBtn = panel.ScratchpadPreciseCoordsButton
+        -- singleRackBtn = panel.ScratchpadSingleRackButton
+        -- doubleRackBtn = panel.ScratchpadDoubleRackButton
+        -- doubleRackBtn:setState(true)
 
         table.insert(sections, panel.CoordSection1)
         table.insert(sections, panel.CoordSection2)
@@ -213,6 +221,7 @@ function scratchpad_load()
         scratchpad.log("Configuring callbacks...")
         coordButton:addMouseDownCallback(
             function(self)
+                updateCoordinates()
                 loadCoords()
                 targetButton:setState(false)
             end
@@ -225,14 +234,6 @@ function scratchpad_load()
             end
         )
 
-        insertCoordsBtn:addMouseDownCallback(
-            function(self)
-                local result = updateCoordinates()
-                coord_data = result
-                textarea:setText(result)
-            end
-        )
-
         enterCoordsBtn:addMouseDownCallback(
             function(self)
                 local result = enterCoordinates()
@@ -241,20 +242,30 @@ function scratchpad_load()
 
         sendCoordsBtn:addMouseDownCallback(
             function(self)
-                local result = sendCoordinates()
+                sendCoordinates()
                 clearCoordinates()
             end
         )
 
         clearCoordsBtn:addMouseDownCallback(
             function(self)
-                local result = clearCoordinates()
+                clearCoordinates()
             end
         )
 
         stopCoordsBtn:addMouseDownCallback(
             function(self)
-                local result = stopCoordinates()
+                stopCoordinates()
+                clearCoordinates()
+            end
+        )
+        preciseCoordsBtn:addMouseDownCallback(
+            function(self)
+                if fmt == "dms" then
+                    fmt = "precise"
+                else
+                    fmt = "dms"
+                end
             end
         )
 
@@ -340,8 +351,6 @@ function scratchpad_load()
         local offset = offset+60+20
         targetButton:setBounds(offset, h - 120, 60, 20)
         local offset = offset+50+20
-        insertCoordsBtn:setBounds(offset, h - 120, 50, 20)
-        local offset = offset+50+20
         enterCoordsBtn:setBounds(offset, h - 120, 50, 20)
         local offset = offset+50+20
         sendCoordsBtn:setBounds(offset, h - 120, 50, 20)
@@ -349,6 +358,8 @@ function scratchpad_load()
         clearCoordsBtn:setBounds(offset, h - 120, 50, 20)
         local offset = offset+50+20
         stopCoordsBtn:setBounds(offset, h - 120, 50, 20)
+        local offset = offset+50+20
+        preciseCoordsBtn:setBounds(offset, h - 120, 50, 20)
 
         local w = -40
         for k, v in pairs(sections) do
@@ -384,7 +395,7 @@ function scratchpad_load()
         window:setSkin(windowDefaultSkin)
         panel:setVisible(true)
         window:setHasCursor(true)
-        insertCoordsBtn:setVisible(true)
+        enterCoordsBtn:setVisible(true)
         coordButton:setVisible(true)
         targetButton:setVisible(true)
 

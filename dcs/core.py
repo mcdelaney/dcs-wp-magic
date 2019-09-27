@@ -74,8 +74,8 @@ def dd2precise(deg):
     d = int(deg)
     md = abs(deg - d) * 60
     m = int(md)
-    dec = str(round((((md - m) * 60)/60)*100, 3))
-    return [f'{d:02}', f'{m:02}', dec]
+    dec = '%0.4f' % (md - m)
+    return [f'{d:02}', f'{m:02}', dec[2:]]
 
 
 def dd2dms(deg):
@@ -281,11 +281,11 @@ def construct_enemy_set(enemy_state, result_as_string=True, coord_fmt='dms'):
     return enemy_groups
 
 
-def read_coord_sink():
+def read_coord_sink(sink_path='data/tacview_sink.json'):
     tries = 0
     while tries < 2:
         try:
-            with open('data/tacview_sink.json', 'r') as fp_:
+            with open(sink_path, 'r') as fp_:
                 data = json.load(fp_)
             return data
         except Exception as e:

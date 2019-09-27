@@ -105,12 +105,12 @@ def open_connection():
             log.info('Socket connection opened...sending handshake...')
             sock.sendall(HANDSHAKE)
             log.info("Socket connection opened...")
-            return sock
+            ref = Ref()
+            return sock, ref
         except Exception as e:
             log.error(e)
             log.error('Socket connection failed....will retry in 5 seconds...')
             time.sleep(5)
-    return sock
 
 
 @dataclass
@@ -127,11 +127,10 @@ def main():
     open(OBJ_SINK_PATH, 'w').close()  # Clear contents of existing file.
     open(OBJ_SINK_PATH_TMP, 'w').close()  # Clear contents of existing tmp.
     objects = {"last_recv": None}
-    ref = Ref()
     msg = ''
     if DEBUG:
         raw_sink = open(OBJ_SINK_PATH_RAW, 'w')
-    sock = open_connection()
+    sock, ref = open_connection()
     while True:
         try:
             data = sock.recv(4056).decode()
@@ -161,7 +160,6 @@ def main():
                         continue
                     except Exception as e:
                         log.debug(f'Could not find object key!')
-                        # log.debug(obj)
                         continue
 
                 if not ref.lat:
@@ -215,14 +213,14 @@ def main():
                 if BULK_MODE:
                     sock.close()
                     time.sleep(10)
-                    sock = open_connection()
+                    sock, ref = open_connection()
 
         except Exception as e:
             msg = ''
             log.error('Closing socket due to exception...')
             log.error(e)
             sock.close()
-            sock = open_connection()
+            sock, ref = open_connection()
 
 
     if DEBUG:

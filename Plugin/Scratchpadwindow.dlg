@@ -103,7 +103,7 @@ dialog = {
                         },
                         ["enabled"] = true,
                         ["tabOrder"] = 0,
-                        ["text"] = "Tar",
+                        ["text"] = "Tgt",
                         ["tooltip"] = "Targets",
                         ["visible"] = true,
                         ["zindex"] = 1
@@ -116,28 +116,6 @@ dialog = {
                     ["type"] = "ToggleButton"
                 },
 
-                ["ScratchpadGetCoordsButton"] = {
-                    ["params"] = {
-                        ["bounds"] = {
-                            ["h"] = 20,
-                            ["w"] = 120,
-                            ["x"] = 80,
-                            ["y"] = 180
-                        },
-                        ["enabled"] = true,
-                        ["tabOrder"] = 0,
-                        ["text"] = "Get",
-                        ["tooltip"] = "Get Coords",
-                        ["visible"] = true,
-                        ["zindex"] = 1
-                    },
-                    ["skin"] = {
-                        ["params"] = {
-                            ["name"] = "buttonSkinAwacs"
-                        }
-                    },
-                    ["type"] = "Button"
-                },
                 ["ScratchpadEnterCoordsButton"] = {
                     ["params"] = {
                         ["bounds"] = {
@@ -225,6 +203,28 @@ dialog = {
                         }
                     },
                     ["type"] = "Button"
+                },
+                ["ScratchpadPreciseCoordsButton"] = {
+                    ["params"] = {
+                        ["bounds"] = {
+                            ["h"] = 20,
+                            ["w"] = 120,
+                            ["x"] = 80,
+                            ["y"] = 180
+                        },
+                        ["enabled"] = true,
+                        ["tabOrder"] = 0,
+                        ["text"] = "Precise",
+                        ["tooltip"] = "Use Precise Coords",
+                        ["visible"] = true,
+                        ["zindex"] = 1
+                    },
+                    ["skin"] = {
+                        ["params"] = {
+                            ["name"] = "toggleButtonSkinAwacs"
+                        }
+                    },
+                    ["type"] = "ToggleButton"
                 },
                 ["CoordSection1"] = {
                     ["params"] = {

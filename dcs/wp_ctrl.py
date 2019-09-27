@@ -120,7 +120,7 @@ class HornetDriver(Driver):
         self.ufc('CLR')
         return
 
-    def enter_pp_coord(self, coords):
+    def enter_pp_coord(self, coords, rack):
         for i, coord in enumerate(coords):
             self.enter_pp_msn(coord, n=i+1)
         return 'ok'
@@ -140,9 +140,9 @@ def get_cached_coords(section, target, coord_data):
     log.error(f"Could not find target for {section} - {target}")
 
 
-def update_coord(coords, *args):
+def update_coord(rack, coords, *args):
     driver = HornetDriver()
-    driver.enter_pp_coord(coords)
+    driver.enter_pp_coord(coords, rack)
     return "ok"
 
 
@@ -161,6 +161,11 @@ def lookup_coords(coord_string):
 
     coords = []
     for tar in targets:
+        if len(coords) == 8:
+            return coords
+
+        if tar == '':
+            continue
         log.info('Looking up target %s' % tar)
         section, target = tar.strip().split(',')
         c = get_cached_coords(section, target, coord_data)
