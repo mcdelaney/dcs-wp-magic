@@ -1,66 +1,23 @@
-import ujson as json
+import sqlite3
 import datetime as dt
-from geopy.distance import vincenty
 import logging
+import os
+import sys
 import time
 
-logging.basicConfig(level=logging.INFO)
-log = logging.getLogger(__name__)
+import ujson as json
+from geopy.distance import vincenty
+
+from . import get_logger
+from .config import *
+from . import db
+
+DEBUG = False
+
+log = get_logger(logging.getLogger(__name__))
+log.setLevel(logging.DEBUG if DEBUG else logging.INFO)
 
 LAST_RUN_CACHE = 'data/last_extract.json'
-OUT_PATH = "C:/Users/mcdel/Saved Games/DCS/Scratchpad/coords.txt"
-
-START_UNIT = ["CVN-74", "Stennis"]
-
-PGAW_STATE_URL = "https://pgaw.hoggitworld.com/"
-GAW_STATE_URL = "https://dcs.hoggitworld.com/"
-
-EXCLUDED_TYPES = ['Air+FixedWing', 'Ground+Light+Human+Air+Parachutist', '',
-                  "Air+Rotorcraft", "Ground+Static+Aerodrome",
-                  "Misc+Shrapnel", 'Weapon+Missile', 'Projectile+Shell',
-                  'Misc+Container']
-
-EXCLUDED_PILOTS = ["FARP"]
-
-FRIENDLY_COUNTRIES = ['us', 'fr']
-COALITION = "Enemies"
-
-MAX_DIST = 650
-
-CATS = {
-    'MOBILE_CP': ["S-300PS 54K6 cp", "SKP-11"],
-    'RADAR': [
-        "S-300PS 40B6M tr", "S-300PS 40B6MD sr", "S-300PS 64H6E sr",
-        "Kub 1S91 str", "snr s-125 tr", "1L13 EWR", "Dog Ear radar",
-        "SA-11 Buk SR 9S18M1", "SA-18 Igla-S comm", "SNR_75V"
-    ],
-    'SAM': [
-        "S-300PS 5P85C ln", "S-300PS 5P85D ln", "Kub 2P25 ln",
-        "SA-11 Buk LN 9A310M1", 'Tor 9A331',
-        "5p73 s-125 ln", "Osa 9A33 ln", "Strela-10M3", "Strela-1 9P31",
-        'S_75M_Volhov'
-    ],
-    "AAA": [
-        "ZSU-23-4 Shilka", "2S6 Tunguska", "Ural-375 ZU-23",
-        "ZU-23 Emplacement Closed", "SA-18 Igla-S manpad",
-        "ZU-23 Closed Insurgent"],
-    'ARMOR': ["Ural-375 PBU", "BMP-2", "T-72B", "SAU Msta", "BMP-1", "BMD-1",
-              "BTR-80"],
-    "INFANTRY": ["Infantry AK", "Land Rover", "Zil-4331"],
-}
-
-CAT_ORDER = {'MOBILE_CP': 1,
-             'RADAR': 2,
-             "SAM": 3,
-             'Unknown': 4,
-             'AAA': 5,
-             'ARMOR': 6,
-             'INFANTRY': 7}
-
-CAT_LOOKUP = {}
-for k, v in CATS.items():
-    for i in v:
-        CAT_LOOKUP[i] = k
 
 
 def dms2dd(degrees, minutes, seconds, direction):
@@ -90,28 +47,32 @@ class Enemy:
     """A single enemy unit with specific attributes."""
 
     def __init__(self, item, start_coords=None, coord_fmt='dms'):
-        self.id = item["Id"]
-        self.name = item["Pilot"]
-        self.platform = item["Platform"]
-        self.type = item["Type"]
+        self.id = item["id"]
+        self.name = item["pilot"]
+        self.platform = item["platform"]
+        self.type = item["type"]
         self.dist = 999
+        # self.alive = True if item['alive'] == "True" else False
+        self.alive = item["alive"]
         self.target_num = 1
         self.start_coords = start_coords
         try:
-            self.last_seen = item['LastSeen']
+            self.last_seen = int(item['lastseen'])
         except KeyError:
             pass
 
-        self.group_name = item['Group'] if item["Group"] != '' else self.name
-        if self.group_name == '':
-            self.group_name = f"{self.platform}-{self.id}"
+        if 'grp' in item.keys() and item['grp'] != '':
+            self.grp_name = item['grp']
+        else:
+            self.grp_name = f"{self.platform}-{self.id}"
+            log.debug(f"grp key not found for obj {self.id}...setting grp as {self.grp_name}")
         try:
-            self.alt = max([1, round((item["LatLongAlt"]["Alt"]))])
+            self.alt = max([1, round((float(item["alt"])))])
         except Exception as e:
             self.alt = 1
 
-        self.lat_raw = item["LatLongAlt"]["Lat"]
-        self.lon_raw = item["LatLongAlt"]["Long"]
+        self.lat_raw = item["lat"]
+        self.lon_raw = item["long"]
 
         try:
             self.cat = CAT_LOOKUP[self.platform]
@@ -152,6 +113,7 @@ class Enemy:
             except ValueError as e:
                 log.error("Coordinates are incorrect: %f %f",
                           self.lat_raw, self.lon_raw)
+        log.debug(f"Created Enemy: {self.name} {self.id}...")
 
     def set_target_order(self, target_num):
         self.target_num = target_num
@@ -161,34 +123,35 @@ class Enemy:
         str = f"{self.target_num}) {self.cat}: {self.platform} {self.lat}, "\
               f"{self.lon}, {self.alt}m, {self.dist}nm"
         log.debug(str)
-        log.debug('Created enemy %s %d from start point in group %s...',
-                 self.platform, self.dist, self.group_name)
+        log.debug('Created enemy %s %d from start point in grp %s...',
+                 self.platform, self.dist, self.grp_name)
         return str
 
 
 class EnemyGroups:
     """Dataset of named enemy groups."""
     def __init__(self):
-        self.groups = {}
+        self.grps = {}
 
     def add(self, enemy):
         try:
-            targets = len(self.groups[enemy.group_name])
+            targets = len(self.grps[enemy.grp_name])
             enemy.set_target_order(targets + 1)
-            self.groups[enemy.group_name].append(enemy)
+            self.grps[enemy.grp_name].append(enemy)
 
         except (KeyError, NameError, TypeError):
-            self.groups[enemy.group_name] = [enemy]
-        total = len(self.groups[enemy.group_name])
-        self.groups[enemy.group_name][total-1].target_num = total
+            self.grps[enemy.grp_name] = [enemy]
+        total = len(self.grps[enemy.grp_name])
+        log.debug(f"Added enemy to grp {enemy.grp_name}...")
+        self.grps[enemy.grp_name][total-1].target_num = total
 
     def names(self):
-        return list(self.groups.keys())
+        return list(self.grps.keys())
 
     def sort(self):
         result = {}
-        for group_key in list(self.groups.keys()):
-            ents = {e.order_id: e for e in self.groups[group_key]}
+        for grp_key in list(self.grps.keys()):
+            ents = {e.order_id: e for e in self.grps[grp_key]}
             tmp = {}
             for i, k in enumerate(sorted(ents.keys())):
                 ents[k].set_target_order(i+1)
@@ -197,97 +160,123 @@ class EnemyGroups:
             out_lst = [None] * len(list(tmp.keys()))
             for i, k in enumerate(sorted(tmp.keys())):
                 out_lst[i]  = tmp[k]
-            result[group_key] = out_lst
-        self.groups = result
+            result[grp_key] = out_lst
+        self.grps = result
 
     def __len__(self):
         return self.total
 
     def __iter__(self):
-        """Yields tuples of (group_name, enemy_list, min_distance)"""
-        for group_name, group in self.groups.items():
-            min_dist = min([enemy.dist for enemy in group])
-            yield group_name, group, min_dist
+        """Yields tuples of (grp_name, enemy_list, min_distance)"""
+        for grp_name, grp in self.grps.items():
+            min_dist = min([enemy.dist for enemy in grp])
+            yield grp_name, grp, min_dist
 
     def serialize(self):
-        log.debug("Serializing enemy groups...")
+        log.debug("Serializing enemy grps...")
         output = {}
-        for k, v in self.groups.items():
+        for k, v in self.grps.items():
             min_dist = min([enemy.dist for enemy in v])
             output[min_dist] = [i.__dict__ for i in v]
         output = [output[k] for k in sorted(output.keys())]
         return json.dumps(output)
 
 
-def create_enemy_groups(enemy_state, start_coord, coord_fmt='dms'):
-    """Parse json response from gaw state endpoint into an enemy list"""
+def create_enemy_groups(enemy_state, start_coord, coord_fmt='dms', only_alive=True):
     enemy_groups = EnemyGroups()
-    for id, item in enemy_state.items():
+    for item in enemy_state:
         try:
-            if (item['Type'] in EXCLUDED_TYPES or
-                item['Coalition'] == COALITION or
-                item["Pilot"] in EXCLUDED_PILOTS):
+            if (item['type'] in EXCLUDED_TYPES or
+                item['coalition'] == COALITION or
+                item["pilot"] in EXCLUDED_PILOTS):
+                log.debug(f"Skipping enemy item {item['type']} {item['pilot']} {item['coalition']} as is in excluded types...")
                 continue
         except KeyError:
             log.error(item)
 
         try:
             enemy = Enemy(item, start_coord, coord_fmt)
-            enemy_groups.add(enemy)
+            if only_alive and not enemy.alive:
+                log.debug(f'Enemy {enemy.name} is not alive...skipping...')
+                pass
+            else:
+                enemy_groups.add(enemy)
         except Exception as e:
             log.error(item)
             raise e
     return enemy_groups
 
 
-def construct_enemy_set(enemy_state, result_as_string=True, coord_fmt='dms'):
-    last_recv = enemy_state.pop('last_recv')
-    start_coord = None
-    start_pilot = 'None'
-    for pilot in ["someone_somewhere", "CVN-74", "Stennis"]:
-        if start_coord:
-            break
-        for id, ent in enemy_state.items():
-            if ent["Pilot"] == pilot or ent['Group'] == pilot:
-                log.info(f"Using {pilot} for start coords...")
-                start_coord = (ent['LatLongAlt']['Lat'],
-                               ent['LatLongAlt']['Long'])
-                start_pilot = pilot
+def construct_enemy_set(enemy_state, result_as_string=True, coord_fmt='dms',
+                        only_alive=True):
+    try:
+        last_recv = "2019-09-01"
+        start_coord = None
+        start_pilot = 'None'
+        for pilot in ['someone_somewhere']:
+            log.debug(f"Checking for start unit: {pilot}")
+            if start_coord:
+                log.debug('Start coord is not none...breaking...')
                 break
-    enemy_groups = create_enemy_groups(enemy_state, start_coord, coord_fmt=coord_fmt)
-    enemy_groups.sort()
-    with open(LAST_RUN_CACHE, 'w') as fp_:
-        fp_.write(enemy_groups.serialize())
+            for ent in enemy_state:
+                log.debug(f"Checking enemy name {ent['name']}")
+                if ent["pilot"] == pilot or ent['grp'] == pilot:
+                    start_coord = (ent['lat'], ent['long'])
+                    start_pilot = pilot
+                    log.info(f"Using {pilot} for start at {start_coord}...")
+                    break
 
-    if result_as_string:
-        results = {}
-        for grp_name, enemy_set, grp_dist in enemy_groups:
-            if start_coord and (grp_dist > MAX_DIST):
-                log.info(f"Excluding {grp_name}...distance is {grp_dist}...")
-                continue
+        enemy_groups = create_enemy_groups(enemy_state, start_coord,
+                                           coord_fmt=coord_fmt,
+                                           only_alive=only_alive)
 
-            grp_val = [e.str() for e in enemy_set]
-            grp_val.insert(0, f"{grp_name}")
-            results[grp_dist] = '\r\n\t'.join(grp_val)
+        enemy_groups.sort()
+        with open(LAST_RUN_CACHE, 'w') as fp_:
+            fp_.write(enemy_groups.serialize())
 
-        results = [results[k] for k in sorted(results.keys())]
-        results = [f"{i+1}) {r}" for i, r in enumerate(results)]
-        results = '\r\n\r\n'.join(results)
-        results = f"Start Ref: {start_pilot} "\
-                  f"{(round(start_coord[0], 3), round(start_coord[1], 3))}"\
-                  f" {last_recv}\r\n\r\n{results}"
-        return results.encode('UTF-8')
+        if result_as_string:
+            results = {}
+            for grp_name, enemy_set, grp_dist in enemy_groups:
+                if start_coord and (grp_dist > MAX_DIST):
+                    log.info(f"Excluding {grp_name}...distance is {grp_dist}...")
+                    if DEBUG:
+                        log.debug("Enemies in excluded grp: ")
+                        for en in enemy_set:
+                            log.debug(f"{en.id} {en.name}")
+                    continue
 
+                grp_val = [e.str() for e in enemy_set]
+                if len(grp_val) == 0:
+                    continue
+                grp_val.insert(0, f"{grp_name}")
+                results[grp_dist] = '\r\n\t'.join(grp_val)
+
+            results = [results[k] for k in sorted(results.keys())]
+            results = [f"{i+1}) {r}" for i, r in enumerate(results)]
+            results = '\r\n\r\n'.join(results)
+            results = f"Start Ref: {start_pilot} "\
+                      f"{(round(start_coord[0], 3), round(start_coord[1], 3))}"\
+                      f" {last_recv}\r\n\r\n{results}"
+            return results.encode('UTF-8')
+    except Exception as e:
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        log.error("Error on line %s" % (str(exc_tb.tb_lineno)))
     return enemy_groups
 
 
 def read_coord_sink(sink_path='data/tacview_sink.json'):
-    tries = 0
-    while tries < 2:
-        try:
-            with open(sink_path, 'r') as fp_:
-                data = json.load(fp_)
-            return data
-        except Exception as e:
-            tries += 1
-    raise ValueError('Could not read tacview_sink.json')
+    conn = db.create_connection()
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM enemies")
+    results = cur.fetchall()
+    results = [dict(e) for e in results]
+    return results
+
+
+# conn.close()
+# cur.execute("SELECT * FROM enemies limit 10")
+# results = cur.fetchall()
+# [print(dict(r)) for r in results]
+# results[0]['alive']

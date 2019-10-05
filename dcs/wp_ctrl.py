@@ -4,11 +4,13 @@ import re
 from time import sleep
 import json
 
+from . import get_logger
+
 COORD_PATH = 'C:/Users/mcdel/Saved Games/DCS/ScratchPad/target.txt'
 LAST_RUN_CACHE = 'data/last_extract.json'
 
-logging.basicConfig(level=logging.INFO)
-log = logging.getLogger(__name__)
+log = get_logger(logging.getLogger(__name__))
+log.setLevel(level=logging.DEBUG)
 
 
 def coord_to_keys(coord):
@@ -64,11 +66,13 @@ class HornetDriver(Driver):
         super().__init__()
         self.limits = dict(WP=None, MSN=6)
 
-    def ufc(self, num):
+    def ufc(self, num, ent_pause=False):
         key = f"UFC_{num}"
         self.press_with_delay(key)
         if num in ['ENT', 'OS3', 'OS1', 'OS4']:
             sleep(0.2)
+            if ent_pause:
+                sleep(0.5)
 
     def lmdi(self, pb):
         key = f"LEFT_DDI_PB_{pb.zfill(2)}"
@@ -101,11 +105,11 @@ class HornetDriver(Driver):
         self.ufc("OS3") # POS
         self.ufc("OS1") # LAT
         for char in lat:
-            self.ufc(char)
+            self.ufc(char, ent_pause=True)
 
         self.ufc("OS3") # LONG
         for char in long:
-            self.ufc(char)
+            self.ufc(char, ent_pause=True)
 
         self.lmdi("14") # TGT UFT
         self.lmdi("14") # TGT UFT

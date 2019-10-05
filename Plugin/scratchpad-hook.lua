@@ -34,6 +34,7 @@ function scratchpad_load()
     local sections = {}
     local targets = {}
     local current_page = 'coords'
+    local status = 'alive'
     local fmt = "dms"
 
     local scratchpad = {
@@ -102,7 +103,7 @@ function scratchpad_load()
     end
 
     local function updateCoordinates()
-        local resp, status, err = http.request("http://127.0.0.1:5000/coords/" .. fmt)
+        local resp, status, err = http.request("http://127.0.0.1:5000/coords/" .. fmt .. "/" .. status)
         if status ~= 200 then
             return "Error updating coordinates!"
         end
@@ -118,11 +119,6 @@ function scratchpad_load()
     end
 
     local function sendCoordinates()
-        -- if singleRackBtn:getState() == true then
-        --     local rack = "1"
-        -- else
-        --     local rack = "2"
-        -- end
         local rack = "2"
         local resp, status, err = http.request("http://127.0.0.1:5000/enter_coords/" .. rack .. "/" .. coord_request)
         scratchpad.log(status)
@@ -176,6 +172,7 @@ function scratchpad_load()
         clearCoordsBtn = panel.ScratchpadClearCoordsButton
         stopCoordsBtn = panel.ScratchpadStopCoordsButton
         preciseCoordsBtn = panel.ScratchpadPreciseCoordsButton
+        keepAllBtn = panel.ScratchpadKeepAllButton
         -- singleRackBtn = panel.ScratchpadSingleRackButton
         -- doubleRackBtn = panel.ScratchpadDoubleRackButton
         -- doubleRackBtn:setState(true)
@@ -269,6 +266,16 @@ function scratchpad_load()
             end
         )
 
+        keepAllBtn:addMouseDownCallback(
+            function(self)
+                if status == "alive" then
+                    status = "all"
+                else
+                    status = "alive"
+                end
+            end
+        )
+
         scratchpad.log("Adding section callbacks...")
         for k, v in pairs(sections) do
             sections[k]:addMouseDownCallback(
@@ -339,13 +346,7 @@ function scratchpad_load()
     function scratchpad.handleResize(self)
         local w, h = self:getSize()
         panel:setBounds(0, 0, w, h - 20)
-        -- local local_base_offset = 120
-        -- -- local text2 = 100
-        -- local text2 = 0
-        -- textarea:setBounds(0, 0, w, h - base_offset - text2)
-        -- targetarea:setBounds(0, h - base_offset - text2, w, 60)
         textarea:setBounds(0, 0, w, h - 20 - 20 - 20 - 20 - 40)
-
         offset = 0
         coordButton:setBounds(offset, h - 120, 60, 20)
         local offset = offset+60+20
@@ -360,6 +361,9 @@ function scratchpad_load()
         stopCoordsBtn:setBounds(offset, h - 120, 50, 20)
         local offset = offset+50+20
         preciseCoordsBtn:setBounds(offset, h - 120, 50, 20)
+
+        local offset = offset+50+20
+        keepAllBtn:setBounds(offset, h - 120, 50, 20)
 
         local w = -40
         for k, v in pairs(sections) do
