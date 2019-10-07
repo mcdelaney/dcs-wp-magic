@@ -44,7 +44,7 @@ def parse_line(obj, ref, last_seen, prev_skipped):
         try:
             if obj_dict['type'] in EXCLUDED_EXPORT or obj_dict["Coalition"] != "Enemies":
                 if obj_dict['pilot'] != "someone_somewhere":
-                    log.info("Adding to prev skipped...")
+                    log.debug("Adding to prev skipped...")
                     prev_skipped.append(id)
                     return
         except KeyError:
