@@ -1,6 +1,7 @@
+#!python
+
 from threading import Thread
 
-import coord_executor
 import coord_server
 import tacview_client
 
@@ -16,6 +17,6 @@ if __name__=='__main__':
         print('Shutting down')
         coord_srv.raise_exception()
         tacview_cli.raise_exception()
-        
+
         coord_srv.join()
         tacview_cli.join()
