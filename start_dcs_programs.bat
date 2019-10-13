@@ -5,7 +5,3 @@ CD "C:\Program Files (x86)\DCS-SimpleRadio-Standalone\"
 tasklist /nh /fi "imagename eq SR-ClientRadio.exe" | find /i "SR-ClientRadio.exe" > nul || (start "" "SR-ClientRadio.exe")
 
 tasklist /nh /fi "imagename eq VoiceAttack.exe" | find /i "VoiceAttack.exe" > nul || (start "" "C:\Program Files (x86)\Steam\steamapps\common\VoiceAttack\VoiceAttack.exe")
-
-tasklist /nh /fi "imagename eq joystick_gremlin.exe" | find /i "joystick_gremlin.exe" > nul || (start "" "C:\Users\mcdel\Desktop\Joystick Gremlin.lnk")
-
-tasklist /nh /fi "imagename eq SimShaker for Aviators.exe" | find /i "SimShaker for Aviators.exe" > nul || (start "" "C:\Users\mcdel\Desktop\SimShaker for Aviators.appref-ms")
