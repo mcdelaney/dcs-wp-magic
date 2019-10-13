@@ -17,7 +17,7 @@ OBJ_SINK_PATH = Path('data/tacview_sink.json')
 OBJ_SINK_PATH_RAW = Path('data/tacview_sink_raw.txt')
 
 
-async def main():
+async def run_server():
     """Main method to execute stream listener."""
     log = get_logger(logging.getLogger("tacview_client"))
     log.setLevel(logging.DEBUG if DEBUG else logging.INFO)
@@ -110,5 +110,9 @@ async def main():
             await sock.open_connection()
 
 
+def main():
+    asyncio.run(run_server())
+
+
 if __name__=="__main__":
-    asyncio.run(main())
+    main()
