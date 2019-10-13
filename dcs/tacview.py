@@ -1,20 +1,17 @@
-import aiofiles
+"""Tacview client methods."""
 import asyncio
 from asyncio.log import logging
 from dataclasses import dataclass
-from datetime import datetime, timedelta
-import ujson as json
-import os
-import sqlite3
-from pathlib import Path
-import sys
+from datetime import datetime
+
+import aiofiles
 
 from . import get_logger
 from .config import EXCLUDED_EXPORT
 
 DEBUG = False
-log = get_logger(logging.getLogger(__name__))
-log.setLevel(logging.DEBUG if DEBUG else logging.INFO)
+LOG = get_logger(logging.getLogger(__name__))
+LOG.setLevel(logging.DEBUG if DEBUG else logging.INFO)
 
 STREAM_PROTOCOL = "XtraLib.Stream.0"
 TACVIEW_PROTOCOL = 'Tacview.RealTimeTelemetry.0'
@@ -33,19 +30,20 @@ REF_TIME_FMT = '%Y-%m-%dT%H:%M:%SZ'
 
 
 def parse_line(obj, ref, last_seen, prev_skipped):
+    """Parse a single line from tacview stream."""
     try:
         line = obj.strip()
         split_line = line.split(',')
-        id = split_line[0]
-        if id in prev_skipped:
+        obj_id = split_line[0]
+        if obj_id in prev_skipped:
             return
         obj_dict = {k.lower():v for k, v in [l.split('=', 1) for l in split_line[1:]]}
-        obj_dict['id'] = id
+        obj_dict['id'] = obj_id
         try:
             if obj_dict['type'] in EXCLUDED_EXPORT or obj_dict["Coalition"] != "Enemies":
                 if obj_dict['pilot'] != "someone_somewhere":
-                    log.debug("Adding to prev skipped...")
-                    prev_skipped.append(id)
+                    LOG.info("Adding to prev skipped...")
+                    prev_skipped.append(obj_id)
                     return
         except KeyError:
             pass
@@ -55,7 +53,7 @@ def parse_line(obj, ref, last_seen, prev_skipped):
             coord = coord.split('|')[0:3]
             coord = [float(c) if c != '' else '' for c in coord]
         except KeyError:
-            log.debug(f"Key: t not in dict keys for line {obj}")
+            LOG.debug("Key: t not in dict keys for line %s", obj)
             return
 
         obj_dict['lat'] = coord[1] + ref.lat if coord[1] != '' else ''
@@ -73,16 +71,20 @@ def parse_line(obj, ref, last_seen, prev_skipped):
                     obj_dict[val] = obj_dict['name']
         obj_dict['alive'] = True
         return obj_dict
-    except Exception as e:
-        exc_type, exc_obj, exc_tb = sys.exc_info()
-        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-        log.error("Error parsing object: %s on line %s" % (obj, str(exc_tb.tb_lineno)))
-        for s in split_line:
-            log.error(s)
-        log.error(e)
+    except Exception as err:
+        LOG.exception(err)
+        # exc_type, exc_obj, exc_tb = sys.exc_info()
+        # LOG.error("Error parsing object: %s on line %s",
+        #           obj, str(exc_tb.tb_lineno))
+        # for str_val in split_line:
+        #     LOG.error(str_val)
 
 
 def parse_ref_obj(line, key):
+    """
+    Attempt to extract ReferenceLatitude, ReferenceLongitude or ReferenceTime
+    from a line object.
+    """
     try:
         val = line.split(',')[-1].split('=')
         if val[0] == key:
@@ -91,24 +93,26 @@ def parse_ref_obj(line, key):
                 return float(kv)
             else:
                 return datetime.strptime(kv, REF_TIME_FMT)
-            log.info(f'Found ref object {key} with value {val[1]}')
+            LOG.info('Found ref object %s with value %s', key, val[1])
             return val[1]
     except IndexError:
         pass
 
 
-
 @dataclass
 class Ref:
+    """Dataclass to hold Reference values used as offsets."""
     lat = None
     lon = None
     time = None
 
     def all_set(self):
-        return (self.lat and self.lon and self.time)
+        """Return true if all ref attributes are set."""
+        return self.lat and self.lon and self.time
 
 
 class SocketReader:
+    """Read from Tacview socket."""
     host = HOST
     port = PORT
     handshake = HANDSHAKE
@@ -122,30 +126,34 @@ class SocketReader:
         self.last_recv = None
 
     async def open_connection(self):
+        """Initialize the socket connection and write handshake data."""
         if self.debug:
             self.raw_sink = await aiofiles.open(self.raw_sink, 'w')
         while True:
             try:
-                self.reader, self.writer = await asyncio.open_connection(self.host, self.port)
-                log.info('Socket connection opened...sending handshake...')
+                self.reader, self.writer = await asyncio.open_connection(
+                    self.host, self.port)
+                LOG.info('Socket connection opened...sending handshake...')
                 self.writer.write(self.handshake)
                 self.ref = Ref()
                 break
-            except Exception as e:
-                log.error(e)
-                log.error('Socket connection failed....will retry in 5 seconds...')
-                asyncio.sleep(5)
+            except Exception as err:
+                LOG.error(err)
+                LOG.error('Socket connection failed....will retry in 5 seconds...')
+                await asyncio.sleep(5)
 
     async def read_stream(self):
+        """Read lines from socket stream."""
         data = await self.reader.readline()
         msg = data.decode().strip()
         if msg:
-            self.last_revc = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            self.last_recv = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         if self.debug:
             await self.raw_sink.write(msg + "\n")
         return msg
 
     async def close(self):
+        """Close the socket connection."""
         if self.debug:
             await self.raw_sink.close()
         self.writer.close()

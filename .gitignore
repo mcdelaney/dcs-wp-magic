@@ -5,3 +5,8 @@ __pycache__
 scratch.py
 data/
 log/**
+.DS_Store
+*/.idea/libraries/*
+**/maven-status/**
+**/target/**/**
+*.dump
