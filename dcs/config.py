@@ -57,6 +57,6 @@ CAT_ORDER = {'MOBILE_CP': 1,
              'INFANTRY': 7}
 
 CAT_LOOKUP = {}
-for k, v in CATS.items():
-    for i in v:
-        CAT_LOOKUP[i] = k
+for key, val in CATS.items():
+    for i in val:
+        CAT_LOOKUP[i] = key
