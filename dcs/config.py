@@ -1,7 +1,14 @@
 
-START_UNITS = ["someone_somewhere", "CVN-74", "Stennis"]
+# Tacview server settings
+CLIENT = 'someone_somewhere'
+PASSWORD = '0'
+# HOST = '127.0.0.1'
+HOST = '147.135.8.169'
+PORT = 42674
+START_UNITS = [CLIENT, "CVN-74", "Stennis"]
 EXCLUDED_EXPORT = [
                   'Ground+Light+Human+Air+Parachutist',
+                  'Navaid+Static+Bullseye',
                   'Air+FixedWing',
                   "Air+Rotorcraft",
                   "Misc+Shrapnel",
@@ -13,8 +20,10 @@ EXCLUDED_EXPORT = [
 
 EXCLUDED_TYPES = ['Air+FixedWing',
                    '',
+                  'Ground+Light+Human+Air+Parachutist',
                   "Air+Rotorcraft",
                   "Ground+Static+Aerodrome",
+                  'Navaid+Static+Bullseye',
                   "Misc+Shrapnel",
                   'weapon+Missile',
                   'Weapon+Missile',

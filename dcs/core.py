@@ -52,7 +52,6 @@ class Enemy:
         self.platform = item["platform"]
         self.type = item["type"]
         self.dist = 999
-        # self.alive = True if item['alive'] == "True" else False
         self.alive = item["alive"]
         self.target_num = 1
         self.start_coords = start_coords
@@ -258,18 +257,16 @@ def construct_enemy_set(enemy_state, result_as_string=True, coord_fmt='dms',
                       f"{(round(start_coord[0], 3), round(start_coord[1], 3))}"\
                       f" {last_recv}\r\n\r\n{results}"
             return results.encode('UTF-8')
-    except Exception as e:
-        exc_type, exc_obj, exc_tb = sys.exc_info()
-        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-        log.error("Error on line %s" % (str(exc_tb.tb_lineno)))
+    except Exception as err:
+        log.exception(err)
     return enemy_groups
 
 
 def read_coord_sink(sink_path='data/tacview_sink.json'):
     conn = db.create_connection()
-    conn.row_factory = sqlite3.Row
     cur = conn.cursor()
-    cur.execute("SELECT * FROM enemies")
+    cur.execute("SELECT * FROM enemies \
+                WHERE pilot IS NOT NULL and type IS NOT NULL AND alive=1")
     results = cur.fetchall()
     results = [dict(e) for e in results]
     return results
