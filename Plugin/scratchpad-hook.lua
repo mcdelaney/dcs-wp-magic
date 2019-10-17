@@ -65,8 +65,6 @@ function scratchpad_load()
         if (tbl and tbl.config) then
             scratchpad.log("Configuration exists...")
             scratchpad.config = tbl.config
-            -- config migration
-            -- add default fontSize config
             if scratchpad.config.fontSize == nil then
                 scratchpad.config.fontSize = 16
                 scratchpad.saveConfiguration()
@@ -162,7 +160,6 @@ function scratchpad_load()
         windowDefaultSkin = window:getSkin()
         panel = window.Box
         textarea = panel.ScratchpadEditBox
-        -- targetarea = panel.ScratchpadTargetBox
         coordButton = panel.ScratchpadCoordButton
         coordButton:setState(true)
 
@@ -173,9 +170,6 @@ function scratchpad_load()
         stopCoordsBtn = panel.ScratchpadStopCoordsButton
         preciseCoordsBtn = panel.ScratchpadPreciseCoordsButton
         keepAllBtn = panel.ScratchpadKeepAllButton
-        -- singleRackBtn = panel.ScratchpadSingleRackButton
-        -- doubleRackBtn = panel.ScratchpadDoubleRackButton
-        -- doubleRackBtn:setState(true)
 
         table.insert(sections, panel.CoordSection1)
         table.insert(sections, panel.CoordSection2)
@@ -213,10 +207,18 @@ function scratchpad_load()
         local skin = textarea:getSkin()
         skin.skinData.states.released[1].text.fontSize = scratchpad.config.fontSize
         textarea:setSkin(skin)
-        -- targetarea:setSkin(skin)
 
         scratchpad.log("Configuring callbacks...")
         coordButton:addMouseDownCallback(
+            function(self)
+                updateCoordinates()
+                loadCoords()
+                targetButton:setState(false)
+            end
+        )
+
+        window:addHotKeyCallback(
+            "Ctrl+Shift+y",
             function(self)
                 updateCoordinates()
                 loadCoords()
@@ -329,6 +331,8 @@ function scratchpad_load()
                 end
             end
         )
+
+
         window:addSizeCallback(scratchpad.handleResize)
         window:addPositionCallback(scratchpad.handleMove)
 
@@ -402,7 +406,8 @@ function scratchpad_load()
         enterCoordsBtn:setVisible(true)
         coordButton:setVisible(true)
         targetButton:setVisible(true)
-
+        -- textarea:setFocused(false)
+        -- unlockKeyboardInput(false)
         isHidden = false
     end
 
@@ -412,8 +417,7 @@ function scratchpad_load()
         textarea:setFocused(false)
         -- targetarea:setFocused(false)
         window:setHasCursor(false)
-        -- window.setVisible(false) -- if you make the window invisible, its destroyed
-        -- unlockKeyboardInput(true)
+        -- unlockKeyboardInput(false)
         -- window = nil
         isHidden = true
     end

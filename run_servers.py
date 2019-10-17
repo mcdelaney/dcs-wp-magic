@@ -1,6 +1,5 @@
 #!python
-
-from threading import Thread
+from multiprocessing import Process
 import time
 
 import coord_server
@@ -9,16 +8,14 @@ import tacview_client
 
 if __name__=='__main__':
     try:
-        tacview_cli = Thread(target=tacview_client.main)
+        tacview_cli = Process(target=tacview_client.main)
         tacview_cli.start()
-        time.sleep(3)
-        coord_srv = Thread(target=coord_server.main)
+        time.sleep(1)
+        coord_srv = Process(target=coord_server.main)
         coord_srv.start()
 
-    except:
-        print('Shutting down')
-        coord_srv.raise_exception()
-        tacview_cli.raise_exception()
-
+    except KeyboardInterrupt:
+        coord_srv.terminate()
+        tacview_cli.terminate()
         coord_srv.join()
         tacview_cli.join()
