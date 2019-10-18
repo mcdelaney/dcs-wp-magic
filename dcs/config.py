@@ -3,7 +3,7 @@
 CLIENT = 'someone_somewhere'
 PASSWORD = '0'
 # HOST = '127.0.0.1'
-HOST = '147.135.8.169'
+HOST = '147.135.8.169'  # Hoggit Gaw
 PORT = 42674
 START_UNITS = [CLIENT, "CVN-74", "Stennis"]
 EXCLUDED_EXPORT = [
@@ -19,7 +19,7 @@ EXCLUDED_EXPORT = [
 ]
 
 EXCLUDED_TYPES = ['Air+FixedWing',
-                   '',
+                  '',
                   'Ground+Light+Human+Air+Parachutist',
                   "Air+Rotorcraft",
                   "Ground+Static+Aerodrome",

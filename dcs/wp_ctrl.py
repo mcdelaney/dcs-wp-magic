@@ -1,6 +1,5 @@
 import logging
 import socket
-import re
 from time import sleep
 import json
 
@@ -46,22 +45,21 @@ class Driver:
     def press_with_delay(self, key, raw=False):
         if not key:
             return False
-        encoded_str = key.encode('utf-8')
         if not raw:
-            sent = self.s.sendto(f"{key} 1\n".encode("utf-8"), (self.host, self.port))
+            self.s.sendto(f"{key} 1\n".encode("utf-8"), (self.host, self.port))
             sleep(self.delay_release)
             self.s.sendto(f"{key} 0\n".encode("utf-8"), (self.host, self.port))
-            strlen = len(encoded_str) + 3
         else:
-            sent = self.s.sendto(f"{key}\n".encode("utf-8"), (self.host, self.port))
-            strlen = len(encoded_str) + 1
+            self.s.sendto(f"{key}\n".encode("utf-8"), (self.host, self.port))
         sleep(self.delay_after)
+
     def stop(self):
         self.s.close()
 
 
 class HornetDriver(Driver):
     """Control Hornet Waypoints."""
+
     def __init__(self):
         super().__init__()
         self.limits = dict(WP=None, MSN=6)
@@ -89,31 +87,26 @@ class HornetDriver(Driver):
         long = coord[1]
         elev = coord[2]
         self.log.info(f"Entering coords: {'.'.join(lat)}, {'.'.join(long)}")
-        # if n == 1:
-        #     self.lmdi("6") # PP1
 
         if n > 1:
-            self.lmdi("13") # STEP
-
-        # if n <= 4:
-        #     self.lmdi("6") # PP1
+            self.lmdi("13")  # STEP
 
         if n > 4:
-            self.lmdi("7") # PP2
+            self.lmdi("7")  # PP2
 
-        self.lmdi("14") # TGT UFC
-        self.ufc("OS3") # POS
-        self.ufc("OS1") # LAT
+        self.lmdi("14")  # TGT UFC
+        self.ufc("OS3")  # POS
+        self.ufc("OS1")  # LAT
         for char in lat:
             self.ufc(char, ent_pause=True)
 
-        self.ufc("OS3") # LONG
+        self.ufc("OS3")  # LONG
         for char in long:
             self.ufc(char, ent_pause=True)
 
-        self.lmdi("14") # TGT UFT
-        self.lmdi("14") # TGT UFT
-        self.ufc("OS4") # UFT ELEV
+        self.lmdi("14")  # TGT UFT
+        self.lmdi("14")  # TGT UFT
+        self.ufc("OS4")  # UFT ELEV
         self.ufc("OS4")  # UFC METERS
 
         for char in str(elev):
@@ -172,9 +165,9 @@ def lookup_coords(coord_string):
             continue
         log.info('Looking up target %s' % tar)
         section, target = tar.strip().split(',')
-        c = get_cached_coords(section, target, coord_data)
-        if c:
-            coords.append(c)
+        cache_coords = get_cached_coords(section, target, coord_data)
+        if cache_coords:
+            coords.append(cache_coords)
         else:
             log.error(f"Could not find coord {tar}")
             raise ValueError("Could not find coord!")

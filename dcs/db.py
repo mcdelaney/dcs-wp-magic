@@ -23,6 +23,7 @@ COLS = ["id",
 
 INSERT_STR = ','.join(["?" for _ in COLS])
 
+
 def dict_to_db_string(obj_dict, cols=COLS):
     values = []
     columns = []
@@ -43,7 +44,7 @@ def update_enemy_field(conn, obj):
             updates.append(f"{key} = '{val}'")
 
     updates = ' , '.join(updates)
-    where_clause = "id = '%s'"  % obj.pop('id')
+    where_clause = "id = '%s'" % obj.pop('id')
     cur = conn.cursor()
     cur.execute(f"UPDATE enemies SET {updates} WHERE {where_clause}")
 
@@ -54,7 +55,7 @@ def update_enemy_field(conn, obj):
 
 def insert_new_rec(conn, obj_dict, cols=COLS, table='enemies'):
     columns, values = dict_to_db_string(obj_dict, cols)
-    val_string =','.join(["?" for _ in columns])
+    val_string = ','.join(["?" for _ in columns])
     cur = conn.cursor()
     cur.execute(f"INSERT INTO {table} ({','.join(columns)})\
                  VALUES ({val_string})", values)
@@ -70,7 +71,7 @@ def create_connection(replace_db=False):
     conn = sqlite3.connect(str(db_path),
                            detect_types=sqlite3.PARSE_DECLTYPES,
                            isolation_level=None)
-    conn.execute('pragma journal_mode=wal') # Set journal mode to WAL.
+    conn.execute('pragma journal_mode=wal')  # Set journal mode to WAL.
     sqlite3.register_adapter(bool, int)
     sqlite3.register_converter("BOOLEAN", lambda v: bool(int(v)))
     conn.row_factory = sqlite3.Row

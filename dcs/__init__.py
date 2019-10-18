@@ -2,7 +2,8 @@ import logging
 
 
 def get_logger(logger):
-    logFormatter = logging.Formatter("%(asctime)s [%(filename)s] [%(levelname)-5.5s]  %(message)s")
+    logFormatter = logging.Formatter(
+        "%(asctime)s [%(filename)s] [%(levelname)-5.5s]  %(message)s")
 
     fileHandler = logging.FileHandler(f"log/{logger.name}.log", 'w')
     fileHandler.setFormatter(logFormatter)

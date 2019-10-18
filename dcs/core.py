@@ -1,15 +1,10 @@
-import sqlite3
-import datetime as dt
 import logging
-import os
-import sys
-import time
 
 import ujson as json
 from geopy.distance import vincenty
 
 from . import get_logger
-from .config import *
+from . import config
 from . import db
 
 DEBUG = False
@@ -64,18 +59,19 @@ class Enemy:
             self.grp_name = item['grp']
         else:
             self.grp_name = f"{self.platform}-{self.id}"
-            log.debug(f"grp key not found for obj {self.id}...setting grp as {self.grp_name}")
+            log.debug(f"grp key not found for obj {self.id}...setting grp as\
+                      {self.grp_name}")
         try:
             self.alt = max([1, round((float(item["alt"])))])
-        except Exception as e:
+        except KeyError:
             self.alt = 1
 
         self.lat_raw = item["lat"]
         self.lon_raw = item["long"]
 
         try:
-            self.cat = CAT_LOOKUP[self.platform]
-            self.order_val = CAT_ORDER[self.cat]
+            self.cat = config.CAT_LOOKUP[self.platform]
+            self.order_val = config.CAT_ORDER[self.cat]
         except KeyError:
             self.cat = self.type
             self.order_val = 4
@@ -108,8 +104,7 @@ class Enemy:
             try:
                 dist = vincenty(start_coords, (self.lat_raw, self.lon_raw))
                 self.dist = round(dist.nm)
-
-            except ValueError as e:
+            except ValueError:
                 log.error("Coordinates are incorrect: %f %f",
                           self.lat_raw, self.lon_raw)
         log.debug(f"Created Enemy: {self.name} {self.id}...")
@@ -123,12 +118,13 @@ class Enemy:
               f"{self.lon}, {self.alt}m, {self.dist}nm"
         log.debug(str)
         log.debug('Created enemy %s %d from start point in grp %s...',
-                 self.platform, self.dist, self.grp_name)
+                  self.platform, self.dist, self.grp_name)
         return str
 
 
 class EnemyGroups:
     """Dataset of named enemy groups."""
+
     def __init__(self):
         self.grps = {}
 
@@ -158,7 +154,7 @@ class EnemyGroups:
 
             out_lst = [None] * len(list(tmp.keys()))
             for i, k in enumerate(sorted(tmp.keys())):
-                out_lst[i]  = tmp[k]
+                out_lst[i] = tmp[k]
             result[grp_key] = out_lst
         self.grps = result
 
@@ -185,10 +181,11 @@ def create_enemy_groups(enemy_state, start_coord, coord_fmt='dms', only_alive=Tr
     enemy_groups = EnemyGroups()
     for item in enemy_state:
         try:
-            if (item['type'] in EXCLUDED_TYPES or
-                item['coalition'] == COALITION or
-                item["pilot"] in EXCLUDED_PILOTS):
-                log.debug(f"Skipping enemy item {item['type']} {item['pilot']} {item['coalition']} as is in excluded types...")
+            if (item['type'] in config.EXCLUDED_TYPES or
+                item['coalition'] == config.COALITION or
+                item["pilot"] in config.EXCLUDED_PILOTS):
+                log.debug(f"Skipping enemy item {item['type']} {item['pilot']}\
+                          {item['coalition']} as is in excluded types...")
                 continue
         except KeyError:
             log.error(item)
@@ -236,7 +233,7 @@ def construct_enemy_set(enemy_state, result_as_string=True, coord_fmt='dms',
         if result_as_string:
             results = {}
             for grp_name, enemy_set, grp_dist in enemy_groups:
-                if start_coord and (grp_dist > MAX_DIST):
+                if start_coord and (grp_dist > config.MAX_DIST):
                     log.info(f"Excluding {grp_name}...distance is {grp_dist}...")
                     if DEBUG:
                         log.debug("Enemies in excluded grp: ")
@@ -270,10 +267,3 @@ def read_coord_sink(sink_path='data/tacview_sink.json'):
     results = cur.fetchall()
     results = [dict(e) for e in results]
     return results
-
-
-# conn.close()
-# cur.execute("SELECT * FROM enemies limit 10")
-# results = cur.fetchall()
-# [print(dict(r)) for r in results]
-# results[0]['alive']
