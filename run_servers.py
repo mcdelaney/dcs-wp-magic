@@ -6,11 +6,11 @@ import coord_server
 import tacview_client
 
 
-if __name__=='__main__':
+def main():
+    """Start tacview client and coord_server."""
     try:
         tacview_cli = Process(target=tacview_client.main)
         tacview_cli.start()
-        time.sleep(1)
         coord_srv = Process(target=coord_server.main)
         coord_srv.start()
 
@@ -19,3 +19,7 @@ if __name__=='__main__':
         tacview_cli.terminate()
         coord_srv.join()
         tacview_cli.join()
+
+
+if __name__=='__main__':
+    main()

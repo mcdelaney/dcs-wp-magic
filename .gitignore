@@ -10,3 +10,5 @@ log/**
 **/maven-status/**
 **/target/**/**
 *.dump
+dist/*
+build/*

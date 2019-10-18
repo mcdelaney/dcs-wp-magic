@@ -1,82 +1,60 @@
+import logging
+from multiprocessing import Process
 from tkinter import *
 
-# import tkinter as tk
-
-# class Application(tk.Frame):
-#     def __init__(self, master=None):
-#         super().__init__(master)
-#         self.master = master
-#         self.pack()
-#         self.create_widgets()
-#
-#     def create_widgets(self):
-#         self.hi_there = tk.Button(self)
-#         self.hi_there["text"] = "Hello World\n(click me)"
-#         self.hi_there["command"] = self.say_hi
-#         self.hi_there.pack(side="top")
-#
-#         self.quit = tk.Button(self, text="QUIT", fg="red",
-#                               command=self.master.destroy)
-#         self.quit.pack(side="bottom")
-#
-#     def say_hi(self):
-#         print("hi there, everyone!")
-#
-# root = tk.Tk()
-# app = Application(master=root)
-# app.mainloop()
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger("app")
 
 
-window = Tk()
-window.geometry('300x200')
-window.title("DCS-WP-MAGIC")
+class StartStopController:
+    """Create Start/Stop Buttons that update Status."""
+    def __init__(self, label, start_row, proc_to_run, window):
+        self.label = Label(window, text=label)
+        self.label.grid(column=0, row=start_row)
 
+        self.status = Label(window, text="Stopped")
+        self.status.grid(column=1, row=start_row)
 
-def start_tac():
-    start_tac.configure(state=DISABLED)
-    stop_tac.configure(state="normal")
-    tac_stat.configure(text="Running")
+        self.start = Button(window, text="Start", state="normal",
+                            command=self.switch_status)
+        self.start.grid(column=0, row=start_row+1)
 
+        self.stop = Button(window, text="Stop", state='disabled',
+                           command=self.switch_status)
+        self.stop.grid(column=1, row=start_row+1)
 
-def stop_tac():
-    start_tac.configure(state="normal")
-    stop_tac.configure(state=DISABLED)
-    tac_stat.configure(text="Stopped")
+        self.proc_to_run = proc_to_run
+        self.proc = None
 
-tac_label = Label(window, text="Tacview Client Status:")
-tac_label.grid(column=0, row=0)
+    def switch_status(self):
+        if str(self.stop['state']) == 'disabled':
+            self.start_process()
+            self.stop.configure(state = "normal")
+            self.start.configure(state = "disabled")
+            self.status.configure(text = "Running")
+            log.info('Status values updated correctly...')
+        else:
+            self.stop_process()
+            log.info('Process stopped...updating status values...')
+            self.stop.configure(state = "disabled")
+            self.start.configure(state = "normal")
+            self.status.configure(text = "Stopped")
+            log.info('Status values updated correctly...')
 
-tac_stat = Label(window, text="Stopped")
-tac_stat.grid(column=1, row=0)
+    def start_process(self):
+        if self.proc:
+            raise ValueError("Process already exists!")
+        log.info('Starting process...')
+        self.proc = Process(target=self.proc_to_run)
+        self.proc.start()
+        log.info("Process started successfully...")
 
-start_tac = Button(window, text="Start", command=start_tac)
-start_tac.grid(column=0, row=1)
-stop_tac = Button(window, text="Stop", state=DISABLED,
-                  command=stop_tac)
-stop_tac.grid(column=1, row=1)
-
-
-def start_coord_svr():
-    coord_start.configure(state=DISABLED)
-    coord_stop.configure(state="normal")
-    coord_stat.configure(text="Running")
-
-def stop_coord_svr():
-    coord_stop.configure(state=DISABLED)
-    coord_start.configure(state="normal")
-    coord_stat.configure(text="Stopped")
-
-coord_lbl = Label(window, text="Coord Server Status:")
-coord_lbl.grid(column=0, row=2)
-coord_stat = Label(window, text="Stopped")
-coord_stat.grid(column=1, row=2)
-
-coord_start = Button(window, text="Start", command=start_coord_svr)
-coord_start.grid(column=0, row=3)
-coord_stop = Button(window, text="Stop", state=DISABLED,
-                  command=stop_coord_svr)
-coord_stop.grid(column=1, row=3)
-
-
-if __name__=='__main__':
-    window.mainloop()
+    def stop_process(self):
+        if not self.proc:
+            log.warning("Process does not exist!")
+            return
+        log.info('Stopping process...')
+        self.proc.terminate()
+        self.proc.join()
+        self.proc = None
+        log.info("Process stopped successfully...")
