@@ -5,8 +5,12 @@ database.
 """
 import asyncio
 
-from tacview import run_server
+from dcs.tacview import run_server
+
+
+def main():
+    asyncio.run(run_server())
 
 
 if __name__ == "__main__":
-    asyncio.run(run_server())
+    main()

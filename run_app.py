@@ -1,5 +1,5 @@
 #!python
-from tkinter import *
+import tkinter as tk
 
 import coord_server
 from gui import app
@@ -9,16 +9,17 @@ import tacview_client
 def _delete_window():
     try:
         window.destroy()
-    except:
+    except Exception:
         pass
+
 
 def _destroy(event):
     tac_controller.stop_process()
     coord_controller.stop_process()
 
 
-if __name__=='__main__':
-    window = Tk()
+if __name__ == '__main__':
+    window = tk.Tk()
     window.geometry('300x200')
     window.title("DCS-WP-MAGIC")
 

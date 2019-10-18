@@ -1,6 +1,5 @@
 #!python
 from multiprocessing import Process
-import time
 
 import coord_server
 import tacview_client
@@ -21,5 +20,5 @@ def main():
         tacview_cli.join()
 
 
-if __name__=='__main__':
+if __name__ == '__main__':
     main()
