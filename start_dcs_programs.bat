@@ -5,8 +5,10 @@ tasklist /nh /fi "imagename eq SR-ClientRadio.exe" | find /i "SR-ClientRadio.exe
 
 tasklist /nh /fi "imagename eq VoiceAttack.exe" | find /i "VoiceAttack.exe" > nul || (start "" "C:\Program Files (x86)\Steam\steamapps\common\VoiceAttack\VoiceAttack.exe")
 
+tasklist /nh /fi "imagename eq voicemeeterpro.exe" | find /i "voicemeeterpro.exe" > nul || (start "" "C:\Program Files (x86)\VB\Voicemeeter\voicemeeterpro.exe")
+
 CD "C:\Program Files (x86)\H2ik\Joystick Gremlin\"
 tasklist /nh /fi "imagename eq joystick_gremlin.exe" | find /i "joystick_gremlin.exe" > nul || (start "" "C:\Program Files (x86)\H2ik\Joystick Gremlin\joystick_gremlin.exe")
 
 CD "C:\Users\mcdel\dcs-wp-magic\"
-(start "" "C:\Users\mcdel\dcs-wp-magic\dist\dcs_wp_manager\dcs_wp_manager.exe")
+tasklist /nh /fi "imagename eq dcs_wp_manager.exe" | find /i "dcs_wp_manager.exe" > nul || (start "" "C:\Users\mcdel\dcs-wp-magic\dist\dcs_wp_manager\dcs_wp_manager.exe")
