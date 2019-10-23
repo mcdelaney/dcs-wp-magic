@@ -79,7 +79,7 @@ function scratchpad_load()
             scratchpad.config = {
                 hotkey = "Ctrl+Shift+x",
                 windowPosition = {x = 200, y = 200},
-                windowSize = {w = 350, h = 150},
+                windowSize = {w = 400, h = 150},
                 fontSize = 14
             }
             scratchpad.saveConfiguration()
