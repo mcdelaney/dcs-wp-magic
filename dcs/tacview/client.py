@@ -1,15 +1,21 @@
-"""Tacview client methods."""
+"""
+Tacview client methods.
+
+Results are parsed into usable format, and then written to a local sqlite
+database.
+"""
+
 import asyncio
 from asyncio.log import logging
 from datetime import datetime
 import sqlite3
 
-from . import db
-from . import get_logger
-from . import config
+from dcs.common import db
+from dcs.common import get_logger
+from dcs.common import config
 
 DEBUG = False
-LOG = get_logger(logging.getLogger(__name__))
+LOG = get_logger(logging.getLogger('tacview_client'))
 LOG.setLevel(logging.DEBUG if DEBUG else logging.INFO)
 
 STREAM_PROTOCOL = "XtraLib.Stream.0"
@@ -154,10 +160,8 @@ class SocketReader:
         await self.writer.wait_closed()
 
 
-async def run_server():
-    """Main method to execute stream listener."""
-    log = get_logger(logging.getLogger("tacview_client"))
-    log.setLevel(logging.DEBUG if DEBUG else logging.INFO)
+async def consumer():
+    """Main method to consume stream."""
     objects = []
     last_seen = 0
     conn = db.create_connection(replace_db=True)
@@ -180,10 +184,10 @@ async def run_server():
 
             # Check if object id exists already. If so, update location in db.
             if obj_dict['id'] in objects:
-                log.debug('Updating object %s...', obj_dict['id'])
+                LOG.debug('Updating object %s...', obj_dict['id'])
                 db.update_enemy_field(conn, obj_dict)
             else:
-                log.debug("Adding: %s-%s...", obj_dict['id'], obj_dict['type'])
+                LOG.debug("Adding: %s-%s...", obj_dict['id'], obj_dict['type'])
                 objects.append(obj_dict['id'])
                 try:
                     db.insert_new_rec(conn, obj_dict)
@@ -191,15 +195,20 @@ async def run_server():
                                       cols=['id', 'lat', 'long', 'alt', 'alive'],
                                       table='events')
                 except sqlite3.Error as err:
-                    log.error("Could not insert object into db! %s",
+                    LOG.error("Could not insert object into db! %s",
                               obj_dict)
-                    log.execption(err)
+                    LOG.execption(err)
 
         except ConnectionError as err:
-            log.error('Closing socket due to exception...')
-            log.exception(err)
+            LOG.error('Closing socket due to exception...')
+            LOG.exception(err)
             await sock.close()
             conn.close()
             conn = db.create_connection(replace_db=True)
             db.create_db(conn)
             await sock.open_connection()
+
+
+def consume_tac_stream():
+    """Start event loop to consume stream."""
+    asyncio.run(consumer())

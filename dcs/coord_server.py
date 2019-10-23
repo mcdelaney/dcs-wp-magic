@@ -3,9 +3,9 @@ import logging
 from multiprocessing import Process
 
 from flask import Flask, abort, Response
-import ujson as json
 
-from dcs import core, wp_ctrl
+from dcs.coords.processor import read_coord_sink, construct_enemy_set
+from dcs.coords.wp_ctrl import lookup_coords, update_coord
 
 app = Flask('coord_server')
 JOB = None
@@ -31,8 +31,8 @@ def start_entry(rack, coord_string):
     global JOB
     try:
         stop_job()
-        coords = wp_ctrl.lookup_coords(coord_string)
-        JOB = Process(target=wp_ctrl.update_coord, args=(rack, coords,))
+        coords = lookup_coords(coord_string)
+        JOB = Process(target=update_coord, args=(rack, coords,))
         JOB.start()
         return Response(status=200)
     except Exception:
@@ -46,9 +46,9 @@ def as_strings_coords(coord_fmt, status="alive"):
             only_alive = True
         else:
             only_alive = False
-        state = core.read_coord_sink()
-        enemies = core.construct_enemy_set(state, coord_fmt=coord_fmt,
-                                           only_alive=only_alive)
+        state = read_coord_sink()
+        enemies = construct_enemy_set(state, coord_fmt=coord_fmt,
+                                                only_alive=only_alive)
         app.logger.info('Enemeies Collected...')
         return enemies
 

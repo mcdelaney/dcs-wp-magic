@@ -3,12 +3,11 @@ import socket
 from time import sleep
 import json
 
-from . import get_logger
+from dcs.common import get_logger
 
-COORD_PATH = 'C:/Users/mcdel/Saved Games/DCS/ScratchPad/target.txt'
 LAST_RUN_CACHE = 'data/last_extract.json'
 
-log = get_logger(logging.getLogger(__name__))
+log = get_logger(logging.getLogger('wp_control'))
 log.setLevel(level=logging.DEBUG)
 
 

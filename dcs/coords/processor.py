@@ -1,15 +1,15 @@
 import logging
+import json
 
-import ujson as json
 from geopy.distance import vincenty
 
-from . import get_logger
-from . import config
-from . import db
+from dcs.common import get_logger
+from dcs.common import config
+from dcs.common import db
 
 DEBUG = False
 
-log = get_logger(logging.getLogger(__name__))
+log = get_logger(logging.getLogger('dcs_core'))
 log.setLevel(logging.DEBUG if DEBUG else logging.INFO)
 
 LAST_RUN_CACHE = 'data/last_extract.json'
@@ -63,7 +63,7 @@ class Enemy:
                       {self.grp_name}")
         try:
             self.alt = max([1, round((float(item["alt"])))])
-        except KeyError:
+        except (KeyError, ValueError):
             self.alt = 1
 
         self.lat_raw = item["lat"]
@@ -206,10 +206,9 @@ def create_enemy_groups(enemy_state, start_coord, coord_fmt='dms', only_alive=Tr
 def construct_enemy_set(enemy_state, result_as_string=True, coord_fmt='dms',
                         only_alive=True):
     try:
-        last_recv = "2019-09-01"
         start_coord = None
-        start_pilot = 'None'
-        for pilot in ['someone_somewhere']:
+        start_pilot = None
+        for pilot in [config.CLIENT]:
             log.debug(f"Checking for start unit: {pilot}")
             if start_coord:
                 log.debug('Start coord is not none...breaking...')
@@ -252,7 +251,7 @@ def construct_enemy_set(enemy_state, result_as_string=True, coord_fmt='dms',
             results = '\r\n\r\n'.join(results)
             results = f"Start Ref: {start_pilot} "\
                       f"{(round(start_coord[0], 3), round(start_coord[1], 3))}"\
-                      f" {last_recv}\r\n\r\n{results}"
+                      f"\r\n\r\n{results}"
             return results.encode('UTF-8')
     except Exception as err:
         log.exception(err)

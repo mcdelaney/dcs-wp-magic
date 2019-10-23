@@ -64,6 +64,9 @@ def insert_new_rec(conn, obj_dict, cols=COLS, table='enemies'):
 
 def create_connection(replace_db=False):
     db_path = Path('data/dcs.db')
+    if not db_path.parent.exists():
+        db_path.parent.mkdir()
+
     if replace_db:
         if db_path.exists():
             db_path.replace("data/dcs_arch.db")
@@ -71,7 +74,7 @@ def create_connection(replace_db=False):
     conn = sqlite3.connect(str(db_path),
                            detect_types=sqlite3.PARSE_DECLTYPES,
                            isolation_level=None)
-    conn.execute('pragma journal_mode=wal')  # Set journal mode to WAL.
+    conn.execute('pragma journal_mode=wal')
     sqlite3.register_adapter(bool, int)
     sqlite3.register_converter("BOOLEAN", lambda v: bool(int(v)))
     conn.row_factory = sqlite3.Row

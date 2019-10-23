@@ -1,13 +1,14 @@
 """Test tacview parser."""
 import datetime as dt
 import pytest
-from dcs import tacview, db
+from dcs import tacview
+from dcs.common import db
 
 
 @pytest.fixture
 def conn():
     """Fixture to generate a database."""
-    from dcs import db
+    from dcs.common import db
     conn = db.create_connection()
     db.create_db(conn)
     return conn
@@ -30,14 +31,14 @@ def test_update_string(ref_obj):
                     'long': 124.45,
                     'alt': 234.2}
     parsed = tacview.parse_line(obj=update_string, ref=ref_obj,
-                                last_seen=None)
+                                       last_seen=None)
     assert parsed == correct_resp
 
 
 def test_update_partial_loc(ref_obj):
     update_string = "3008d0a,T=||1019.73"
     parsed = tacview.parse_line(obj=update_string, ref=ref_obj,
-                                last_seen=None)
+                                       last_seen=None)
     correct_resp = {'id': '3008d0a',
                     'lat': '',
                     'long': '',
@@ -50,7 +51,7 @@ def test_new_entry(ref_obj):
     "Type=Ground+Static+Aerodrome,Name=FARP,Color=Blue,"\
     "Coalition=Enemies,Country=us"
     parsed = tacview.parse_line(obj=new_string, ref=ref_obj,
-                                last_seen=0)
+                                       last_seen=0)
     assert True
 
 
@@ -59,7 +60,7 @@ def test_new_entry_insert(ref_obj, conn):
     "Type=Ground+Heavy+Armor+Vehicle+Tank,Name=BTR-80,"\
     "Group=New Vehicle Group #041,Color=Red,Coalition=Enemies,Country=ru"
     parsed = tacview.parse_line(obj=new_string, ref=ref_obj,
-                                last_seen=0)
+                                       last_seen=0)
     db.insert_new_rec(conn, parsed)
     result = conn.execute(f"SELECT * FROM enemies where id = {parsed['id']}")
     db_result = dict(result.fetchone())
