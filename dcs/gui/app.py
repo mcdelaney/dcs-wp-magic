@@ -18,7 +18,7 @@ class DCSWPControllerApp(Tk):
     def __init__(self):
         super().__init__()
         self.geometry("300x200")
-        self.iconbitmap(path.abspath('icon.ico'))
+        self.iconbitmap('icon.ico')
 
         self.title("DCS WP Manager")
         self.label = Label(self, text='Status:')
