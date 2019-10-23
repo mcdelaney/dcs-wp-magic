@@ -1,7 +1,7 @@
 from configparser import ConfigParser
 from shutil import copytree
 from src.gui import first_time_setup_gui, detect_dcs_bios
-from src.logger import get_logger
+from dcs import get_logger
 from pathlib import Path
 import PySimpleGUI as PyGUI
 import tempfile
@@ -44,7 +44,12 @@ def install_dcs_bios(dcs_path):
 
 
 def first_time_setup():
+
     default_dcs_path = f"{str(Path.home())}\\Saved Games\\DCS.openbeta\\"
+    if not default_dcs_path.exists():
+        default_dcs_path = f"{str(Path.home())}\\Saved Games\\DCS\\"
+        if not default_dcs_path.exists():
+            raise ValueError("No base dcs install directory found!")
 
     setup_logger = get_logger("setup")
     setup_logger.info("Running first time setup...")
