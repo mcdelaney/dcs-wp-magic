@@ -12,3 +12,8 @@ tasklist /nh /fi "imagename eq joystick_gremlin.exe" | find /i "joystick_gremlin
 
 CD "C:\Users\mcdel\dcs-wp-magic\"
 tasklist /nh /fi "imagename eq dcs_wp_manager.exe" | find /i "dcs_wp_manager.exe" > nul || (start "" "C:\Users\mcdel\dcs-wp-magic\dist\dcs_wp_manager\dcs_wp_manager.exe")
+
+(tasklist /nh /fi "imagename eq SimShaker for Aviators beta.exe") | find /i "SimShaker" > nul || (start "" "C:\Users\mcdel\Desktop\SimShaker for Aviators beta.appref-ms")
+
+CD "C:\Users\mcdel\"
+start "" "C:\Program Files (x86)\Steam\steamapps\common\DCSWorld\bin\DCS.exe"
