@@ -111,7 +111,8 @@ def process_line(obj_dict, ref):
                 h_dist = rec.alt - prev_coord[2]
                 true_dist = math.sqrt(true_dist**2 + h_dist**2)
 
-            velocity = true_dist/secs_from_last
+            if secs_from_last > 0:
+                velocity = true_dist/secs_from_last
 
         LOG.debug("Creating event row for %s...", rec.id)
         event = db.Event.create(object=obj_dict['id'],
