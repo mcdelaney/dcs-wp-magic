@@ -55,7 +55,6 @@ class Enemy:
         self.start_coords = start_coords
         try:
             self.last_seen = item['lastseen']
-            # self.last_seen = datetime.strptime(item['lastseen'],'%Y-%m-%d %H:%M:%S.%f')
         except KeyError:
             pass
 
@@ -109,8 +108,8 @@ class Enemy:
 
         if start_coords:
             try:
-                dist = geodesic(start_coords, (self.lat_raw, self.lon_raw))
-                self.dist = round(dist.nm)
+                self.dist = round(geodesic(start_coords,
+                                           (self.lat_raw, self.lon_raw)).nm)
             except ValueError:
                 log.error("Coordinates are incorrect: %f %f",
                           self.lat_raw, self.lon_raw)
@@ -266,7 +265,7 @@ def read_coord_sink():
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
     cur.execute("SELECT * FROM object \
-                 WHERE type IS NOT NULL AND alive = 1 and grp is not null")
+                 WHERE alive = 1")
     results = cur.fetchall()
     results = [dict(e) for e in results]
     conn.close()
