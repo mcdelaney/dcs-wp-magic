@@ -101,7 +101,7 @@ function scratchpad_load()
     end
 
     local function updateCoordinates()
-        local resp, status, err = http.request("http://127.0.0.1:5000/coords/" .. fmt .. "/" .. status)
+        local resp, status, err = http.request("http://127.0.0.1:5000/coords/" .. fmt)
         if status ~= 200 then
             return "Error updating coordinates!"
         end
@@ -169,7 +169,7 @@ function scratchpad_load()
         clearCoordsBtn = panel.ScratchpadClearCoordsButton
         stopCoordsBtn = panel.ScratchpadStopCoordsButton
         preciseCoordsBtn = panel.ScratchpadPreciseCoordsButton
-        keepAllBtn = panel.ScratchpadKeepAllButton
+        -- keepAllBtn = panel.ScratchpadKeepAllButton
 
         table.insert(sections, panel.CoordSection1)
         table.insert(sections, panel.CoordSection2)
@@ -268,15 +268,15 @@ function scratchpad_load()
             end
         )
 
-        keepAllBtn:addMouseDownCallback(
-            function(self)
-                if status == "alive" then
-                    status = "all"
-                else
-                    status = "alive"
-                end
-            end
-        )
+        -- keepAllBtn:addMouseDownCallback(
+        --     function(self)
+        --         if status == "alive" then
+        --             status = "all"
+        --         else
+        --             status = "alive"
+        --         end
+        --     end
+        -- )
 
         scratchpad.log("Adding section callbacks...")
         for k, v in pairs(sections) do
@@ -366,8 +366,8 @@ function scratchpad_load()
         local offset = offset+50+20
         preciseCoordsBtn:setBounds(offset, h - 120, 50, 20)
 
-        local offset = offset+50+20
-        keepAllBtn:setBounds(offset, h - 120, 50, 20)
+        -- local offset = offset+50+20
+        -- keepAllBtn:setBounds(offset, h - 120, 50, 20)
 
         local w = -40
         for k, v in pairs(sections) do

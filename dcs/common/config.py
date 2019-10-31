@@ -1,8 +1,10 @@
 
+DB_LOC = "data/dcs.db"
 # Tacview server settings
 CLIENT = 'someone_somewhere'
 PASSWORD = '0'
 # HOST = '127.0.0.1'
+HOST = '147.135.9.159' #PGAW
 HOST = '147.135.8.169'  # Hoggit Gaw
 PORT = 42674
 START_UNITS = [CLIENT, "CVN-74", "Stennis"]
@@ -31,7 +33,10 @@ EXCLUDED_TYPES = ['Air+FixedWing',
                   'Misc+Container']
 
 EXCLUDED_PILOTS = ["FARP"]
-COALITION = "Enemies"
+COALITION = "Enemies"''
+
+COORD_KEYS = ['long', 'lat', 'alt', 'roll', 'pitch', 'yaw', 'u_coord',
+              'v_coord', 'heading']
 
 MAX_DIST = 1000
 

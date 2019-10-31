@@ -7,15 +7,20 @@ database.
 
 import asyncio
 from asyncio.log import logging
-from datetime import datetime
-import sqlite3
+from datetime import datetime, timedelta
+import math
+
+import peewee
+from geopy.distance import geodesic
 
 from dcs.common import db
 from dcs.common import get_logger
 from dcs.common import config
 
+
 DEBUG = False
-LOG = get_logger(logging.getLogger('tacview_client'))
+EVENTS = True
+LOG = get_logger(logging.getLogger('tacview_client'), False)
 LOG.setLevel(logging.DEBUG if DEBUG else logging.INFO)
 
 STREAM_PROTOCOL = "XtraLib.Stream.0"
@@ -30,52 +35,104 @@ HANDSHAKE = HANDSHAKE.encode('utf-8')
 REF_TIME_FMT = '%Y-%m-%dT%H:%M:%SZ'
 
 
-def parse_line(obj, ref, last_seen):
-    """Parse a single line from tacview stream."""
-    LOG.debug(obj)
-    line = obj.strip()
-
-    if line[0] == '-':
-        # If leading dash, object is dead and should be marked alive=False
-        return {'id': line.split('-')[1].strip(), 'alive': False}
-
-    split_line = line.split(',')
-    obj_id = split_line.pop(0)
-    try:
-        obj_dict = {k.lower(): v for k, v in [l.split('=', 1) for l in split_line]}
-    except ValueError:
-        return
-    obj_dict['id'] = obj_id
-    try:
-        coord = obj_dict.pop('t')
-        coord = coord.split('|')[0:3]
-        for key, val in zip(['long', 'lat', 'alt'], coord):
-            if val == '':
-                obj_dict[key] = ''
-            else:
-                obj_dict[key] = float(val) + getattr(ref, key)
-    except KeyError:
-        LOG.debug("Key: t not in dict keys for line %s", obj)
-        return
-
-    if 'id' in obj_dict.keys() and len(list(obj_dict.keys())) == 4:
-        # This means that the object is an update entry.
+def line_to_dict(line, ref):
+    """Process a line into a dictionary."""
+    line = line.split(',')
+    if line[0][0] == '-':
+        LOG.debug("Record %s is now dead...updating...", id)
+        obj_dict = {'id': line[0][1:].strip(),
+                    'alive': 0,
+                    'last_seen': ref.time
+                    }
         return obj_dict
 
-    try:
+    obj_dict = {k.lower(): v for k, v in [l.split('=', 1) for l in line[1:]]}
+    obj_dict['id'] = line[0]
+    if 'group' in obj_dict.keys():
         obj_dict['grp'] = obj_dict.pop('group')
-    except KeyError:
-        if 'name' in obj_dict.keys():
-            obj_dict['grp'] = obj_dict['name'] + '-' + obj_dict['id']
 
-    for val in ['pilot', 'platform']:
-        if val not in obj_dict.keys():
-            if 'name' in obj_dict.keys():
-                obj_dict[val] = obj_dict['name']
+    try:
+        coord = obj_dict.pop('t')
+    except KeyError as err:
+        LOG.error(line, obj_dict)
+        LOG.exception(err)
+        raise err
 
-    obj_dict['alive'] = True
-    obj_dict['lastseen'] = last_seen
+    coord = coord.split('|')
+
+    for i, k in enumerate(config.COORD_KEYS):
+        try:
+            obj_dict[k] = float(coord[i])
+            if k in ['lat', 'long']:
+                obj_dict[k] = obj_dict[k] + getattr(ref, k)
+        except (ValueError, TypeError, IndexError) as err:
+            pass
     return obj_dict
+
+
+def process_line(obj_dict, ref):
+    """Parse a single line from tacview stream."""
+
+    rec = db.Object.get_or_none(id=obj_dict['id'])
+    prev_coord = None
+    prev_ts = None
+    if rec:
+        prev_ts = rec.last_seen
+        prev_coord = [rec.lat, rec.long, rec.alt]
+        # Update existing record
+        rec.updates = rec.updates + 1
+        LOG.debug("Record %s found ...will updated...", obj_dict['id'])
+        for k in config.COORD_KEYS:
+            try:
+                setattr(rec, k, obj_dict[k])
+            except KeyError:
+                pass
+        rec.last_seen = ref.time
+        rec.save()
+    else:
+        # Create new record
+        LOG.debug("Record not found...creating....")
+        rec = db.Object.create(**obj_dict, last_seen=ref.time,
+                               first_seen=ref.time)
+        if DEBUG:
+            rec.debug = obj_dict
+            rec.save()
+
+    if EVENTS:
+        true_dist = None
+        secs_from_last = None
+        velocity = None
+        if prev_coord:
+            secs_from_last = (rec.last_seen - prev_ts).total_seconds()
+            true_dist = geodesic((rec.lat, rec.long),
+                                 (prev_coord[0], prev_coord[1])).meters
+
+            if 'alt' in obj_dict.keys():
+                h_dist = rec.alt - prev_coord[2]
+                true_dist = math.sqrt(true_dist**2 + h_dist**2)
+
+            velocity = true_dist/secs_from_last
+
+        LOG.debug("Creating event row for %s...", rec.id)
+        event = db.Event.create(object=obj_dict['id'],
+                                last_seen=ref.time,
+                                alt=rec.alt,
+                                lat=rec.lat,
+                                long=rec.long,
+                                alive=rec.alive,
+                                yaw=rec.yaw,
+                                heading=rec.heading,
+                                roll=rec.roll,
+                                pitch=rec.pitch,
+                                u_coord=rec.u_coord,
+                                v_coord=rec.v_coord,
+                                velocity_ms=velocity,
+                                dist_m=true_dist,
+                                secs_from_last=secs_from_last,
+                                update_num=rec.updates)
+        event.save()
+        LOG.debug("Event row created successfully...")
+    return
 
 
 class Ref:
@@ -84,51 +141,59 @@ class Ref:
     def __init__(self):
         self.lat = None
         self.long = None
-        self.alt = 0
         self.time = None
+        self.last_time = 0.0
+        self.all_refs = False
 
-    def all_set(self):
-        """Return true if all ref attributes are set."""
-        return self.lat and self.long and self.time
+    def update_time(self, offset):
+        """Update the refence time attribute with a new offset."""
+        offset = float(offset.strip())
+        LOG.debug(f"New time offset: {offset}...")
+        diff = offset - self.last_time
+        LOG.debug(f"Incremening time offset by {diff}...")
+        self.time = self.time + timedelta(seconds=diff)
+        self.last_time = offset
 
     def parse_ref_obj(self, line):
         """
-        Attempt to extract ReferenceLatitude, ReferenceLongitude or ReferenceTime
-        from a line object.
+        Attempt to extract ReferenceLatitude, ReferenceLongitude or
+        ReferenceTime from a line object.
         """
         try:
             val = line.split(',')[-1].split('=')
-            LOG.debug('Checking for latitude...')
+
             if val[0] == 'ReferenceLatitude':
                 LOG.debug('Ref latitude found...')
                 self.lat = float(val[1])
-                return
-            LOG.debug('Checking for longitude...')
+
             if val[0] == 'ReferenceLongitude':
                 LOG.debug('Ref longitude found...')
                 self.long = float(val[1])
-                return
-            LOG.debug('Checking for ref time...')
+
             if val[0] == 'ReferenceTime':
                 LOG.debug('Ref time found...')
                 self.time = datetime.strptime(val[1], REF_TIME_FMT)
-                return
+
+            self.all_refs = self.lat and self.long and self.time
         except IndexError:
             pass
 
 
 class SocketReader:
     """Read from Tacview socket."""
-    host = config.HOST
-    port = config.PORT
     handshake = HANDSHAKE
 
-    def __init__(self, debug=False):
+    def __init__(self, host, port, debug=False):
         self.ref = Ref()
+        self.host = host
+        self.port = port
         self.debug = debug
         self.reader = None
         self.writer = None
         self.last_recv = None
+        self.sink = "log/raw_sink.txt"
+        if debug:
+            open(self.sink, 'w').close()
 
     async def open_connection(self):
         """Initialize the socket connection and write handshake data."""
@@ -143,7 +208,7 @@ class SocketReader:
                 break
             except ConnectionError as err:
                 LOG.error(err)
-                LOG.error('Socket connection failed....will retry in 5 seconds...')
+                LOG.error('Connection attempt failed....will retry in 3 sec...')
                 await asyncio.sleep(3)
 
     async def read_stream(self):
@@ -152,6 +217,10 @@ class SocketReader:
         msg = data.decode().strip()
         if msg:
             self.last_recv = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        if self.debug:
+            with open(self.sink, 'a+') as fp_:
+                fp_.write(msg + '\n')
+
         return msg
 
     async def close(self):
@@ -162,53 +231,46 @@ class SocketReader:
 
 async def consumer():
     """Main method to consume stream."""
-    objects = []
-    last_seen = 0
-    conn = db.create_connection(replace_db=True)
-    db.create_db(conn)
-    sock = SocketReader(debug=DEBUG)
+    conn = db.init_db()
+    sock = SocketReader(config.HOST, config.PORT, DEBUG)
     await sock.open_connection()
+    iter_counter = 0
     while True:
         try:
             obj = await sock.read_stream()
-            if obj == '' or obj[0:2] == '\\' or obj[0] == '#':
+            try:
+                if obj == '' or obj[0:2] == '\\':
+                    continue
+            except IndexError:
+                pass
+
+            try:
+                if obj[0:2] == "0," or not sock.ref.all_refs:
+                    sock.ref.parse_ref_obj(obj)
+                    continue
+            except IndexError:
+                pass
+
+            if obj[0] == "#":
+                sock.ref.update_time(obj[1:])
                 continue
 
-            if not sock.ref.all_set():
-                sock.ref.parse_ref_obj(obj)
-                continue
-
-            obj_dict = parse_line(obj, sock.ref, last_seen)
-            if obj_dict is None:
-                continue
-
-            # Check if object id exists already. If so, update location in db.
-            if obj_dict['id'] in objects:
-                LOG.debug('Updating object %s...', obj_dict['id'])
-                db.update_enemy_field(conn, obj_dict)
-            else:
-                LOG.debug("Adding: %s-%s...", obj_dict['id'], obj_dict['type'])
-                objects.append(obj_dict['id'])
-                try:
-                    db.insert_new_rec(conn, obj_dict)
-                    db.insert_new_rec(conn, obj_dict,
-                                      cols=['id', 'lat', 'long', 'alt', 'alive'],
-                                      table='events')
-                except sqlite3.Error as err:
-                    LOG.error("Could not insert object into db! %s",
-                              obj_dict)
-                    LOG.execption(err)
-
+            obj_dict = line_to_dict(obj, sock.ref)
+            process_line(obj_dict, sock.ref)
+            iter_counter += 1
         except ConnectionError as err:
             LOG.error('Closing socket due to exception...')
             LOG.exception(err)
             await sock.close()
             conn.close()
-            conn = db.create_connection(replace_db=True)
-            db.create_db(conn)
+            db.init_db()
             await sock.open_connection()
 
 
-def consume_tac_stream():
+def main():
     """Start event loop to consume stream."""
     asyncio.run(consumer())
+
+#
+# if __name__ == '__main__':
+#     main()

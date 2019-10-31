@@ -39,16 +39,11 @@ def start_entry(rack, coord_string):
         return Response(status=500)
 
 
-@app.route("/coords/<coord_fmt>/<status>")
-def as_strings_coords(coord_fmt, status="alive"):
+@app.route("/coords/<coord_fmt>")
+def as_strings_coords(coord_fmt):
     try:
-        if status == "alive":
-            only_alive = True
-        else:
-            only_alive = False
         state = read_coord_sink()
-        enemies = construct_enemy_set(state, coord_fmt=coord_fmt,
-                                                only_alive=only_alive)
+        enemies = construct_enemy_set(state, coord_fmt=coord_fmt)
         app.logger.info('Enemeies Collected...')
         return enemies
 

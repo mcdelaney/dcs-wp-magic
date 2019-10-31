@@ -1,7 +1,9 @@
 import logging
 import json
+from datetime import datetime
+import sqlite3
 
-from geopy.distance import vincenty
+from geopy.distance import geodesic
 
 from dcs.common import get_logger
 from dcs.common import config
@@ -43,7 +45,8 @@ class Enemy:
 
     def __init__(self, item, start_coords=None, coord_fmt='dms'):
         self.id = item["id"]
-        self.name = item["pilot"]
+        self.name = item["name"]
+        self.pilot = item["pilot"]
         self.platform = item["platform"]
         self.type = item["type"]
         self.dist = 999
@@ -51,7 +54,8 @@ class Enemy:
         self.target_num = 1
         self.start_coords = start_coords
         try:
-            self.last_seen = int(item['lastseen'])
+            self.last_seen = item['lastseen']
+            # self.last_seen = datetime.strptime(item['lastseen'],'%Y-%m-%d %H:%M:%S.%f')
         except KeyError:
             pass
 
@@ -62,15 +66,18 @@ class Enemy:
             log.debug(f"grp key not found for obj {self.id}...setting grp as\
                       {self.grp_name}")
         try:
-            self.alt = max([1, round((float(item["alt"])))])
-        except (KeyError, ValueError):
-            self.alt = 1
+            if item['alt'] == None:
+                self.alt = 1.0
+            else:
+                self.alt = max([1.0, round((float(item["alt"])))])
+        except Exception:
+            self.alt = 1.0
 
         self.lat_raw = item["lat"]
         self.lon_raw = item["long"]
 
         try:
-            self.cat = config.CAT_LOOKUP[self.platform]
+            self.cat = config.CAT_LOOKUP[self.name]
             self.order_val = config.CAT_ORDER[self.cat]
         except KeyError:
             self.cat = self.type
@@ -102,7 +109,7 @@ class Enemy:
 
         if start_coords:
             try:
-                dist = vincenty(start_coords, (self.lat_raw, self.lon_raw))
+                dist = geodesic(start_coords, (self.lat_raw, self.lon_raw))
                 self.dist = round(dist.nm)
             except ValueError:
                 log.error("Coordinates are incorrect: %f %f",
@@ -114,7 +121,7 @@ class Enemy:
         self.order_id = float(f"{self.order_val}.{self.target_num}")
 
     def str(self):
-        str = f"{self.target_num}) {self.cat}: {self.platform} {self.lat}, "\
+        str = f"{self.target_num}) {self.cat}: {self.name} {self.lat}, "\
               f"{self.lon}, {self.alt}m, {self.dist}nm"
         log.debug(str)
         log.debug('Created enemy %s %d from start point in grp %s...',
@@ -133,7 +140,6 @@ class EnemyGroups:
             targets = len(self.grps[enemy.grp_name])
             enemy.set_target_order(targets + 1)
             self.grps[enemy.grp_name].append(enemy)
-
         except (KeyError, NameError, TypeError):
             self.grps[enemy.grp_name] = [enemy]
         total = len(self.grps[enemy.grp_name])
@@ -177,54 +183,53 @@ class EnemyGroups:
         return json.dumps(output)
 
 
-def create_enemy_groups(enemy_state, start_coord, coord_fmt='dms', only_alive=True):
+def create_enemy_groups(enemy_state, start_coord, coord_fmt='dms'):
     enemy_groups = EnemyGroups()
     for item in enemy_state:
-        try:
-            if (item['type'] in config.EXCLUDED_TYPES or
-                item['coalition'] == config.COALITION or
-                item["pilot"] in config.EXCLUDED_PILOTS):
-                log.debug(f"Skipping enemy item {item['type']} {item['pilot']}\
-                          {item['coalition']} as is in excluded types...")
-                continue
-        except KeyError:
-            log.error(item)
-
+        if (item['type'] in config.EXCLUDED_TYPES or
+            item['coalition'] == config.COALITION or
+            item["pilot"] in config.EXCLUDED_PILOTS):
+            log.debug(f"Skipping enemy item {item['type']} {item['pilot']}\
+                      {item['coalition']} as is in excluded types...")
+            continue
         try:
             enemy = Enemy(item, start_coord, coord_fmt)
-            if only_alive and not enemy.alive:
-                log.debug(f'Enemy {enemy.name} is not alive...skipping...')
-                pass
-            else:
-                enemy_groups.add(enemy)
-        except Exception as e:
+            enemy_groups.add(enemy)
+        except Exception as err:
+            log.exception(err)
             log.error(item)
-            raise e
+            raise err
     return enemy_groups
 
 
-def construct_enemy_set(enemy_state, result_as_string=True, coord_fmt='dms',
-                        only_alive=True):
-    try:
-        start_coord = None
-        start_pilot = None
-        for pilot in [config.CLIENT]:
-            log.debug(f"Checking for start unit: {pilot}")
-            if start_coord:
-                log.debug('Start coord is not none...breaking...')
-                break
-            for ent in enemy_state:
-                log.debug(f"Checking enemy name {ent['name']}")
-                if ent["pilot"] == pilot or ent['grp'] == pilot:
+def find_start_point(enemy_state):
+    """Determine the starting position coordinates and pilot name."""
+    start_coord = None
+    start_pilot = None
+    for pilot in config.START_UNITS:
+        log.info(f"Checking for start unit: {pilot}")
+        if start_coord:
+            log.debug('Start coord is not none...breaking...')
+            break
+        for ent in enemy_state:
+            log.debug(f"Checking enemy name {ent['name']}")
+            if ent['name']:
+                if ent["name"].strip() == pilot or ent['pilot'] == pilot:
                     start_coord = (ent['lat'], ent['long'])
                     start_pilot = pilot
-                    log.info(f"Using {pilot} for start at {start_coord}...")
                     break
+    if not start_pilot:
+        raise ValueError("No start pilot found!")
+    log.info(f"Using {start_pilot} for start at {start_coord}...")
+    return start_coord, start_pilot
 
+
+def construct_enemy_set(enemy_state, result_as_string=True, coord_fmt='dms'):
+    """Constuct a EnemyGroup of Enemies, returning a formatted string."""
+    try:
+        start_coord, start_pilot = find_start_point(enemy_state)
         enemy_groups = create_enemy_groups(enemy_state, start_coord,
-                                           coord_fmt=coord_fmt,
-                                           only_alive=only_alive)
-
+                                           coord_fmt=coord_fmt)
         enemy_groups.sort()
         with open(LAST_RUN_CACHE, 'w') as fp_:
             fp_.write(enemy_groups.serialize())
@@ -234,10 +239,6 @@ def construct_enemy_set(enemy_state, result_as_string=True, coord_fmt='dms',
             for grp_name, enemy_set, grp_dist in enemy_groups:
                 if start_coord and (grp_dist > config.MAX_DIST):
                     log.info(f"Excluding {grp_name}...distance is {grp_dist}...")
-                    if DEBUG:
-                        log.debug("Enemies in excluded grp: ")
-                        for en in enemy_set:
-                            log.debug(f"{en.id} {en.name}")
                     continue
 
                 grp_val = [e.str() for e in enemy_set]
@@ -258,11 +259,15 @@ def construct_enemy_set(enemy_state, result_as_string=True, coord_fmt='dms',
     return enemy_groups
 
 
-def read_coord_sink(sink_path='data/tacview_sink.json'):
-    conn = db.create_connection()
+def read_coord_sink():
+    """Collect a list of Enemy Dictionaries from the database."""
+    conn = sqlite3.connect(config.DB_LOC,
+                           detect_types=sqlite3.PARSE_DECLTYPES)
+    conn.row_factory = sqlite3.Row
     cur = conn.cursor()
-    cur.execute("SELECT * FROM enemies \
-                WHERE pilot IS NOT NULL and type IS NOT NULL AND alive=1")
+    cur.execute("SELECT * FROM object \
+                 WHERE type IS NOT NULL AND alive = 1 and grp is not null")
     results = cur.fetchall()
     results = [dict(e) for e in results]
+    conn.close()
     return results

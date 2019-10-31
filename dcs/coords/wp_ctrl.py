@@ -7,7 +7,7 @@ from dcs.common import get_logger
 
 LAST_RUN_CACHE = 'data/last_extract.json'
 
-log = get_logger(logging.getLogger('wp_control'))
+log = get_logger(logging.getLogger('wp_control'), True)
 log.setLevel(level=logging.DEBUG)
 
 

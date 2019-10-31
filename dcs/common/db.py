@@ -1,118 +1,84 @@
 import logging
 from pathlib import Path
-import sqlite3
+from uuid import uuid1
+
+import peewee as pw
+
+from dcs.common  import config
 from . import get_logger
 
 log = get_logger(logging.getLogger(__name__))
 log.setLevel(logging.INFO)
 
-COLS = ["id",
-        "name",
-        "color",
-        'country',
-        "grp",
-        'pilot',
-        "platform",
-        "type",
-        "alive",
-        "lastseen",
-        "coalition",
-        "lat",
-        "long",
-        "alt"]
-
-INSERT_STR = ','.join(["?" for _ in COLS])
+DB = pw.SqliteDatabase(None,
+                       pragmas={'journal_mode': 'wal',
+                                'cache_size': -64 * 1000})
 
 
-def dict_to_db_string(obj_dict, cols=COLS):
-    values = []
-    columns = []
-    for key, val in obj_dict.items():
-        if key in cols:
-            columns.append(key)
-            if type(val) is bool:
-                values.append(f"{str(int(val))}")
-            else:
-                values.append(f"{str(val)}")
-    return columns, values
+class BaseModel(pw.Model):
+    """Base model with DB defined from which all others inherit."""
+    class Meta:
+        database = DB
 
 
-def update_enemy_field(conn, obj):
-    updates = []
-    for key, val in obj.items():
-        if key in COLS:
-            updates.append(f"{key} = '{val}'")
+class Object(BaseModel):
+    """DCS Object."""
+    id = pw.CharField(primary_key=True, index=True)
+    name = pw.CharField(null=True)
+    color = pw.CharField(null=True)
+    country = pw.CharField(null=True)
+    grp = pw.CharField(null=True)
+    pilot = pw.CharField(null=True)
+    platform = pw.CharField(null=True)
+    type = pw.CharField(null=True)
+    alive = pw.IntegerField(default=1)
+    first_seen = pw.DateTimeField()
+    last_seen = pw.DateTimeField()
+    coalition = pw.CharField(null=True)
+    lat = pw.FloatField()
+    long = pw.FloatField()
+    alt = pw.FloatField(default=1)
+    roll = pw.FloatField(null=True)
+    pitch = pw.FloatField(null=True)
+    yaw = pw.FloatField(null=True)
+    u_coord = pw.FloatField(null=True)
+    v_coord = pw.FloatField(null=True)
+    heading = pw.FloatField(null=True)
+    updates = pw.IntegerField(default=1)
+    parent = pw.CharField(null=True)
+    debug = pw.CharField(null=True)
 
-    updates = ' , '.join(updates)
-    where_clause = "id = '%s'" % obj.pop('id')
-    cur = conn.cursor()
-    cur.execute(f"UPDATE enemies SET {updates} WHERE {where_clause}")
 
-    insert_new_rec(conn, obj, cols=['id', 'lat', 'long', 'alt', 'alive'],
-                   table="events")
-    return conn.commit()
+class Event(BaseModel):
+    """Event History."""
+    id = pw.AutoField()
+    object = pw.ForeignKeyField(Object, 'id', unique=False)
+    alive = pw.IntegerField(default=1)
+    last_seen = pw.DateTimeField()
+    lat = pw.FloatField(null=True)
+    long = pw.FloatField(null=True)
+    alt = pw.FloatField(null=True)
+
+    roll = pw.FloatField(null=True)
+    pitch = pw.FloatField(null=True)
+    yaw = pw.FloatField(null=True)
+    u_coord = pw.FloatField(null=True)
+    v_coord = pw.FloatField(null=True)
+    heading = pw.FloatField(null=True)
+    dist_m = pw.FloatField(null=True)
+    velocity_ms = pw.FloatField(null=True)
+    secs_from_last = pw.FloatField(null=True)
+    update_num = pw.IntegerField(null=False)
 
 
-def insert_new_rec(conn, obj_dict, cols=COLS, table='enemies'):
-    columns, values = dict_to_db_string(obj_dict, cols)
-    val_string = ','.join(["?" for _ in columns])
-    cur = conn.cursor()
-    cur.execute(f"INSERT INTO {table} ({','.join(columns)})\
-                 VALUES ({val_string})", values)
-    return conn.commit()
-
-
-def create_connection(replace_db=False):
-    db_path = Path('data/dcs.db')
+def init_db(replace_db=True):
+    db_path = Path(config.DB_LOC)
     if not db_path.parent.exists():
         db_path.parent.mkdir()
 
     if replace_db:
         if db_path.exists():
-            db_path.replace("data/dcs_arch.db")
-
-    conn = sqlite3.connect(str(db_path),
-                           detect_types=sqlite3.PARSE_DECLTYPES,
-                           isolation_level=None)
-    conn.execute('pragma journal_mode=wal')
-    sqlite3.register_adapter(bool, int)
-    sqlite3.register_converter("BOOLEAN", lambda v: bool(int(v)))
-    conn.row_factory = sqlite3.Row
-    return conn
-
-
-def create_db(conn):
-    cur = conn.cursor()
-    cur.execute("DROP TABLE IF EXISTS enemies")
-    cur.execute("DROP TABLE IF EXISTS events")
-    conn.commit()
-    cur.execute('''
-              CREATE TABLE enemies
-                (id text PRIMARY KEY,
-                 name text,
-                 color text,
-                 country text,
-                 grp text,
-                 pilot text,
-                 platform text,
-                 type text,
-                 alive BOOLEAN,
-                 lastseen int,
-                 coalition text,
-                 lat float,
-                 long float,
-                 alt float
-                 )
-              ''')
-    conn.commit()
-    cur.execute('''
-                  CREATE TABLE events
-                    (id text,
-                     lat float,
-                     long float,
-                     alt float,
-                     alive BOOLEAN DEFAULT 1
-                     )
-                  ''')
-    conn.commit()
-    return conn
+            db_path.replace("data/dcs_%s.db" % uuid1())
+    DB.init(config.DB_LOC)
+    DB.create_tables([Object, Event])
+    return DB

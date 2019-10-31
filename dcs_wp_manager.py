@@ -20,4 +20,5 @@ if __name__ == '__main__':
     app = gui.DCSWPControllerApp()
     app.protocol("WM_DELETE_WINDOW", _delete_window)
     app.bind("<Destroy>", _destroy)
+    app.switch_status()
     app.mainloop()

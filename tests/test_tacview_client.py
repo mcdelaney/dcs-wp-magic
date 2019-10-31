@@ -9,8 +9,9 @@ from dcs.common import db
 def conn():
     """Fixture to generate a database."""
     from dcs.common import db
-    conn = db.create_connection()
-    db.create_db(conn)
+    # conn = db.create_connection()
+    conn = db.init_db()
+    # db.create_db(conn)
     return conn
 
 
@@ -38,7 +39,7 @@ def test_update_string(ref_obj):
 def test_update_partial_loc(ref_obj):
     update_string = "3008d0a,T=||1019.73"
     parsed = tacview.parse_line(obj=update_string, ref=ref_obj,
-                                       last_seen=None)
+                                last_seen=None)
     correct_resp = {'id': '3008d0a',
                     'lat': '',
                     'long': '',

@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 
 
-def get_logger(logger):
+def get_logger(logger, propogate=False):
     logFormatter = logging.Formatter(
         "%(asctime)s [%(name)s] [%(levelname)-5.5s]  %(message)s")
     file_path = Path(f"log/{logger.name}.log")
@@ -15,5 +15,5 @@ def get_logger(logger):
     consoleHandler = logging.StreamHandler()
     consoleHandler.setFormatter(logFormatter)
     logger.addHandler(consoleHandler)
-    logger.propogate = False
+    logger.propogate = propogate
     return logger
