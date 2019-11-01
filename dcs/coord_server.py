@@ -4,7 +4,7 @@ from multiprocessing import Process
 
 from flask import Flask, abort, Response
 
-from dcs.coords.processor import read_coord_sink, construct_enemy_set
+from dcs.coords.processor import construct_enemy_set
 from dcs.coords.wp_ctrl import lookup_coords, update_coord
 
 app = Flask('coord_server')
@@ -42,8 +42,7 @@ def start_entry(rack, coord_string):
 @app.route("/coords/<coord_fmt>")
 def as_strings_coords(coord_fmt):
     try:
-        state = read_coord_sink()
-        enemies = construct_enemy_set(state, coord_fmt=coord_fmt)
+        enemies = construct_enemy_set(coord_fmt=coord_fmt)
         app.logger.info('Enemeies Collected...')
         return enemies
 

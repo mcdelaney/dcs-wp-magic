@@ -225,10 +225,10 @@ class SocketReader:
         await self.writer.wait_closed()
 
 
-async def consumer():
+async def consumer(host=config.HOST, port=config.PORT):
     """Main method to consume stream."""
     conn = db.init_db()
-    sock = SocketReader(config.HOST, config.PORT, DEBUG)
+    sock = SocketReader(host, port, DEBUG)
     await sock.open_connection()
     ref = Ref()
     iter_counter = 0
@@ -264,6 +264,6 @@ async def consumer():
             await sock.open_connection()
 
 
-def main():
+def main(host, port):
     """Start event loop to consume stream."""
-    asyncio.run(consumer())
+    asyncio.run(consumer(host, port))

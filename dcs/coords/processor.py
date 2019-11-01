@@ -50,9 +50,7 @@ class Enemy:
         self.platform = item["platform"]
         self.type = item["type"]
         self.dist = 999
-        self.alive = item["alive"]
         self.target_num = 1
-        self.start_coords = start_coords
         try:
             self.last_seen = item['lastseen']
         except KeyError:
@@ -108,7 +106,8 @@ class Enemy:
 
         if start_coords:
             try:
-                self.dist = round(geodesic(start_coords,
+                self.dist = round(geodesic((start_coords['lat'],
+                                            start_coords['long'])
                                            (self.lat_raw, self.lon_raw)).nm)
             except ValueError:
                 log.error("Coordinates are incorrect: %f %f",
@@ -201,32 +200,10 @@ def create_enemy_groups(enemy_state, start_coord, coord_fmt='dms'):
     return enemy_groups
 
 
-def find_start_point(enemy_state):
-    """Determine the starting position coordinates and pilot name."""
-    start_coord = None
-    start_pilot = None
-    for pilot in config.START_UNITS:
-        log.info(f"Checking for start unit: {pilot}")
-        if start_coord:
-            log.debug('Start coord is not none...breaking...')
-            break
-        for ent in enemy_state:
-            log.debug(f"Checking enemy name {ent['name']}")
-            if ent['name']:
-                if ent["name"].strip() == pilot or ent['pilot'] == pilot:
-                    start_coord = (ent['lat'], ent['long'])
-                    start_pilot = pilot
-                    break
-    if not start_pilot:
-        raise ValueError("No start pilot found!")
-    log.info(f"Using {start_pilot} for start at {start_coord}...")
-    return start_coord, start_pilot
-
-
-def construct_enemy_set(enemy_state, result_as_string=True, coord_fmt='dms'):
+def construct_enemy_set(result_as_string=True, coord_fmt='dms'):
     """Constuct a EnemyGroup of Enemies, returning a formatted string."""
     try:
-        start_coord, start_pilot = find_start_point(enemy_state)
+        enemy_state, start_coord = read_coord()
         enemy_groups = create_enemy_groups(enemy_state, start_coord,
                                            coord_fmt=coord_fmt)
         enemy_groups.sort()
@@ -249,8 +226,8 @@ def construct_enemy_set(enemy_state, result_as_string=True, coord_fmt='dms'):
             results = [results[k] for k in sorted(results.keys())]
             results = [f"{i+1}) {r}" for i, r in enumerate(results)]
             results = '\r\n\r\n'.join(results)
-            results = f"Start Ref: {start_pilot} "\
-                      f"{(round(start_coord[0], 3), round(start_coord[1], 3))}"\
+            results = f"Start Ref: {start_coord['name']} "\
+                      f"{(round(start_coord['lat'], 3), round(start_coord['long'], 3))}"\
                       f"\r\n\r\n{results}"
             return results.encode('UTF-8')
     except Exception as err:
@@ -258,15 +235,28 @@ def construct_enemy_set(enemy_state, result_as_string=True, coord_fmt='dms'):
     return enemy_groups
 
 
-def read_coord_sink():
+def read_coords(start_units=config.START_UNITS,
+                    coalition='Enemies'):
     """Collect a list of Enemy Dictionaries from the database."""
     conn = sqlite3.connect(config.DB_LOC,
                            detect_types=sqlite3.PARSE_DECLTYPES)
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
+    log.info('Querying for enemy list...')
     cur.execute("SELECT * FROM object \
-                 WHERE alive = 1")
-    results = cur.fetchall()
-    results = [dict(e) for e in results]
+                 WHERE alive = 1 AND coalition != '%s'" % coalition)
+    enemies = [dict(e) for e in cur.fetchall()]
+
+    for unit in start_units:
+        log.info('Querying for start unit %s...', unit)
+        cur = conn.cursor()
+        cur.execute("SELECT lat, long, alt, name, pilot \
+                     FROM object \
+                     WHERE coalition = '%s' AND \
+                       alive = 1 AND name = '%s'" % (coalition, unit))
+        start = [dict(r) for r in cur.fetchall()]
+        if start:
+            break
+
     conn.close()
-    return results
+    return enemies, start
