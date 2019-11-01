@@ -153,7 +153,7 @@ def process_line(obj_dict, pubsub=None):
 
         event.save()
         if pubsub:
-            pubsub_rec = model_to_dict(event.get())
+            pubsub_rec = model_to_dict(event)
             obj_id = pubsub_rec.pop('object')
             pubsub_rec['object'] = obj_id['id']
             pubsub_rec = json.dumps(pubsub_rec,
