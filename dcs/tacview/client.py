@@ -9,6 +9,7 @@ from asyncio.log import logging
 from datetime import datetime, timedelta
 import math
 from uuid import uuid1
+import json
 
 from geopy.distance import geodesic
 
@@ -72,7 +73,7 @@ def line_to_dict(line, ref):
     return obj_dict
 
 
-def process_line(obj_dict):
+def process_line(obj_dict, pubsub=None):
     """Parse a single line from tacview stream."""
 
     rec = db.Object.get_or_none(id=obj_dict['id'])
@@ -98,6 +99,9 @@ def process_line(obj_dict):
         if DEBUG:
             rec.debug = obj_dict
             rec.save()
+
+        if pubsub:
+            pubsub.publish(pubsub.object, json.dumps(dict(rec)))
 
     if EVENTS:
         true_dist = None
@@ -134,6 +138,8 @@ def process_line(obj_dict):
                                 secs_from_last=secs_from_last,
                                 update_num=rec.updates)
         event.save()
+        if pubsub:
+            pubsub.publish(pubsub.events, json.dumps(dict(event)))
         LOG.debug("Event row created successfully...")
 
 
@@ -227,7 +233,7 @@ class SocketReader:
         await self.writer.wait_closed()
 
 
-async def consumer(host=config.HOST, port=config.PORT):
+async def consumer(host=config.HOST, port=config.PORT, mode='local'):
     """Main method to consume stream."""
     conn = db.init_db()
     sock = SocketReader(host, port, DEBUG)
@@ -255,7 +261,7 @@ async def consumer(host=config.HOST, port=config.PORT):
                 continue
 
             obj_dict = line_to_dict(obj, ref)
-            process_line(obj_dict)
+            process_line(obj_dict, mode)
             iter_counter += 1
         except ConnectionError as err:
             LOG.error('Closing socket due to exception...')
@@ -266,6 +272,6 @@ async def consumer(host=config.HOST, port=config.PORT):
             await sock.open_connection()
 
 
-def main(host, port):
+def main(host, port, mode='local'):
     """Start event loop to consume stream."""
-    asyncio.run(consumer(host, port))
+    asyncio.run(consumer(host, port, mode))

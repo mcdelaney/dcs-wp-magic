@@ -1,10 +1,13 @@
 """Model definitions for database."""
 from pathlib import Path
-from uuid import uuid1
 
 import peewee as pw
+from google.cloud import pubsub_v1
+
 
 from dcs.common  import config
+
+
 
 DB = pw.SqliteDatabase(None,
                        pragmas={'journal_mode': 'wal',
@@ -79,7 +82,18 @@ def init_db(replace_db=True):
 
     if replace_db:
         if db_path.exists():
-            db_path.replace("data/dcs_%s.db" % uuid1())
+            db_path.unlink()
     DB.init(config.DB_LOC)
     DB.create_tables([Object, Event])
     return DB
+
+
+class Publisher: # pylint: disable=too-few-public-methods
+    """Pubsub writer."""
+
+    def __init__(self):
+        self.publisher = pubsub_v1.PublisherClient()
+        self.objects = self.publisher.topic_path(
+            config.PROJECT_ID, 'tacview_objects')
+        self.events = self.publisher.topic_path(
+            config.PROJECT_ID, 'tacview_events')

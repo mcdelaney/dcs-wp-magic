@@ -1,25 +1,24 @@
-
+"""Shared config settings for the app."""
 DB_LOC = "data/dcs.db"
 # Tacview server settings
 CLIENT = 'someone_somewhere'
 PASSWORD = '0'
 # HOST = '127.0.0.1'
-HOST = '147.135.9.159' #PGAW
+HOST = '147.135.9.159'  # PGAW
 HOST = '147.135.8.169'  # Hoggit Gaw
 PORT = 42674
 START_UNITS = [CLIENT, "CVN-74", "Stennis"]
-EXCLUDED_EXPORT = [
-                  'Ground+Light+Human+Air+Parachutist',
-                  'Navaid+Static+Bullseye',
-                  'Air+FixedWing',
-                  'Misc+Decoy+Chaff',
-                  "Air+Rotorcraft",
-                  "Misc+Shrapnel",
-                  'Weapon+Missile',
-                  'weapon+Missile',
-                  'Projectile+Shell',
-                  'Misc+Container'
-]
+EXCLUDED_EXPORT = ['Ground+Light+Human+Air+Parachutist',
+                   'Navaid+Static+Bullseye',
+                   'Air+FixedWing',
+                   'Misc+Decoy+Chaff',
+                   "Air+Rotorcraft",
+                   "Misc+Shrapnel",
+                   'Weapon+Missile',
+                   'weapon+Missile',
+                   'Projectile+Shell',
+                   'Misc+Container'
+                   ]
 
 EXCLUDED_TYPES = ['Air+FixedWing',
                   '',
@@ -76,3 +75,6 @@ CAT_LOOKUP = {}
 for key, val in CATS.items():
     for i in val:
         CAT_LOOKUP[i] = key
+
+
+PROJECT_ID = 'dcs-analytics-257714'
