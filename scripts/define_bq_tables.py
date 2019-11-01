@@ -8,7 +8,7 @@ events_schema = [
     bigquery.SchemaField("session_id", "STRING", mode="REQUIRED"),
     bigquery.SchemaField("object", "STRING", mode="NULLABLE"),
     bigquery.SchemaField("alive", "INTEGER", mode="NULLABLE"),
-    bigquery.SchemaField("last_seen", "timestamp", mode="NULLABLE"),
+    bigquery.SchemaField("last_seen", "TIMESTAMP", mode="NULLABLE"),
     bigquery.SchemaField("lat", "FLOAT", mode="NULLABLE"),
     bigquery.SchemaField("long", "FLOAT", mode="NULLABLE"),
     bigquery.SchemaField("alt", "float", mode="NULLABLE"),
@@ -26,8 +26,15 @@ events_schema = [
 try:
     events_tbl_id = "dcs-analytics-257714.tacview.events"
     table = bigquery.Table(events_tbl_id, schema=events_schema)
+    table.time_partitioning = bigquery.TimePartitioning(
+        type_=bigquery.TimePartitioningType.DAY,
+        field="last_seen",  # name of column to use for partitioning
+        expiration_ms=None,
+    )
+
     table = client.create_table(table)
-except Exception:
+except Exception as err:
+    print(err)
     print("error creating events!")
 
 
@@ -42,9 +49,9 @@ objects_schema = [
     bigquery.SchemaField("platform", "STRING", mode="NULLABLE"),
     bigquery.SchemaField("type", "STRING", mode="NULLABLE"),
     bigquery.SchemaField("coalition", "STRING", mode="NULLABLE"),
-    bigquery.SchemaField("first_seen", "timestamp", mode="NULLABLE"),
+    bigquery.SchemaField("first_seen", "TIMESTAMP", mode="NULLABLE"),
     bigquery.SchemaField("alive", "INTEGER", mode="NULLABLE"),
-    bigquery.SchemaField("last_seen", "timestamp", mode="NULLABLE"),
+    bigquery.SchemaField("last_seen", "TIMESTAMP", mode="NULLABLE"),
     bigquery.SchemaField("lat", "FLOAT", mode="NULLABLE"),
     bigquery.SchemaField("long", "FLOAT", mode="NULLABLE"),
     bigquery.SchemaField("alt", "float", mode="NULLABLE"),
@@ -64,6 +71,13 @@ objects_schema = [
 try:
     objects_tbl_id = "dcs-analytics-257714.tacview.objects"
     table = bigquery.Table(objects_tbl_id, schema=objects_schema)
+    table.time_partitioning = bigquery.TimePartitioning(
+        type_=bigquery.TimePartitioningType.DAY,
+        field="first_seen",  # name of column to use for partitioning
+        expiration_ms=None,
+    )
+
     table = client.create_table(table)
-except Exception:
+except Exception as err:
+    print(err)
     print("error creating objects!")
