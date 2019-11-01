@@ -15,7 +15,7 @@ pyinstaller -F -w -y dcs_wp_manager.spec
 ```
 
 
-To build the tacview consumer docker container, run:
+To build the tacview consumer docker container, ensure you have GCP permissions, have the gcloud cli tool installed, and are logged in to allow docker-push.  Then, run:
 ```
 ./scripts/build_dockerfile.sh
 ```
