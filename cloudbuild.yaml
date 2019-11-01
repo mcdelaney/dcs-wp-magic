@@ -1,0 +1,16 @@
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args: ["build", '--cache-from',
+            'gcr.io/${PROJECT_ID}/tacview_client:latest',
+            "-t", "gcr.io/${PROJECT_ID}/tacview_client:${SHORT_SHA}",
+            "."]
+  id: build-tacview-image
+
+- name: 'gcr.io/cloud-builders/docker'
+  args: ["tag",
+          "-t", "gcr.io/${PROJECT_ID}/tacview_client:${SHORT_SHA}",
+            'gcr.io/${PROJECT_ID}/tacview_client:latest']
+  id: tag-latest-image
+
+  images: ["gcr.io/${PROJECT_ID}/tacview_client:latest",
+           "gcr.io/${PROJECT_ID}/tacview_client:${SHORT_SHA}"]
