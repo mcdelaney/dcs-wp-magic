@@ -153,7 +153,8 @@ def process_line(obj_dict, pubsub=None):
 
         event.save()
         if pubsub:
-            pubsub_rec = json.dumps(model_to_dict(event), default=json_serial)
+            pubsub_rec = json.dumps(model_to_dict(event.get()),
+                                    default=json_serial)
             pubsub.writer.publish(pubsub.events,
                                   data=pubsub_rec.encode('utf-8'))
 
