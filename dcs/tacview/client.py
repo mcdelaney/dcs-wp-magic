@@ -11,6 +11,7 @@ import math
 from uuid import uuid1
 import json
 
+from playhouse.shortcuts import model_to_dict
 from geopy.distance import geodesic
 
 from dcs.common import db
@@ -101,7 +102,8 @@ def process_line(obj_dict, pubsub=None):
             rec.save()
 
         if pubsub:
-            pubsub.publisher.publish(pubsub.objects, json.dumps(dict(rec)))
+            pubsub.publisher.publish(pubsub.objects,
+                                     data=json.dumps(model_to_dict(rec)))
 
     if EVENTS:
         true_dist = None
@@ -139,7 +141,8 @@ def process_line(obj_dict, pubsub=None):
                                 update_num=rec.updates)
         event.save()
         if pubsub:
-            pubsub.publisher(pubsub.events, json.dumps(dict(event)))
+            pubsub.publisher(pubsub.events,
+                             data=json.dumps(model_to_dict(rec)))
         LOG.debug("Event row created successfully...")
 
 
@@ -152,7 +155,7 @@ class Ref:
         self.time = None
         self.last_time = 0.0
         self.all_refs = False
-        self.session_id = uuid1()
+        self.session_id = str(uuid1())
 
     def update_time(self, offset):
         """Update the refence time attribute with a new offset."""

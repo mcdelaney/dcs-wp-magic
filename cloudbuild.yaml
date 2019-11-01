@@ -1,7 +1,11 @@
 steps:
 - name: 'gcr.io/cloud-builders/docker'
+  args: ["pull", "gcr.io/dcs-analytics-257714/tacview_base:latest"]
+  id: pull base image
+
+- name: 'gcr.io/cloud-builders/docker'
   args: ["build", '--cache-from',
-            'gcr.io/${PROJECT_ID}/tacview_client:latest',
+            "gcr.io/dcs-analytics-257714/tacview_base:latest",
             "-t", "gcr.io/${PROJECT_ID}/tacview_client:${SHORT_SHA}",
             "."]
   id: build-tacview-image

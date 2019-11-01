@@ -1,4 +1,4 @@
-FROM jfloff/alpine-python:3.7
+FROM gcr.io/dcs-analytics-257714/tacview_base:latest
 
 WORKDIR /tmp/install/
 COPY requirements.txt /tmp/install/
