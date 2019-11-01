@@ -156,7 +156,7 @@ def process_line(obj_dict, pubsub=None):
             pubsub_rec = model_to_dict(event.get())
             obj_id = pubsub_rec.pop('object')
             pubsub_rec['object'] = obj_id['id']
-            pubsub_rec = json.dumps(pubsub_rec),
+            pubsub_rec = json.dumps(pubsub_rec,
                                     default=json_serial)
             pubsub.writer.publish(pubsub.events,
                                   data=pubsub_rec.encode('utf-8'))
