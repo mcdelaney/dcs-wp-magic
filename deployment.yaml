@@ -3,6 +3,7 @@ kind: Deployment
 metadata:
   name: tacview-client
 spec:
+  replicas: 1
   selector:
     matchLabels:
       app: gaw
@@ -11,13 +12,14 @@ spec:
       labels:
         app: gaw
     spec:
+
       volumes:
       - name: google-cloud-key
         secret:
           secretName: pubsub-key
       containers:
       - name: tacview
-        image: gcr.io/dcs-analytics-257714/tacview_client
+        image: gcr.io/dcs-analytics-257714/tacview_client:latest
         volumeMounts:
         - name: google-cloud-key
           mountPath: /var/secrets/google
