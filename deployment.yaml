@@ -19,7 +19,7 @@ spec:
           secretName: pubsub-key
       containers:
       - name: tacview
-        image: gcr.io/dcs-analytics-257714/tacview_client:d86cd4e
+        image: gcr.io/dcs-analytics-257714/tacview_client:aaaae7d
         volumeMounts:
         - name: google-cloud-key
           mountPath: /var/secrets/google

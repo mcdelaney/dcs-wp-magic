@@ -95,7 +95,7 @@ def process_line(obj_dict, pubsub=None):
         prev_coord = [rec.lat, rec.long, rec.alt]
         # Update existing record
         rec.updates = rec.updates + 1
-        LOG.debug("Record %s found ...will updated...", obj_dict['id'])
+        LOG.info("Record %s found ...will updated...", obj_dict['id'])
         for k in config.COORD_KEYS:
             try:
                 setattr(rec, k, obj_dict[k])
@@ -105,7 +105,7 @@ def process_line(obj_dict, pubsub=None):
         rec.save()
     else:
         # Create new record
-        LOG.debug("Record not found...creating....")
+        LOG.info("Record not found...creating....")
         rec = db.Object.create(**obj_dict, first_seen=obj_dict['last_seen'])
         if DEBUG:
             rec.debug = obj_dict
@@ -132,7 +132,7 @@ def process_line(obj_dict, pubsub=None):
             if secs_from_last > 0:
                 velocity = true_dist/secs_from_last
 
-        LOG.debug("Creating event row for %s...", rec.id)
+        LOG.info("Creating event row for %s...", rec.id)
         event = db.Event.create(object=obj_dict['id'],
                                 last_seen=rec.last_seen,
                                 alt=rec.alt,
@@ -161,7 +161,7 @@ def process_line(obj_dict, pubsub=None):
             pubsub.writer.publish(pubsub.events,
                                   data=pubsub_rec.encode('utf-8'))
 
-        LOG.debug("Event row created successfully...")
+        LOG.info("Event row created successfully...")
 
 
 class Ref:
