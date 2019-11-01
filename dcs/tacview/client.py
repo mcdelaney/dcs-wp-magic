@@ -130,6 +130,7 @@ def process_line(obj_dict):
                                 v_coord=rec.v_coord,
                                 velocity_ms=velocity,
                                 dist_m=true_dist,
+                                session_id=rec.session_id,
                                 secs_from_last=secs_from_last,
                                 update_num=rec.updates)
         event.save()
