@@ -6,7 +6,7 @@ database.
 """
 import asyncio
 from asyncio.log import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import math
 from uuid import uuid1
 import json
@@ -34,6 +34,16 @@ HANDSHAKE = '\n'.join([STREAM_PROTOCOL,
                        config.PASSWORD]) + HANDSHAKE_TERMINATOR
 HANDSHAKE = HANDSHAKE.encode('utf-8')
 REF_TIME_FMT = '%Y-%m-%dT%H:%M:%SZ'
+
+
+
+
+def json_serial(obj):
+    """JSON serializer for objects not serializable by default json code"""
+
+    if isinstance(obj, (datetime, date)):
+        return obj.isoformat()
+    raise TypeError ("Type %s not serializable" % type(obj))
 
 
 def line_to_dict(line, ref):
@@ -103,7 +113,9 @@ def process_line(obj_dict, pubsub=None):
 
         if pubsub:
             pubsub.publisher.publish(pubsub.objects,
-                                     data=json.dumps(model_to_dict(rec)))
+                                     data=json.dumps(model_to_dict(rec),
+                                                     default=json_serial)
+                                     )
 
     if EVENTS:
         true_dist = None
@@ -142,7 +154,9 @@ def process_line(obj_dict, pubsub=None):
         event.save()
         if pubsub:
             pubsub.publisher(pubsub.events,
-                             data=json.dumps(model_to_dict(rec)))
+                             data=json.dumps(model_to_dict(rec),
+                                             default=json_serial)
+                             )
         LOG.debug("Event row created successfully...")
 
 
