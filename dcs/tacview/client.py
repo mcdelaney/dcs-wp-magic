@@ -8,6 +8,7 @@ import asyncio
 from asyncio.log import logging
 from datetime import datetime, timedelta
 import math
+from uuid import uuid1
 
 from geopy.distance import geodesic
 
@@ -40,13 +41,15 @@ def line_to_dict(line, ref):
         LOG.debug("Record %s is now dead...updating...", id)
         obj_dict = {'id': line[0][1:].strip(),
                     'alive': 0,
-                    'last_seen': ref.time
+                    'last_seen': ref.time,
+                    'session_id': ref.session_id
                     }
         return obj_dict
 
     obj_dict = {k.lower(): v for k, v in [l.split('=', 1) for l in line[1:]]}
     obj_dict['id'] = line[0]
     obj_dict['last_seen'] = ref.time
+    obj_dict['session_id'] = ref.session_id
     if 'group' in obj_dict.keys():
         obj_dict['grp'] = obj_dict.pop('group')
 
@@ -142,6 +145,7 @@ class Ref:
         self.time = None
         self.last_time = 0.0
         self.all_refs = False
+        self.session_id = uuid1()
 
     def update_time(self, offset):
         """Update the refence time attribute with a new offset."""

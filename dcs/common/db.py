@@ -22,6 +22,7 @@ class BaseModel(pw.Model):
 class Object(BaseModel):
     """DCS Object."""
     id = pw.CharField(primary_key=True, index=True)
+    session_id = pw.UUIDField()
     name = pw.CharField(null=True)
     color = pw.CharField(null=True)
     country = pw.CharField(null=True)
@@ -50,6 +51,7 @@ class Object(BaseModel):
 class Event(BaseModel):
     """Event History."""
     id = pw.AutoField()
+    session_id = pw.UUIDField()
     object = pw.ForeignKeyField(Object, 'id', unique=False)
     alive = pw.IntegerField(default=1)
     last_seen = pw.DateTimeField()
