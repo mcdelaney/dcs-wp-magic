@@ -17,7 +17,7 @@ dialog = {
         ["offscreen"] = false,
         ["resizable"] = true,
         ["zOrder"] = 111,
-        ["text"] = "Scratchpad"
+        ["text"] = "WPManager"
     },
     ["skin"] = {
         ["params"] = {
@@ -71,7 +71,7 @@ dialog = {
     ["children"] = {
         ["Box"] = {
             ["children"] = {
-                ["ScratchpadCoordButton"] = {
+                ["WPManagerCoordButton"] = {
                     ["params"] = {
                         ["bounds"] = {
                           ["h"] = 20,
@@ -93,7 +93,7 @@ dialog = {
                     },
                     ["type"] = "ToggleButton"
                 },
-                ["ScratchpadTargetButton"] = {
+                ["WPManagerTargetButton"] = {
                     ["params"] = {
                         ["bounds"] = {
                           ["h"] = 20,
@@ -116,7 +116,7 @@ dialog = {
                     ["type"] = "ToggleButton"
                 },
 
-                ["ScratchpadEnterCoordsButton"] = {
+                ["WPManagerEnterCoordsButton"] = {
                     ["params"] = {
                         ["bounds"] = {
                             ["h"] = 20,
@@ -138,7 +138,7 @@ dialog = {
                     },
                     ["type"] = "Button"
                 },
-                ["ScratchpadSendCoordsButton"] = {
+                ["WPManagerSendCoordsButton"] = {
                     ["params"] = {
                         ["bounds"] = {
                             ["h"] = 20,
@@ -160,7 +160,7 @@ dialog = {
                     },
                     ["type"] = "Button"
                 },
-                ["ScratchpadClearCoordsButton"] = {
+                ["WPManagerClearCoordsButton"] = {
                     ["params"] = {
                         ["bounds"] = {
                             ["h"] = 20,
@@ -182,7 +182,7 @@ dialog = {
                     },
                     ["type"] = "Button"
                 },
-                ["ScratchpadStopCoordsButton"] = {
+                ["WPManagerStopCoordsButton"] = {
                     ["params"] = {
                         ["bounds"] = {
                             ["h"] = 20,
@@ -204,7 +204,7 @@ dialog = {
                     },
                     ["type"] = "Button"
                 },
-                ["ScratchpadPreciseCoordsButton"] = {
+                ["WPManagerPreciseCoordsButton"] = {
                     ["params"] = {
                         ["bounds"] = {
                             ["h"] = 20,
@@ -887,7 +887,7 @@ dialog = {
                     },
                     ["type"] = "ToggleButton"
                 },
-                ["ScratchpadEditBox"] = {
+                ["WPManagerEditBox"] = {
                     ["params"] = {
                         ["acceptDecimalPoint"] = false,
                         ["bounds"] = {

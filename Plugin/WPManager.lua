@@ -1,6 +1,6 @@
-require "os"
+WP-Managerrequire "os"
 
-function scratchpad_load()
+function wpmanager_load()
     programPath = lfs.realpath(lfs.currentdir())
     package.path = programPath .. "\\?.lua;" .. package.path
     package.path = package.path .. ";.\\Scripts\\?.lua;.\\Scripts\\UI\\?.lua;"
@@ -37,15 +37,15 @@ function scratchpad_load()
     local status = 'alive'
     local fmt = "dms"
 
-    local scratchpad = {
-        logFile = io.open(lfs.writedir() .. [[Logs\Scratchpad.log]], "w")
+    local wpmanager = {
+        logFile = io.open(lfs.writedir() .. [[Logs\WP-Manager.log]], "w")
     }
 
-    local dirPath = lfs.writedir() .. [[Scratchpad\]]
+    local dirPath = lfs.writedir() .. [[WP-Manager\]]
 
     local function loadCoords()
         current_page = 'coords'
-        scratchpad.log("loading page coordinates...")
+        wpmanager.log("loading page coordinates...")
         textarea:setText(coord_data)
         -- targetarea:setText(target_data)
         window:setText("Coords")
@@ -53,50 +53,50 @@ function scratchpad_load()
 
     local function loadTargets()
         current_page = "targets"
-        scratchpad.log("loading page targets...")
+        wpmanager.log("loading page targets...")
         textarea:setText(target_data)
         -- targetarea:setText(target_data)
         window:setText("Targets")
     end
 
-    function scratchpad.loadConfiguration()
-        scratchpad.log("Loading config file...")
-        local tbl = Tools.safeDoFile(lfs.writedir() .. "Config/ScratchpadConfig.lua", false)
+    function wpmanager.loadConfiguration()
+        wpmanager.log("Loading config file...")
+        local tbl = Tools.safeDoFile(lfs.writedir() .. "Config/WP-Manager-config.lua", false)
         if (tbl and tbl.config) then
-            scratchpad.log("Configuration exists...")
-            scratchpad.config = tbl.config
-            if scratchpad.config.fontSize == nil then
-                scratchpad.config.fontSize = 16
-                scratchpad.saveConfiguration()
+            wpmanager.log("Configuration exists...")
+            wpmanager.config = tbl.config
+            if wpmanager.config.fontSize == nil then
+                wpmanager.config.fontSize = 16
+                wpmanager.saveConfiguration()
             end
             -- move content into text file
-            if scratchpad.config.content ~= nil then
-                scratchpad.config.content = nil
-                scratchpad.saveConfiguration()
+            if wpmanager.config.content ~= nil then
+                wpmanager.config.content = nil
+                wpmanager.saveConfiguration()
             end
         else
-            scratchpad.log("Configuration not found, creating defaults...")
-            scratchpad.config = {
+            wpmanager.log("Configuration not found, creating defaults...")
+            wpmanager.config = {
                 hotkey = "Ctrl+Shift+x",
                 windowPosition = {x = 200, y = 200},
                 windowSize = {w = 400, h = 150},
                 fontSize = 14
             }
-            scratchpad.saveConfiguration()
+            wpmanager.saveConfiguration()
         end
     end
 
-    function scratchpad.saveConfiguration()
-        U.saveInFile(scratchpad.config, "config", lfs.writedir() .. "Config/ScratchpadConfig.lua")
+    function wpmanager.saveConfiguration()
+        U.saveInFile(wpmanager.config, "config", lfs.writedir() .. "Config/WP-Manager-config.lua")
     end
 
-    function scratchpad.log(str)
+    function wpmanager.log(str)
         if not str then
             return
         end
-        if scratchpad.logFile then
-            scratchpad.logFile:write("[" .. os.date("%H:%M:%S") .. "] " .. str .. "\r\n")
-            scratchpad.logFile:flush()
+        if wpmanager.logFile then
+            wpmanager.logFile:write("[" .. os.date("%H:%M:%S") .. "] " .. str .. "\r\n")
+            wpmanager.logFile:flush()
         end
     end
 
@@ -119,8 +119,8 @@ function scratchpad_load()
     local function sendCoordinates()
         local rack = "2"
         local resp, status, err = http.request("http://127.0.0.1:5000/enter_coords/" .. rack .. "/" .. coord_request)
-        scratchpad.log(status)
-        scratchpad.log("Requesting coordinate entry...")
+        wpmanager.log(status)
+        wpmanager.log("Requesting coordinate entry...")
         if status == 200 then
           target_data = ""
           coord_data = ""
@@ -150,26 +150,26 @@ function scratchpad_load()
       end
     end
 
-    function scratchpad.createWindow()
-        local file_path = lfs.writedir() .. [[Scratchpad\]] .. [[target.txt]]
+    function wpmanager.createWindow()
+        local file_path = lfs.writedir() .. [[WP-Manager\]] .. [[target.txt]]
         local file, err = io.open(file_path, "w")
         file:write("")
         file:close()
 
-        window = DialogLoader.spawnDialogFromFile(lfs.writedir() .. "Scripts\\Scratchpad\\ScratchpadWindow.dlg", cdata)
+        window = DialogLoader.spawnDialogFromFile(lfs.writedir() .. "Scripts\\WP-Manager\\WPManager.dlg", cdata)
         windowDefaultSkin = window:getSkin()
         panel = window.Box
-        textarea = panel.ScratchpadEditBox
-        coordButton = panel.ScratchpadCoordButton
+        textarea = panel.WP-ManagerEditBox
+        coordButton = panel.WPManagerCoordButton
         coordButton:setState(true)
 
-        targetButton = panel.ScratchpadTargetButton
-        enterCoordsBtn = panel.ScratchpadEnterCoordsButton
-        sendCoordsBtn = panel.ScratchpadSendCoordsButton
-        clearCoordsBtn = panel.ScratchpadClearCoordsButton
-        stopCoordsBtn = panel.ScratchpadStopCoordsButton
-        preciseCoordsBtn = panel.ScratchpadPreciseCoordsButton
-        -- keepAllBtn = panel.ScratchpadKeepAllButton
+        targetButton = panel.WPManagerTargetButton
+        enterCoordsBtn = panel.WPManagerEnterCoordsButton
+        sendCoordsBtn = panel.WPManagerSendCoordsButton
+        clearCoordsBtn = panel.WPManagerClearCoordsButton
+        stopCoordsBtn = panel.WPManagerStopCoordsButton
+        preciseCoordsBtn = panel.WPManagerPreciseCoordsButton
+        -- keepAllBtn = panel.WPManagerKeepAllButton
 
         table.insert(sections, panel.CoordSection1)
         table.insert(sections, panel.CoordSection2)
@@ -205,10 +205,10 @@ function scratchpad_load()
 
         -- setup textarea
         local skin = textarea:getSkin()
-        skin.skinData.states.released[1].text.fontSize = scratchpad.config.fontSize
+        skin.skinData.states.released[1].text.fontSize = wpmanager.config.fontSize
         textarea:setSkin(skin)
 
-        scratchpad.log("Configuring callbacks...")
+        wpmanager.log("Configuring callbacks...")
         coordButton:addMouseDownCallback(
             function(self)
                 updateCoordinates()
@@ -278,7 +278,7 @@ function scratchpad_load()
         --     end
         -- )
 
-        scratchpad.log("Adding section callbacks...")
+        wpmanager.log("Adding section callbacks...")
         for k, v in pairs(sections) do
             sections[k]:addMouseDownCallback(
                 function(self)
@@ -295,7 +295,7 @@ function scratchpad_load()
             )
         end
 
-        scratchpad.log("Adding section callbacks...")
+        wpmanager.log("Adding section callbacks...")
         for k, v in pairs(targets) do
             targets[k]:addMouseDownCallback(
                 function(self)
@@ -314,40 +314,40 @@ function scratchpad_load()
 
         -- setup window
         window:setBounds(
-            scratchpad.config.windowPosition.x,
-            scratchpad.config.windowPosition.y,
-            scratchpad.config.windowSize.w,
-            scratchpad.config.windowSize.h
+            wpmanager.config.windowPosition.x,
+            wpmanager.config.windowPosition.y,
+            wpmanager.config.windowSize.w,
+            wpmanager.config.windowSize.h
         )
-        scratchpad.handleResize(window)
+        wpmanager.handleResize(window)
 
         window:addHotKeyCallback(
-            scratchpad.config.hotkey,
+            wpmanager.config.hotkey,
             function()
                 if isHidden == true then
-                    scratchpad.show()
+                    wpmanager.show()
                 else
-                    scratchpad.hide()
+                    wpmanager.hide()
                 end
             end
         )
 
 
-        window:addSizeCallback(scratchpad.handleResize)
-        window:addPositionCallback(scratchpad.handleMove)
+        window:addSizeCallback(wpmanager.handleResize)
+        window:addPositionCallback(wpmanager.handleMove)
 
         window:setVisible(true)
         loadCoords()
 
-        scratchpad.hide()
-        scratchpad.log("Scratchpad Window created")
+        wpmanager.hide()
+        wpmanager.log("WPManager Window created")
     end
 
-    function scratchpad.setVisible(b)
+    function wpmanager.setVisible(b)
         window:setVisible(b)
     end
 
-    function scratchpad.handleResize(self)
+    function wpmanager.handleResize(self)
         local w, h = self:getSize()
         panel:setBounds(0, 0, w, h - 20)
         textarea:setBounds(0, 0, w, h - 20 - 20 - 20 - 20 - 40)
@@ -381,22 +381,22 @@ function scratchpad_load()
             targets[k]:setBounds(w, h - 80, 40, 20)
         end
 
-        scratchpad.config.windowSize = {w = w, h = h}
-        scratchpad.saveConfiguration()
+        wpmanager.config.windowSize = {w = w, h = h}
+        wpmanager.saveConfiguration()
     end
 
-    function scratchpad.handleMove(self)
+    function wpmanager.handleMove(self)
         local x, y = self:getPosition()
-        scratchpad.config.windowPosition = {x = x, y = y}
-        scratchpad.saveConfiguration()
+        wpmanager.config.windowPosition = {x = x, y = y}
+        wpmanager.saveConfiguration()
     end
 
-    function scratchpad.show()
+    function wpmanager.show()
         if window == nil then
-            local status, err = pcall(scratchpad.createWindow)
+            local status, err = pcall(wpmanager.createWindow)
           end
             if not status then
-                net.log("[Scratchpad] Error creating window: " .. tostring(err))
+                net.log("[WP-Manager] Error creating window: " .. tostring(err))
         end
 
         window:setVisible(true)
@@ -411,7 +411,7 @@ function scratchpad_load()
         isHidden = false
     end
 
-    function scratchpad.hide()
+    function wpmanager.hide()
         window:setSkin(windowSkinHidden)
         panel:setVisible(false)
         textarea:setFocused(false)
@@ -422,24 +422,24 @@ function scratchpad_load()
         isHidden = true
     end
 
-    function scratchpad.onSimulationFrame()
-        if scratchpad.config == nil then
-            scratchpad.loadConfiguration()
+    function wpmanager.onSimulationFrame()
+        if wpmanager.config == nil then
+            wpmanager.loadConfiguration()
         end
 
         if not window then
-            scratchpad.log("Creating Scratchpad window hidden...")
-            scratchpad.createWindow()
-            scratchpad.log("Window created successfully...")
+            wpmanager.log("Creating WP-Manager window hidden...")
+            wpmanager.createWindow()
+            wpmanager.log("Window created successfully...")
         end
     end
 
-    DCS.setUserCallbacks(scratchpad)
+    DCS.setUserCallbacks(wpmanager)
 
-    net.log("[Scratchpad] Loaded ...")
+    net.log("[WP-Manager] Loaded ...")
 end
 
-local status, err = pcall(scratchpad_load)
+local status, err = pcall(wpmanager_load)
 if not status then
-    net.log("[Scratchpad] Load Error: " .. tostring(err))
+    net.log("[WP-Manager] Load Error: " .. tostring(err))
 end
