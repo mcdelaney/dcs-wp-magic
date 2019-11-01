@@ -113,8 +113,8 @@ def process_line(obj_dict, pubsub=None):
 
         if pubsub:
             pubsub_rec = json.dumps(model_to_dict(rec), default=json_serial)
-            pubsub.publisher.publish(pubsub.objects,
-                                     data=pubsub_rec.encode('utf-8'))
+            pubsub.writer.publish(pubsub.objects,
+                                  data=pubsub_rec.encode('utf-8'))
 
     if EVENTS:
         true_dist = None
@@ -154,8 +154,8 @@ def process_line(obj_dict, pubsub=None):
         event.save()
         if pubsub:
             pubsub_rec = json.dumps(model_to_dict(event), default=json_serial)
-            pubsub.publisher.publish(pubsub.events,
-                                     data=pubsub_rec.encode('utf-8'))
+            pubsub.writer.publish(pubsub.events,
+                                  data=pubsub_rec.encode('utf-8'))
 
         LOG.debug("Event row created successfully...")
 
