@@ -23,16 +23,18 @@ events_schema = [
     bigquery.SchemaField("secs_from_last", "float", mode="NULLABLE"),
     bigquery.SchemaField("update_num", "INTEGER", mode="NULLABLE")
 ]
-
-events_tbl_id = "dcs-analytics-257714.tacview.events"
-table = bigquery.Table(events_tbl_id, schema=events_schema)
-table = client.create_table(table)
+try:
+    events_tbl_id = "dcs-analytics-257714.tacview.events"
+    table = bigquery.Table(events_tbl_id, schema=events_schema)
+    table = client.create_table(table)
+except Exception:
+    print("error creating events!")
 
 
 objects_schema = [
     bigquery.SchemaField("id", "STRING", mode="REQUIRED"),
     bigquery.SchemaField("session_id", "STRING", mode="REQUIRED"),
-    bigquery.SchemaField("object", "STRING", mode="NULLABLE"),
+    bigquery.SchemaField("name", "STRING", mode="NULLABLE"),
     bigquery.SchemaField("color", "STRING", mode="NULLABLE"),
     bigquery.SchemaField("country", "STRING", mode="NULLABLE"),
     bigquery.SchemaField("grp", "STRING", mode="NULLABLE"),
@@ -59,8 +61,9 @@ objects_schema = [
     bigquery.SchemaField("parent", "STRING", mode="NULLABLE")
 ]
 
-
-objects_tbl_id = "dcs-analytics-257714.tacview.objects"
-
-table = bigquery.Table(objects_tbl_id, schema=objects_schema)
-table = client.create_table(table)
+try:
+    objects_tbl_id = "dcs-analytics-257714.tacview.objects"
+    table = bigquery.Table(objects_tbl_id, schema=objects_schema)
+    table = client.create_table(table)
+except Exception:
+    print("error creating objects!")
