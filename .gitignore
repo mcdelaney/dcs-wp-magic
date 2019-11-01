@@ -12,3 +12,4 @@ log/**
 *.dump
 dist/*
 build/*
+env/*

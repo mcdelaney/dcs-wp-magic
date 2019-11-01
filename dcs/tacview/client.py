@@ -4,13 +4,11 @@ Tacview client methods.
 Results are parsed into usable format, and then written to a local sqlite
 database.
 """
-
 import asyncio
 from asyncio.log import logging
 from datetime import datetime, timedelta
 import math
 
-import peewee as pw
 from geopy.distance import geodesic
 
 from dcs.common import db
@@ -133,7 +131,6 @@ def process_line(obj_dict):
                                 update_num=rec.updates)
         event.save()
         LOG.debug("Event row created successfully...")
-    return
 
 
 class Ref:
@@ -149,9 +146,9 @@ class Ref:
     def update_time(self, offset):
         """Update the refence time attribute with a new offset."""
         offset = float(offset.strip())
-        LOG.debug(f"New time offset: {offset}...")
+        LOG.debug("New time offset: %s...", offset)
         diff = offset - self.last_time
-        LOG.debug(f"Incremening time offset by {diff}...")
+        LOG.debug("Incremening time offset by %s...", diff)
         self.time = self.time + timedelta(seconds=diff)
         self.last_time = offset
 

@@ -1,25 +1,21 @@
-import logging
+"""Model definitions for database."""
 from pathlib import Path
 from uuid import uuid1
-import sqlite3
 
 import peewee as pw
-from playhouse.apsw_ext import APSWDatabase, DateTimeField
 
 from dcs.common  import config
-from . import get_logger
 
-log = get_logger(logging.getLogger('db'))
-log.setLevel(logging.INFO)
-
-DB = APSWDatabase(None,
+DB = pw.SqliteDatabase(None,
                        pragmas={'journal_mode': 'wal',
                                 'cache_size': -64 * 1000})
 
 
 class BaseModel(pw.Model):
     """Base model with DB defined from which all others inherit."""
-    class Meta:
+
+    class Meta:  # pylint: disable=too-few-public-methods
+        """Set global database."""
         database = DB
 
 
@@ -34,8 +30,8 @@ class Object(BaseModel):
     platform = pw.CharField(null=True)
     type = pw.CharField(null=True)
     alive = pw.IntegerField(default=1)
-    first_seen = DateTimeField()
-    last_seen = DateTimeField()
+    first_seen = pw.DateTimeField()
+    last_seen = pw.DateTimeField()
     coalition = pw.CharField(null=True)
     lat = pw.FloatField()
     long = pw.FloatField()
@@ -56,7 +52,7 @@ class Event(BaseModel):
     id = pw.AutoField()
     object = pw.ForeignKeyField(Object, 'id', unique=False)
     alive = pw.IntegerField(default=1)
-    last_seen = DateTimeField()
+    last_seen = pw.DateTimeField()
     lat = pw.FloatField(null=True)
     long = pw.FloatField(null=True)
     alt = pw.FloatField(null=True)
@@ -74,6 +70,7 @@ class Event(BaseModel):
 
 
 def init_db(replace_db=True):
+    """Initialize the database and execute create table statements."""
     db_path = Path(config.DB_LOC)
     if not db_path.parent.exists():
         db_path.parent.mkdir()

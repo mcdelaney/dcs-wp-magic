@@ -1,0 +1,8 @@
+env
+data
+log
+.git
+env.*
+dcs-java
+tests/
+**/__pycache__/**
