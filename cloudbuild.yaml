@@ -12,5 +12,5 @@ steps:
             'gcr.io/${PROJECT_ID}/tacview_client:latest']
   id: tag-latest-image
 
-  images: ["gcr.io/${PROJECT_ID}/tacview_client:latest",
-           "gcr.io/${PROJECT_ID}/tacview_client:${SHORT_SHA}"]
+images: ["gcr.io/${PROJECT_ID}/tacview_client:latest",
+         "gcr.io/${PROJECT_ID}/tacview_client:${SHORT_SHA}"]
