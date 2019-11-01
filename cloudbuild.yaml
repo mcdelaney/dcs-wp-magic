@@ -14,3 +14,10 @@ steps:
 
 images: ["gcr.io/${PROJECT_ID}/tacview_client:latest",
          "gcr.io/${PROJECT_ID}/tacview_client:${SHORT_SHA}"]
+
+# - name: 'gcr.io/cloud-builders/gke-deploy'
+#   args:
+#   - run
+#   - --image="gcr.io/${PROJECT_ID}/tacview_client:${SHORT_SHA}"
+#   - --location="us-central-1"
+#   - --cluster=[CLUSTER]

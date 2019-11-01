@@ -236,6 +236,10 @@ class SocketReader:
 async def consumer(host=config.HOST, port=config.PORT, mode='local'):
     """Main method to consume stream."""
     conn = db.init_db()
+    if mode == "remote":
+        pubsub = db.Publisher()
+    else:
+        pubsub = None
     sock = SocketReader(host, port, DEBUG)
     await sock.open_connection()
     ref = Ref()
@@ -261,7 +265,7 @@ async def consumer(host=config.HOST, port=config.PORT, mode='local'):
                 continue
 
             obj_dict = line_to_dict(obj, ref)
-            process_line(obj_dict, mode)
+            process_line(obj_dict, pubsub)
             iter_counter += 1
         except ConnectionError as err:
             LOG.error('Closing socket due to exception...')

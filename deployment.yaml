@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tacview-client
+spec:
+  selector:
+    matchLabels:
+      app: gaw
+  template:
+    metadata:
+      labels:
+        app: gaw
+    spec:
+      volumes:
+      - name: google-cloud-key
+        secret:
+          secretName: pubsub-key
+      containers:
+      - name: tacview
+        image: gcr.io/dcs-analytics-257714/tacview_client
+        volumeMounts:
+        - name: google-cloud-key
+          mountPath: /var/secrets/google
+        env:
+        - name: GOOGLE_APPLICATION_CREDENTIALS
+          value: /var/secrets/google/key.json
