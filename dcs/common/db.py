@@ -92,8 +92,8 @@ class Publisher: # pylint: disable=too-few-public-methods
     """Pubsub writer."""
 
     def __init__(self):
-        self.publisher = pubsub_v1.PublisherClient()
-        self.objects = self.publisher.topic_path(
+        self.writer = pubsub_v1.PublisherClient()
+        self.objects = self.writer.topic_path(
             config.PROJECT_ID, 'tacview_objects')
-        self.events = self.publisher.topic_path(
+        self.events = self.writer.topic_path(
             config.PROJECT_ID, 'tacview_events')
