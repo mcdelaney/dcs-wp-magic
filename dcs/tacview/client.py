@@ -10,7 +10,7 @@ from asyncio.log import logging
 from datetime import datetime, timedelta
 import math
 
-import peewee
+import peewee as pw
 from geopy.distance import geodesic
 
 from dcs.common import db
@@ -48,6 +48,7 @@ def line_to_dict(line, ref):
 
     obj_dict = {k.lower(): v for k, v in [l.split('=', 1) for l in line[1:]]}
     obj_dict['id'] = line[0]
+    obj_dict['last_seen'] = ref.time
     if 'group' in obj_dict.keys():
         obj_dict['grp'] = obj_dict.pop('group')
 
@@ -70,7 +71,7 @@ def line_to_dict(line, ref):
     return obj_dict
 
 
-def process_line(obj_dict, ref):
+def process_line(obj_dict):
     """Parse a single line from tacview stream."""
 
     rec = db.Object.get_or_none(id=obj_dict['id'])
@@ -87,13 +88,12 @@ def process_line(obj_dict, ref):
                 setattr(rec, k, obj_dict[k])
             except KeyError:
                 pass
-        rec.last_seen = ref.time
+        rec.last_seen = obj_dict['last_seen']
         rec.save()
     else:
         # Create new record
         LOG.debug("Record not found...creating....")
-        rec = db.Object.create(**obj_dict, last_seen=ref.time,
-                               first_seen=ref.time)
+        rec = db.Object.create(**obj_dict, first_seen=obj_dict['last_seen'])
         if DEBUG:
             rec.debug = obj_dict
             rec.save()
@@ -116,7 +116,7 @@ def process_line(obj_dict, ref):
 
         LOG.debug("Creating event row for %s...", rec.id)
         event = db.Event.create(object=obj_dict['id'],
-                                last_seen=ref.time,
+                                last_seen=rec.last_seen,
                                 alt=rec.alt,
                                 lat=rec.lat,
                                 long=rec.long,
@@ -185,7 +185,6 @@ class SocketReader:
     handshake = HANDSHAKE
 
     def __init__(self, host, port, debug=False):
-        self.ref = Ref()
         self.host = host
         self.port = port
         self.debug = debug
@@ -204,7 +203,6 @@ class SocketReader:
                     self.host, self.port)
                 LOG.info('Socket connection opened...sending handshake...')
                 self.writer.write(self.handshake)
-                self.ref = Ref()
                 LOG.info('Connection opened successfully...')
                 break
             except ConnectionError as err:
@@ -216,12 +214,9 @@ class SocketReader:
         """Read lines from socket stream."""
         data = await self.reader.readline()
         msg = data.decode().strip()
-        if msg:
-            self.last_recv = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         if self.debug:
             with open(self.sink, 'a+') as fp_:
                 fp_.write(msg + '\n')
-
         return msg
 
     async def close(self):
@@ -235,6 +230,7 @@ async def consumer():
     conn = db.init_db()
     sock = SocketReader(config.HOST, config.PORT, DEBUG)
     await sock.open_connection()
+    ref = Ref()
     iter_counter = 0
     while True:
         try:
@@ -246,18 +242,18 @@ async def consumer():
                 pass
 
             try:
-                if obj[0:2] == "0," or not sock.ref.all_refs:
-                    sock.ref.parse_ref_obj(obj)
+                if obj[0:2] == "0," or not ref.all_refs:
+                    ref.parse_ref_obj(obj)
                     continue
             except IndexError:
                 pass
 
             if obj[0] == "#":
-                sock.ref.update_time(obj[1:])
+                ref.update_time(obj[1:])
                 continue
 
-            obj_dict = line_to_dict(obj, sock.ref)
-            process_line(obj_dict, sock.ref)
+            obj_dict = line_to_dict(obj, ref)
+            process_line(obj_dict)
             iter_counter += 1
         except ConnectionError as err:
             LOG.error('Closing socket due to exception...')
@@ -271,7 +267,3 @@ async def consumer():
 def main():
     """Start event loop to consume stream."""
     asyncio.run(consumer())
-
-#
-# if __name__ == '__main__':
-#     main()

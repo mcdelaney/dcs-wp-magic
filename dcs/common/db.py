@@ -1,16 +1,18 @@
 import logging
 from pathlib import Path
 from uuid import uuid1
+import sqlite3
 
 import peewee as pw
+from playhouse.apsw_ext import APSWDatabase, DateTimeField
 
 from dcs.common  import config
 from . import get_logger
 
-log = get_logger(logging.getLogger(__name__))
+log = get_logger(logging.getLogger('db'))
 log.setLevel(logging.INFO)
 
-DB = pw.SqliteDatabase(None,
+DB = APSWDatabase(None,
                        pragmas={'journal_mode': 'wal',
                                 'cache_size': -64 * 1000})
 
@@ -32,8 +34,8 @@ class Object(BaseModel):
     platform = pw.CharField(null=True)
     type = pw.CharField(null=True)
     alive = pw.IntegerField(default=1)
-    first_seen = pw.DateTimeField()
-    last_seen = pw.DateTimeField()
+    first_seen = DateTimeField()
+    last_seen = DateTimeField()
     coalition = pw.CharField(null=True)
     lat = pw.FloatField()
     long = pw.FloatField()
@@ -54,7 +56,7 @@ class Event(BaseModel):
     id = pw.AutoField()
     object = pw.ForeignKeyField(Object, 'id', unique=False)
     alive = pw.IntegerField(default=1)
-    last_seen = pw.DateTimeField()
+    last_seen = DateTimeField()
     lat = pw.FloatField(null=True)
     long = pw.FloatField(null=True)
     alt = pw.FloatField(null=True)
