@@ -101,7 +101,7 @@ def process_line(obj_dict, pubsub=None):
             rec.save()
 
         if pubsub:
-            pubsub.publisher.publish(pubsub.object, json.dumps(dict(rec)))
+            pubsub.publisher.publish(pubsub.objects, json.dumps(dict(rec)))
 
     if EVENTS:
         true_dist = None
