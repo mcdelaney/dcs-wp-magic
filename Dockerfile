@@ -13,4 +13,4 @@ WORKDIR /var/dcs/
 COPY dcs dcs
 COPY run_tacview.py .
 
-ENTRYPOINT ["python"]
+ENTRYPOINT ["python", "run_tacview.py"]

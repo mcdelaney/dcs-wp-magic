@@ -101,7 +101,7 @@ def process_line(obj_dict, pubsub=None):
             rec.save()
 
         if pubsub:
-            pubsub.publish(pubsub.object, json.dumps(dict(rec)))
+            pubsub.publisher.publish(pubsub.object, json.dumps(dict(rec)))
 
     if EVENTS:
         true_dist = None
@@ -139,7 +139,7 @@ def process_line(obj_dict, pubsub=None):
                                 update_num=rec.updates)
         event.save()
         if pubsub:
-            pubsub.publish(pubsub.events, json.dumps(dict(event)))
+            pubsub.publisher(pubsub.events, json.dumps(dict(event)))
         LOG.debug("Event row created successfully...")
 
 

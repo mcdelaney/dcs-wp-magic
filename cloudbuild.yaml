@@ -15,6 +15,7 @@ steps:
 images: ["gcr.io/${PROJECT_ID}/tacview_client:latest",
          "gcr.io/${PROJECT_ID}/tacview_client:${SHORT_SHA}"]
 
+
 # - name: 'gcr.io/cloud-builders/gke-deploy'
 #   args:
 #   - run
