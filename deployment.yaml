@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: tacview-client
+  name: tacview
 spec:
   replicas: 1
   selector:
@@ -17,10 +17,21 @@ spec:
       - name: google-cloud-key
         secret:
           secretName: pubsub-key
+
       containers:
-      - name: tacview
+      - name: gaw
         args: ["--host", "147.135.8.169", "--port", "42674", "--mode", "remote"]
-        image: gcr.io/dcs-analytics-257714/tacview_client:be9ee6b
+        image: gcr.io/dcs-analytics-257714/tacview_client:417ead2
+        volumeMounts:
+        - name: google-cloud-key
+          mountPath: /var/secrets/google
+        env:
+        - name: GOOGLE_APPLICATION_CREDENTIALS
+          value: /var/secrets/google/key.json
+
+      - name: pgaw
+        args: ["--host", "147.135.9.159", "--port", "42674", "--mode", "remote"]
+        image: gcr.io/dcs-analytics-257714/tacview_client:417ead2
         volumeMounts:
         - name: google-cloud-key
           mountPath: /var/secrets/google

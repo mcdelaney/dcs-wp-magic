@@ -1,11 +1,11 @@
 steps:
 - name: 'gcr.io/cloud-builders/docker'
-  args: ["pull", "gcr.io/dcs-analytics-257714/tacview_base:latest"]
+  args: ["pull", "gcr.io/${PROJECT_ID}/tacview_base:latest"]
   id: pull base image
 
 - name: 'gcr.io/cloud-builders/docker'
   args: ["build", '--cache-from',
-            "gcr.io/dcs-analytics-257714/tacview_base:latest",
+            "gcr.io/${PROJECT_ID}/tacview_base:latest",
             "-t", "gcr.io/${PROJECT_ID}/tacview_client:${SHORT_SHA}",
             "."]
   id: build-tacview-image
@@ -19,10 +19,20 @@ steps:
 images: ["gcr.io/${PROJECT_ID}/tacview_client:latest",
          "gcr.io/${PROJECT_ID}/tacview_client:${SHORT_SHA}"]
 
+- name: 'gcr.io/cloud-builders/kubectl'
+  args:
+  - set
+  - image
+  - deployment
+  - tacview
+  - pgaw=gcr.io/${PROJECT_ID}/tacview_client:${SHORT_SHA}
+  id: update-gaw-image
 
-# - name: 'gcr.io/cloud-builders/gke-deploy'
-#   args:
-#   - run
-#   - --image="gcr.io/${PROJECT_ID}/tacview_client:${SHORT_SHA}"
-#   - --location="us-central-1"
-#   - --cluster=[CLUSTER]
+- name: 'gcr.io/cloud-builders/kubectl'
+  args:
+  - set
+  - image
+  - deployment
+  - tacview
+  - pgaw=gcr.io/${PROJECT_ID}/tacview_client:${SHORT_SHA}
+  id: update-pgaw-image

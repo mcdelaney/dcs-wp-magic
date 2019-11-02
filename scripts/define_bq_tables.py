@@ -3,6 +3,7 @@ from google.cloud import bigquery # pylint: disable=no-name-in-module
 
 
 def main():
+    """Do the job."""
     client = bigquery.Client()
 
     events_schema = [
