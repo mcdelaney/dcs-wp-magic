@@ -8,7 +8,6 @@ from google.cloud import pubsub_v1
 from dcs.common  import config
 
 
-
 DB = pw.SqliteDatabase(None,
                        pragmas={'journal_mode': 'wal',
                                 'cache_size': -64 * 1000})
@@ -74,17 +73,25 @@ class Event(BaseModel):
     update_num = pw.IntegerField(null=False)
 
 
+class Session(BaseModel):
+    """Session Reference Data."""
+    session_id = pw.CharField(primary_key=True)
+    start_time = pw.DateTimeField()
+    datasource = pw.CharField()
+    author = pw.CharField()
+    title = pw.CharField()
+    lat = pw.FloatField()
+    long = pw.FloatField()
+
+
 def init_db(replace_db=True):
     """Initialize the database and execute create table statements."""
-    db_path = Path(config.DB_LOC)
-    if not db_path.parent.exists():
-        db_path.parent.mkdir()
-
-    if replace_db:
-        if db_path.exists():
-            db_path.unlink()
     DB.init(config.DB_LOC)
-    DB.create_tables([Object, Event])
+    try:
+        DB.drop_tables([Object, Event, Session])
+    except Exception:
+        pass
+    DB.create_tables([Object, Event, Session])
     return DB
 
 
@@ -97,3 +104,5 @@ class Publisher: # pylint: disable=too-few-public-methods
             config.PROJECT_ID, 'tacview_objects')
         self.events = self.writer.topic_path(
             config.PROJECT_ID, 'tacview_events')
+        self.sessions = self.writer.topic_path(
+            config.PROJECT_ID, 'tacview_sessions')

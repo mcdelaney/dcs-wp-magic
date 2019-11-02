@@ -7,7 +7,15 @@ from flask import Flask, abort, Response
 from dcs.coords.processor import construct_enemy_set
 from dcs.coords.wp_ctrl import lookup_coords, update_coord
 
-app = Flask('coord_server')
+
+class CoordServer(Flask):
+
+    def __init__(self, coord_user="someone_somewhere"):
+        super().__init__('coord_server')
+        coord_user = coord_user
+
+
+app = CoordServer()
 JOB = None
 
 
@@ -42,7 +50,7 @@ def start_entry(rack, coord_string):
 @app.route("/coords/<coord_fmt>")
 def as_strings_coords(coord_fmt):
     try:
-        enemies = construct_enemy_set(coord_fmt=coord_fmt)
+        enemies = construct_enemy_set(app.coord_user, coord_fmt=coord_fmt)
         app.logger.info('Enemeies Collected...')
         return enemies
 
@@ -53,8 +61,10 @@ def as_strings_coords(coord_fmt):
         return resp
 
 
-def main():
+def main(coord_user=None, *args):
     app.logger.setLevel(level=logging.INFO)
+    if coord_user:
+        app.coord_user = coord_user
     app.run(debug=False, threaded=False)
 
 

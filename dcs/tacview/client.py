@@ -11,6 +11,7 @@ import math
 from uuid import uuid1
 import json
 
+import peewee as pw
 from playhouse.shortcuts import model_to_dict
 from geopy.distance import geodesic
 
@@ -36,6 +37,10 @@ HANDSHAKE = HANDSHAKE.encode('utf-8')
 REF_TIME_FMT = '%Y-%m-%dT%H:%M:%SZ'
 
 
+def serialize_data(data):
+    if isinstance(data, pw.Model):
+        data = model_to_dict(data)
+    return json.dumps(data, default=json_serial).encode('utf-8')
 
 
 def json_serial(obj):
@@ -112,9 +117,7 @@ def process_line(obj_dict, pubsub=None):
             rec.save()
 
         if pubsub:
-            pubsub_rec = json.dumps(model_to_dict(rec), default=json_serial)
-            pubsub.writer.publish(pubsub.objects,
-                                  data=pubsub_rec.encode('utf-8'))
+            pubsub.writer.publish(pubsub.objects, data=serialize_data(rec))
 
     if EVENTS:
         true_dist = None
@@ -156,11 +159,8 @@ def process_line(obj_dict, pubsub=None):
             pubsub_rec = model_to_dict(event)
             obj_id = pubsub_rec.pop('object')
             pubsub_rec['object'] = obj_id['id']
-            pubsub_rec = json.dumps(pubsub_rec,
-                                    default=json_serial)
             pubsub.writer.publish(pubsub.events,
-                                  data=pubsub_rec.encode('utf-8'))
-
+                                  data=serialize_data(pubsub_rec))
         LOG.info("Event row created successfully...")
 
 
@@ -174,9 +174,12 @@ class Ref:
         self.title = None
         self.datasource = None
         self.author = None
+        self.start_time = None
         self.last_time = 0.0
         self.all_refs = False
         self.session_id = str(uuid1())
+
+        self.written = False
 
     def update_time(self, offset):
         """Update the refence time attribute with a new offset."""
@@ -209,19 +212,38 @@ class Ref:
 
             if val[0] == 'Title':
                 LOG.debug('Ref Title found...')
-                self.datasource = val[1]
+                self.title = val[1]
 
             if val[0] == 'Author':
                 LOG.debug('Ref Author found...')
-                self.datasource = val[1]
+                self.author = val[1]
 
             if val[0] == 'ReferenceTime':
                 LOG.debug('Ref time found...')
                 self.time = datetime.strptime(val[1], REF_TIME_FMT)
+                self.start_time = datetime.strptime(val[1], REF_TIME_FMT)
 
             self.all_refs = self.lat and self.long and self.time
+            if self.all_refs and not self.written:
+                RefSession.create(**self.ser())
+                if pubsub:
+                    data=serialize_data(self.ser()))
+                    pubsub.writer.publish(self.sessions,
+                                          data=data)
+                self.written = True
         except IndexError:
             pass
+
+    def ser(self):
+        """Serialize relevant Session fields for export."""
+        return {'session_id': self.session_id,
+                'lat': self.lat,
+                'long': self.long,
+                'title': self.title,
+                'datasource': self.datasource,
+                'author': self.author,
+                'start_time': self.start_time
+                }
 
 
 class SocketReader:

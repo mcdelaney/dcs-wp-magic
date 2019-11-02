@@ -200,10 +200,10 @@ def create_enemy_groups(enemy_state, start_coord, coord_fmt='dms'):
     return enemy_groups
 
 
-def construct_enemy_set(result_as_string=True, coord_fmt='dms'):
+def construct_enemy_set(start_unit, result_as_string=True, coord_fmt='dms'):
     """Constuct a EnemyGroup of Enemies, returning a formatted string."""
     try:
-        enemy_state, start_coord = read_coord()
+        enemy_state, start_coord = read_coords(start_unit)
         enemy_groups = create_enemy_groups(enemy_state, start_coord,
                                            coord_fmt=coord_fmt)
         enemy_groups.sort()
@@ -236,7 +236,7 @@ def construct_enemy_set(result_as_string=True, coord_fmt='dms'):
 
 
 def read_coords(start_units=config.START_UNITS,
-                    coalition='Enemies'):
+                coalition='Enemies'):
     """Collect a list of Enemy Dictionaries from the database."""
     conn = sqlite3.connect(config.DB_LOC,
                            detect_types=sqlite3.PARSE_DECLTYPES)

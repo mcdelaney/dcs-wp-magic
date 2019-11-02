@@ -86,7 +86,8 @@ class DCSWPControllerApp(Tk):
         if self.coord_proc:
             raise ValueError("Coord Server process already exists!")
         LOG.info('Starting coord server process...')
-        self.coord_proc = Process(target=coord_server.main)
+        self.coord_proc = Process(target=coord_server.main,
+                                  args=(self.user.get(),))
         self.coord_proc.start()
         LOG.info("Coord server process started successfully...")
 
