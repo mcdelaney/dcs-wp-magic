@@ -81,3 +81,24 @@ try:
 except Exception as err:
     print(err)
     print("error creating objects!")
+
+
+
+
+sessions_schema = [
+    bigquery.SchemaField("session_id", "STRING", mode="REQUIRED"),
+    bigquery.SchemaField("title", "STRING", mode="REQUIRED"),
+    bigquery.SchemaField("author", "INTEGER", mode="REQUIRED"),
+    bigquery.SchemaField("datasource", "INTEGER", mode="REQUIRED"),
+    bigquery.SchemaField("start_time", "TIMESTAMP", mode="REQUIRED"),
+    bigquery.SchemaField("lat", "FLOAT", mode="REQUIRED"),
+    bigquery.SchemaField("long", "FLOAT", mode="REQUIRED"),
+
+]
+try:
+    sessions_tbl_id = "dcs-analytics-257714.tacview.sessions"
+    table = bigquery.Table(sessions_tbl_id, schema=sessions_schema)
+    table = client.create_table(table)
+except Exception as err:
+    print(err)
+    print("error creating sessions!")
