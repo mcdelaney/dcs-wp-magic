@@ -101,7 +101,7 @@ def process_line(obj_dict, pubsub=None):
         # Update existing record
         rec.updates = rec.updates + 1
         LOG.info("Record %s found ...will updated...", obj_dict['id'])
-        for k in config.COORD_KEYS:
+        for k in config.COORD_KEYS + ['alive', 'last_seen']:
             try:
                 setattr(rec, k, obj_dict[k])
             except KeyError:
