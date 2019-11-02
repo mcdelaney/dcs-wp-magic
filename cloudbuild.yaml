@@ -16,8 +16,11 @@ steps:
           'gcr.io/${PROJECT_ID}/tacview_client:latest']
   id: tag-latest-image
 
-images: ["gcr.io/${PROJECT_ID}/tacview_client:latest",
-         "gcr.io/${PROJECT_ID}/tacview_client:${SHORT_SHA}"]
+
+- name: 'gcr.io/cloud-builders/docker'
+  args: ["push",
+          "gcr.io/${PROJECT_ID}/tacview_client:${SHORT_SHA}"]
+  id: push-image
 
 - name: 'gcr.io/cloud-builders/kubectl'
   args:
@@ -36,3 +39,11 @@ images: ["gcr.io/${PROJECT_ID}/tacview_client:latest",
   - tacview
   - pgaw=gcr.io/${PROJECT_ID}/tacview_client:${SHORT_SHA}
   id: update-pgaw-image
+
+
+images: ["gcr.io/${PROJECT_ID}/tacview_client:latest",
+         "gcr.io/${PROJECT_ID}/tacview_client:${SHORT_SHA}"]
+
+env:
+  - 'CLOUDSDK_COMPUTE_ZONE=us-central1-a'
+  - 'CLOUDSDK_CONTAINER_CLUSTER=tacview-client-gaw-cluster'
