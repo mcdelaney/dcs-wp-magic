@@ -83,13 +83,11 @@ except Exception as err:
     print("error creating objects!")
 
 
-
-
 sessions_schema = [
     bigquery.SchemaField("session_id", "STRING", mode="REQUIRED"),
     bigquery.SchemaField("title", "STRING", mode="REQUIRED"),
-    bigquery.SchemaField("author", "INTEGER", mode="REQUIRED"),
-    bigquery.SchemaField("datasource", "INTEGER", mode="REQUIRED"),
+    bigquery.SchemaField("author", "STRING", mode="REQUIRED"),
+    bigquery.SchemaField("datasource", "STRING", mode="REQUIRED"),
     bigquery.SchemaField("start_time", "TIMESTAMP", mode="REQUIRED"),
     bigquery.SchemaField("lat", "FLOAT", mode="REQUIRED"),
     bigquery.SchemaField("long", "FLOAT", mode="REQUIRED"),
