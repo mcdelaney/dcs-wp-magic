@@ -13,3 +13,4 @@ log/**
 dist/*
 build/*
 env/*
+perf_test.py
