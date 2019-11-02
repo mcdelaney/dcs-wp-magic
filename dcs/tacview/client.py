@@ -171,6 +171,9 @@ class Ref:
         self.lat = None
         self.long = None
         self.time = None
+        self.title = None
+        self.datasource = None
+        self.author = None
         self.last_time = 0.0
         self.all_refs = False
         self.session_id = str(uuid1())
@@ -199,6 +202,18 @@ class Ref:
             if val[0] == 'ReferenceLongitude':
                 LOG.debug('Ref longitude found...')
                 self.long = float(val[1])
+
+            if val[0] == 'DataSource':
+                LOG.debug('Ref datasource found...')
+                self.datasource = val[1]
+
+            if val[0] == 'Title':
+                LOG.debug('Ref Title found...')
+                self.datasource = val[1]
+
+            if val[0] == 'Author':
+                LOG.debug('Ref Author found...')
+                self.datasource = val[1]
 
             if val[0] == 'ReferenceTime':
                 LOG.debug('Ref time found...')
