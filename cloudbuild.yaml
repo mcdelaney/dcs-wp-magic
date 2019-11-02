@@ -39,11 +39,9 @@ steps:
   - tacview
   - pgaw=gcr.io/${PROJECT_ID}/tacview_client:${SHORT_SHA}
   id: update-pgaw-image
-
+  env:
+    - 'CLOUDSDK_COMPUTE_ZONE=us-central1-a'
+    - 'CLOUDSDK_CONTAINER_CLUSTER=tacview-client-gaw-cluster'
 
 images: ["gcr.io/${PROJECT_ID}/tacview_client:latest",
          "gcr.io/${PROJECT_ID}/tacview_client:${SHORT_SHA}"]
-
-env:
-  - 'CLOUDSDK_COMPUTE_ZONE=us-central1-a'
-  - 'CLOUDSDK_CONTAINER_CLUSTER=tacview-client-gaw-cluster'
