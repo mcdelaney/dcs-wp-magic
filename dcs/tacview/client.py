@@ -310,11 +310,11 @@ async def consumer(host=config.HOST, port=config.PORT, mode='local'):
 
                     if ref.all_refs and not ref.written:
                         LOG.info("Writing session data to db...")
-                        session_ser = ref.ser()
-                        db.Session.create(**session_ser)
+                        sess_ser = ref.ser()
+                        db.Session.create(**sess_ser)
                         if pubsub:
                             pubsub.writer.publish(pubsub.sessions,
-                                                  data=serialize_data(session_ser))
+                                                  data=serialize_data(sess_ser))
                         ref.written = True
                         LOG.info("Session session data saved...")
                     continue
