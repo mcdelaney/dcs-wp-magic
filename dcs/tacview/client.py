@@ -224,13 +224,6 @@ class Ref:
                 self.start_time = datetime.strptime(val[1], REF_TIME_FMT)
 
             self.all_refs = self.lat and self.long and self.time
-            if self.all_refs and not self.written:
-                RefSession.create(**self.ser())
-                if pubsub:
-                    data=serialize_data(self.ser()))
-                    pubsub.writer.publish(self.sessions,
-                                          data=data)
-                self.written = True
         except IndexError:
             pass
 
@@ -314,6 +307,14 @@ async def consumer(host=config.HOST, port=config.PORT, mode='local'):
             try:
                 if obj[0:2] == "0," or not ref.all_refs:
                     ref.parse_ref_obj(obj)
+
+                    if ref.all_refs and not ref.written:
+                        db.Session.create(**ref.ser())
+                        if pubsub:
+                            data=serialize_data(self.ser()))
+                            pubsub.writer.publish(pubsub.sessions,
+                                                  data=data)
+                        ref.written = True
                     continue
             except IndexError:
                 pass
