@@ -28,7 +28,10 @@ steps:
   - image
   - deployment
   - tacview
-  - pgaw=gcr.io/${PROJECT_ID}/tacview_client:${SHORT_SHA}
+  - gaw=gcr.io/${PROJECT_ID}/tacview_client:${SHORT_SHA}
+  env:
+  - 'CLOUDSDK_COMPUTE_ZONE=us-central1-a'
+  - 'CLOUDSDK_CONTAINER_CLUSTER=tacview-client-gaw-cluster'
   id: update-gaw-image
 
 - name: 'gcr.io/cloud-builders/kubectl'
@@ -38,10 +41,10 @@ steps:
   - deployment
   - tacview
   - pgaw=gcr.io/${PROJECT_ID}/tacview_client:${SHORT_SHA}
-  id: update-pgaw-image
   env:
   - 'CLOUDSDK_COMPUTE_ZONE=us-central1-a'
   - 'CLOUDSDK_CONTAINER_CLUSTER=tacview-client-gaw-cluster'
+  id: update-pgaw-image
 
 images: ["gcr.io/${PROJECT_ID}/tacview_client:latest",
          "gcr.io/${PROJECT_ID}/tacview_client:${SHORT_SHA}"]
