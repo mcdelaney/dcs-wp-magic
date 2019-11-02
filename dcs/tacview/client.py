@@ -116,8 +116,8 @@ def process_line(obj_dict, pubsub=None):
             rec.debug = obj_dict
             rec.save()
 
-        if pubsub:
-            pubsub.writer.publish(pubsub.objects, data=serialize_data(rec))
+    if pubsub:
+        pubsub.writer.publish(pubsub.objects, data=serialize_data(rec))
 
     if EVENTS:
         true_dist = None
