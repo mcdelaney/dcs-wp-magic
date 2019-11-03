@@ -3,6 +3,9 @@ import datetime
 import json
 import logging
 
+ts = '2019-11-02T08:32:37'
+datetime.datetime.strptime(ts, "%Y-%m-%dT%H:%M:%S")
+
 import apache_beam as beam
 import apache_beam.transforms.window as window
 from apache_beam.options.pipeline_options import PipelineOptions
@@ -30,9 +33,9 @@ class GroupWindowsIntoBatches(beam.PTransform):
                 # for this. If the windowed elements do not fit into memory,
                 # please consider using `beam.util.BatchElements`.
                 # https://beam.apache.org/releases/pydoc/current/apache_beam.transforms.util.html#apache_beam.transforms.util.BatchElements
-                | 'Add Session Key' >> beam.Map(lambda elem: ('session_id', elem))
+                | 'Add Dummy Key' >> beam.Map(lambda elem: (None, elem))
                 | 'Groupby' >> beam.GroupByKey()
-                # | 'Abandon Dummy Key' >> beam.MapTuple(lambda _, val: val))
+                | 'Abandon Dummy Key' >> beam.MapTuple(lambda _, val: val))
 
 
 class AddTimestamps(beam.DoFn):
@@ -46,10 +49,8 @@ class AddTimestamps(beam.DoFn):
         msg = element.decode('utf-8')
         yield {
             'message_body': msg,
-            'publish_time': datetime.datetime.strptime(msg['last_seen'],
-                                                        "%Y-%m-%dT%H:%M:%S.%f")
-            # 'publish_time': datetime.datetime.utcfromtimestamp(
-            #     float(publish_time)).strftime("%Y-%m-%d %H:%M:%S.%f"),
+            'publish_time': datetime.datetime.utcfromtimestamp(
+                float(publish_time)).strftime("%Y-%m-%d %H:%M:%S.%f"),
         }
 
 
@@ -94,8 +95,8 @@ if __name__ == '__main__': # noqa
     parser.add_argument(
         '--window_size',
         type=float,
-        default=10.0,
-        help='Output file\'s window size in number of seconds.')
+        default=1.0,
+        help='Output file\'s window size in number of minutes.')
     parser.add_argument(
         '--output_path', default='gs://dcs-analytics-dataflow/py_test/events'
         help='GCS Path of the output file including filename prefix.')

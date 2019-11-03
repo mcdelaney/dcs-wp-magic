@@ -47,6 +47,7 @@ class Object(BaseModel):
     heading = pw.FloatField(null=True)
     updates = pw.IntegerField(default=1)
     parent = pw.CharField(null=True)
+    parent_dist = pw.FloatField(null=True)
     debug = pw.CharField(null=True)
 
 

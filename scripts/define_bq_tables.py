@@ -68,7 +68,8 @@ def main():
         bigquery.SchemaField("velocity_ms", "float", mode="NULLABLE"),
         bigquery.SchemaField("secs_from_last", "float", mode="NULLABLE"),
         bigquery.SchemaField("updates", "INTEGER", mode="NULLABLE"),
-        bigquery.SchemaField("parent", "STRING", mode="NULLABLE")
+        bigquery.SchemaField("parent", "STRING", mode="NULLABLE"),
+        bigquery.SchemaField("parent_dist", "FLOAT", mode="NULLABLE")
     ]
 
     try:

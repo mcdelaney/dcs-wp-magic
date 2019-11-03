@@ -106,9 +106,8 @@ class Enemy:
 
         if start_coords:
             try:
-                self.dist = round(geodesic((start_coords['lat'],
-                                            start_coords['long'])
-                                           (self.lat_raw, self.lon_raw)).nm)
+                self.dist = geodesic((start_coords['lat'], start_coords['long']),
+                                     (self.lat_raw, self.lon_raw)).nm
             except ValueError:
                 log.error("Coordinates are incorrect: %f %f",
                           self.lat_raw, self.lon_raw)
@@ -120,7 +119,7 @@ class Enemy:
 
     def str(self):
         str = f"{self.target_num}) {self.cat}: {self.name} {self.lat}, "\
-              f"{self.lon}, {self.alt}m, {self.dist}nm"
+              f"{self.lon}, {self.alt}m, {round(self.dist)}nm"
         log.debug(str)
         log.debug('Created enemy %s %d from start point in grp %s...',
                   self.platform, self.dist, self.grp_name)
@@ -226,7 +225,7 @@ def construct_enemy_set(start_unit, result_as_string=True, coord_fmt='dms'):
             results = [results[k] for k in sorted(results.keys())]
             results = [f"{i+1}) {r}" for i, r in enumerate(results)]
             results = '\r\n\r\n'.join(results)
-            results = f"Start Ref: {start_coord['name']} "\
+            results = f"Start Ref: {start_coord['pilot']} "\
                       f"{(round(start_coord['lat'], 3), round(start_coord['long'], 3))}"\
                       f"\r\n\r\n{results}"
             return results.encode('UTF-8')
@@ -247,16 +246,16 @@ def read_coords(start_units=config.START_UNITS,
                  WHERE alive = 1 AND coalition != '%s'" % coalition)
     enemies = [dict(e) for e in cur.fetchall()]
 
-    for unit in start_units:
+    for unit in [start_units]:
         log.info('Querying for start unit %s...', unit)
         cur = conn.cursor()
         cur.execute("SELECT lat, long, alt, name, pilot \
                      FROM object \
                      WHERE coalition = '%s' AND \
-                       alive = 1 AND name = '%s'" % (coalition, unit))
+                       alive = 1 AND pilot = '%s'" % (coalition, unit))
         start = [dict(r) for r in cur.fetchall()]
         if start:
             break
-
+    log.info(f'Start coord found: {start}...')
     conn.close()
-    return enemies, start
+    return enemies, start[0]
