@@ -151,7 +151,7 @@ def process_line(obj_dict, pubsub=None):
         # Create new record
         LOG.debug("Record not found...creating....")
         rec = Object.create(**obj_dict, first_seen=obj_dict['last_seen'])
-        if 'weapon' in rec.type.lower():
+        if any([t in rec.type.lower() for t in ['weapon', 'projectile']]):
             parent_info = determine_parent(rec)
             if parent_info:
                 rec.parent = parent_info[0]
