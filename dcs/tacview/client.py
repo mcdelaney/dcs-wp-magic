@@ -67,11 +67,12 @@ def determine_parent(rec):
         prox = distance.distance(current_point, near_pt).m
         dists.append([nearby.id, prox])
         LOG.debug("Distance to object %s is %s...", nearby.name, str(prox))
+
     dists.sort(key=lambda x: x[1])
     parent = dists[0]
     if parent[1] > 10:
-        LOG.warning("Closest parent candidate is %sm...rejecting!",
-                    str(parent[1]))
+        LOG.warning("Closest parent candidate for %s is %sm...rejecting!",
+                    rec.id, str(parent[1]))
         return
     LOG.info('Parent of %s found: %s at %sm...\n',
              rec.id, parent[0], parent[1])
