@@ -51,7 +51,7 @@ def determine_parent(rec):
     nearby_objs = (Object.select().
                    where(Object.alive==1 and
                          Object.id != rec.id and
-                         # Object.color == rec.color and
+                         Object.color == rec.color and
                          Object.last_seen >= offset_min and
                          Object.last_seen <= offset_max))
 
