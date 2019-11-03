@@ -19,3 +19,12 @@ CREATE OR REPLACE VIEW `dcs-analytics-257714`.tacview.orphaned_objects AS (
        lower(type) LIKE '%sharpnel%'
   )
 )
+
+CREATE OR REPLACE VIEW `dcs-analytics-257714`.tacview.parented_objects AS (
+  SELECT * FROM `dcs-analytics-257714`.tacview.objects
+  WHERE parent IS NOT NULL
+  AND (lower(type) LIKE '%weapon%' OR
+       lower(type) LIKE '%projectile%' OR
+       lower(type) LIKE '%sharpnel%'
+  )
+)
