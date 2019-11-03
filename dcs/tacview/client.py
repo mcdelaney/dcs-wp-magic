@@ -393,6 +393,7 @@ async def consumer(host=config.HOST, port=config.PORT, mode='local'):
             await sock.close()
             conn.close()
             init_db()
+            ref = Ref()
             await sock.open_connection()
 
 
