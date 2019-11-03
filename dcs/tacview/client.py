@@ -329,6 +329,8 @@ class SocketReader:
     async def read_stream(self):
         """Read lines from socket stream."""
         data = await asyncio.wait_for(self.reader.readline(), timeout=5.0)
+        if not data:
+            raise ServerExitException("No data in message!")
         msg = data.decode().strip()
         if self.debug:
             with open(self.sink, 'a+') as fp_:
@@ -385,7 +387,7 @@ async def consumer(host=config.HOST, port=config.PORT, mode='local'):
             obj_dict = line_to_dict(obj, ref)
             process_line(obj_dict, pubsub)
             iter_counter += 1
-        except (asyncio.TimeoutError, ConnectionError) as err:
+        except (asyncio.TimeoutError, ConnectionError, ServerExitException) as err:
             LOG.error('Closing socket due to exception...')
             LOG.exception(err)
             await sock.close()
