@@ -44,15 +44,16 @@ def determine_parent(rec):
     """Determine the parent of missiles, rockets, and bombs."""
     # LOG.info("Determing parent for object id: %s -- %s-%s...",
     #          rec.id, rec.name, rec.type)
-    offset = rec.last_seen - timedelta(seconds=1)
+    offset_min = rec.last_seen - timedelta(seconds=2)
+    offset_max = rec.last_seen + timedelta(seconds=1)
     current_point = Point(rec.lat, rec.long, rec.alt)
 
     nearby_objs = (Object.select().
                    where(Object.alive==1 and
                          Object.id != rec.id and
                          # Object.color == rec.color and
-                         Object.last_seen >= rec and
-                         Object.last_seen <= rec.last_seen))
+                         Object.last_seen >= offset_min and
+                         Object.last_seen <= offset_max))
 
     if not nearby_objs:
         LOG.warning(f"No nearby objects found for weapon {rec.name}")
@@ -67,7 +68,7 @@ def determine_parent(rec):
         LOG.debug("Distance to object %s is %s...", nearby.name, str(prox))
     dists.sort(key=lambda x: x[1])
     parent = dists[0]
-    if parent[1] > 5:
+    if parent[1] > 10:
         LOG.warning("Closest parent candidate is %sm...rejecting!",
                     str(parent[1]))
         return
