@@ -73,7 +73,8 @@ def determine_parent(rec):
         LOG.warning("Closest parent candidate is %sm...rejecting!",
                     str(parent[1]))
         return
-    LOG.info('Parent of %s found: %s at %sm...\n', rec.id, parent[0], parent[1])
+    LOG.info('Parent of %s found: %s at %sm...\n',
+             rec.id, parent[0], parent[1])
     return parent
 
 
@@ -88,7 +89,7 @@ def json_serial(obj):
 
     if isinstance(obj, (datetime, date)):
         return obj.isoformat()
-    raise TypeError ("Type %s not serializable" % type(obj))
+    raise TypeError("Type %s not serializable" % type(obj))
 
 
 def line_to_dict(line, ref):
@@ -181,26 +182,26 @@ def process_line(obj_dict, pubsub=None):
                 true_dist = math.sqrt(true_dist**2 + h_dist**2)
 
             if secs_from_last > 0:
-                velocity = true_dist/secs_from_last
+                velocity = true_dist / secs_from_last
 
         LOG.debug("Creating event row for %s...", rec.id)
         event = Event.create(object=obj_dict['id'],
-                                last_seen=rec.last_seen,
-                                alt=rec.alt,
-                                lat=rec.lat,
-                                long=rec.long,
-                                alive=rec.alive,
-                                yaw=rec.yaw,
-                                heading=rec.heading,
-                                roll=rec.roll,
-                                pitch=rec.pitch,
-                                u_coord=rec.u_coord,
-                                v_coord=rec.v_coord,
-                                velocity_ms=velocity,
-                                dist_m=true_dist,
-                                session_id=rec.session_id,
-                                secs_from_last=secs_from_last,
-                                update_num=rec.updates)
+                             last_seen=rec.last_seen,
+                             alt=rec.alt,
+                             lat=rec.lat,
+                             long=rec.long,
+                             alive=rec.alive,
+                             yaw=rec.yaw,
+                             heading=rec.heading,
+                             roll=rec.roll,
+                             pitch=rec.pitch,
+                             u_coord=rec.u_coord,
+                             v_coord=rec.v_coord,
+                             velocity_ms=velocity,
+                             dist_m=true_dist,
+                             session_id=rec.session_id,
+                             secs_from_last=secs_from_last,
+                             update_num=rec.updates)
 
         event.save()
         if pubsub:
@@ -311,7 +312,8 @@ class SocketReader:
         """Initialize the socket connection and write handshake data."""
         while True:
             try:
-                LOG.info(f'Attempting connection at {self.host}:{self.port}...')
+                LOG.info(
+                    f'Attempting connection at {self.host}:{self.port}...')
                 self.reader, self.writer = await asyncio.open_connection(
                     self.host, self.port)
                 LOG.info('Socket connection opened...sending handshake...')
