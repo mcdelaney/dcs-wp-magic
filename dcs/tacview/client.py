@@ -14,8 +14,11 @@ import json
 import peewee as pw
 from playhouse.shortcuts import model_to_dict
 from geopy.distance import geodesic
+from geopy import distance
+from geopy.point import Point
 
-from dcs.common import db
+
+from dcs.common.db import init_db, Object, Event, Session, Publisher, DB
 from dcs.common import get_logger
 from dcs.common import config
 
@@ -35,6 +38,42 @@ HANDSHAKE = '\n'.join([STREAM_PROTOCOL,
                        config.PASSWORD]) + HANDSHAKE_TERMINATOR
 HANDSHAKE = HANDSHAKE.encode('utf-8')
 REF_TIME_FMT = '%Y-%m-%dT%H:%M:%SZ'
+
+
+def determine_parent(rec):
+    """Determine the parent of missiles, rockets, and bombs."""
+    # LOG.info("Determing parent for object id: %s -- %s-%s...",
+    #          rec.id, rec.name, rec.type)
+    offset_min = rec.last_seen - timedelta(seconds=2)
+    offset_max = rec.last_seen + timedelta(seconds=1)
+    current_point = Point(rec.lat, rec.long, rec.alt)
+
+    nearby_objs = (Object.select().
+                   where(Object.alive == 1 and
+                         Object.id != rec.id and
+                         Object.color == rec.color and
+                         Object.last_seen >= offset_min and
+                         Object.last_seen <= offset_max))
+
+    if not nearby_objs:
+        LOG.warning(f"No nearby objects found for weapon {rec.name}")
+
+    dists = []
+    for nearby in nearby_objs:
+        if nearby.id == rec.id:
+            continue
+        near_pt = Point(nearby.lat, nearby.long, nearby.alt)
+        prox = distance.distance(current_point, near_pt).m
+        dists.append([nearby.id, prox])
+        LOG.debug("Distance to object %s is %s...", nearby.name, str(prox))
+    dists.sort(key=lambda x: x[1])
+    parent = dists[0]
+    if parent[1] > 10:
+        LOG.warning("Closest parent candidate is %sm...rejecting!",
+                    str(parent[1]))
+        return
+    LOG.info('Parent of %s found: %s at %sm...\n', rec.id, parent[0], parent[1])
+    return parent
 
 
 def serialize_data(data):
@@ -92,7 +131,7 @@ def line_to_dict(line, ref):
 def process_line(obj_dict, pubsub=None):
     """Parse a single line from tacview stream."""
 
-    rec = db.Object.get_or_none(id=obj_dict['id'])
+    rec = Object.get_or_none(id=obj_dict['id'])
     prev_coord = None
     prev_ts = None
     if rec:
@@ -100,7 +139,7 @@ def process_line(obj_dict, pubsub=None):
         prev_coord = [rec.lat, rec.long, rec.alt]
         # Update existing record
         rec.updates = rec.updates + 1
-        LOG.info("Record %s found ...will updated...", obj_dict['id'])
+        LOG.debug("Record %s found ...will updated...", obj_dict['id'])
         for k in config.COORD_KEYS + ['alive', 'last_seen']:
             try:
                 setattr(rec, k, obj_dict[k])
@@ -110,14 +149,22 @@ def process_line(obj_dict, pubsub=None):
         rec.save()
     else:
         # Create new record
-        LOG.info("Record not found...creating....")
-        rec = db.Object.create(**obj_dict, first_seen=obj_dict['last_seen'])
+        LOG.debug("Record not found...creating....")
+        rec = Object.create(**obj_dict, first_seen=obj_dict['last_seen'])
+        if 'weapon' in rec.type.lower():
+            parent_info = determine_parent(rec)
+            if parent_info:
+                rec.parent = parent_info[0]
+                rec.parent_dist = parent_info[1]
+                rec.save()
+
         if DEBUG:
             rec.debug = obj_dict
             rec.save()
 
-    if pubsub:
-        pubsub.writer.publish(pubsub.objects, data=serialize_data(rec))
+        if pubsub:
+            # Only send first update to pubsub.
+            pubsub.writer.publish(pubsub.objects, data=serialize_data(rec))
 
     if EVENTS:
         true_dist = None
@@ -135,8 +182,8 @@ def process_line(obj_dict, pubsub=None):
             if secs_from_last > 0:
                 velocity = true_dist/secs_from_last
 
-        LOG.info("Creating event row for %s...", rec.id)
-        event = db.Event.create(object=obj_dict['id'],
+        LOG.debug("Creating event row for %s...", rec.id)
+        event = Event.create(object=obj_dict['id'],
                                 last_seen=rec.last_seen,
                                 alt=rec.alt,
                                 lat=rec.lat,
@@ -161,7 +208,7 @@ def process_line(obj_dict, pubsub=None):
             pubsub_rec['object'] = obj_id['id']
             pubsub.writer.publish(pubsub.events,
                                   data=serialize_data(pubsub_rec))
-        LOG.info("Event row created successfully...")
+        LOG.debug("Event row created successfully...")
 
 
 class Ref:
@@ -239,6 +286,11 @@ class Ref:
                 }
 
 
+class ServerExitException(Exception):
+    """Throw this exception when there is a socket read timeout."""
+    pass
+
+
 class SocketReader:
     """Read from Tacview socket."""
     handshake = HANDSHAKE
@@ -258,20 +310,21 @@ class SocketReader:
         """Initialize the socket connection and write handshake data."""
         while True:
             try:
+                LOG.info(f'Attempting connection at {self.host}:{self.port}...')
                 self.reader, self.writer = await asyncio.open_connection(
                     self.host, self.port)
                 LOG.info('Socket connection opened...sending handshake...')
                 self.writer.write(self.handshake)
+                await self.reader.readline()
                 LOG.info('Connection opened successfully...')
                 break
-            except ConnectionError as err:
-                LOG.error(err)
+            except ConnectionError:
                 LOG.error('Connection attempt failed....will retry in 3 sec...')
                 await asyncio.sleep(3)
 
     async def read_stream(self):
         """Read lines from socket stream."""
-        data = await self.reader.readline()
+        data = await asyncio.wait_for(self.reader.readline(), timeout=5.0)
         msg = data.decode().strip()
         if self.debug:
             with open(self.sink, 'a+') as fp_:
@@ -286,9 +339,9 @@ class SocketReader:
 
 async def consumer(host=config.HOST, port=config.PORT, mode='local'):
     """Main method to consume stream."""
-    conn = db.init_db()
+    conn = init_db()
     if mode == "remote":
-        pubsub = db.Publisher()
+        pubsub = Publisher()
     else:
         pubsub = None
     sock = SocketReader(host, port, DEBUG)
@@ -311,7 +364,7 @@ async def consumer(host=config.HOST, port=config.PORT, mode='local'):
                     if ref.all_refs and not ref.written:
                         LOG.info("Writing session data to db...")
                         sess_ser = ref.ser()
-                        db.Session.create(**sess_ser)
+                        Session.create(**sess_ser)
                         if pubsub:
                             pubsub.writer.publish(pubsub.sessions,
                                                   data=serialize_data(sess_ser))
@@ -328,12 +381,12 @@ async def consumer(host=config.HOST, port=config.PORT, mode='local'):
             obj_dict = line_to_dict(obj, ref)
             process_line(obj_dict, pubsub)
             iter_counter += 1
-        except ConnectionError as err:
+        except (asyncio.TimeoutError, ConnectionError) as err:
             LOG.error('Closing socket due to exception...')
             LOG.exception(err)
             await sock.close()
             conn.close()
-            db.init_db()
+            init_db()
             await sock.open_connection()
 
 

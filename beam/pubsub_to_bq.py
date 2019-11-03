@@ -4,6 +4,9 @@ import datetime
 import json
 import logging
 
+ts = '2019-11-02T08:32:37'
+datetime.datetime.strptime(ts, "%Y-%m-%dT%H:%M:%S")
+
 import apache_beam as beam
 import apache_beam.transforms.window as window
 from apache_beam.options.pipeline_options import PipelineOptions
