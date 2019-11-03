@@ -51,9 +51,10 @@ def determine_parent(rec):
     nearby_objs = (Object.select().
                    where(Object.alive == 1 and
                          Object.id != rec.id and
-                         Object.color == rec.color and
                          Object.last_seen >= offset_min and
                          Object.last_seen <= offset_max))
+    if rec.color != "Violet":
+        nearby_objs = nearby_objs.where(Object.color == rec.color)
 
     if not nearby_objs:
         LOG.warning(f"No nearby objects found for weapon {rec.name}")
@@ -151,7 +152,7 @@ def process_line(obj_dict, pubsub=None):
         # Create new record
         LOG.debug("Record not found...creating....")
         rec = Object.create(**obj_dict, first_seen=obj_dict['last_seen'])
-        if any([t in rec.type.lower() for t in ['weapon', 'projectile']]):
+        if any([t in rec.type.lower() for t in ['weapon', 'projectile', 'shrapnel']]):
             parent_info = determine_parent(rec)
             if parent_info:
                 rec.parent = parent_info[0]
