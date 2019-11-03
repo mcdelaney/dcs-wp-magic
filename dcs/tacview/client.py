@@ -49,7 +49,7 @@ def determine_parent(rec):
     current_point = Point(rec.lat, rec.long, rec.alt)
 
     nearby_objs = (Object.select().
-                   where(Object.alive==1 and
+                   where(Object.alive == 1 and
                          Object.id != rec.id and
                          Object.color == rec.color and
                          Object.last_seen >= offset_min and
