@@ -70,7 +70,7 @@ def determine_parent(rec):
 
     dists.sort(key=lambda x: x[1])
     parent = dists[0]
-    if parent[1] > 10:
+    if parent[1] > 25:
         LOG.warning("Closest parent candidate for %s is %sm...rejecting!",
                     rec.id, str(parent[1]))
         return
