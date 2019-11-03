@@ -10,3 +10,12 @@ CREATE OR REPLACE VIEW `dcs-analytics-257714`.tacview.comb AS (
              FROM `dcs-analytics-257714`.tacview.objects)
   USING (object, session_id)
 )
+
+CREATE OR REPLACE VIEW `dcs-analytics-257714`.tacview.orphaned_objects AS (
+  SELECT * FROM `dcs-analytics-257714`.tacview.objects
+  WHERE parent IS NULL
+  AND (lower(type) LIKE '%weapon%' OR
+       lower(type) LIKE '%projectile%' OR
+       lower(type) LIKE '%sharpnel%'
+  )
+)
