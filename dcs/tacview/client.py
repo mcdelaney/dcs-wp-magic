@@ -17,8 +17,7 @@ from geopy.distance import geodesic
 from geopy import distance
 from geopy.point import Point
 
-
-from dcs.common.db import init_db, Object, Event, Session, Publisher, DB
+from dcs.common.db import init_db, Object, Event, Session, Publisher
 from dcs.common import get_logger
 from dcs.common import config
 
@@ -57,7 +56,7 @@ def determine_parent(rec):
         nearby_objs = nearby_objs.where(Object.color == rec.color)
 
     if not nearby_objs:
-        LOG.warning(f"No nearby objects found for weapon {rec.name}")
+        LOG.warning("No nearby objects found for weapon %s", rec.name)
 
     dists = []
     for nearby in nearby_objs:
@@ -73,13 +72,14 @@ def determine_parent(rec):
     if parent[1] > 10:
         LOG.warning("Closest parent candidate for %s is %sm...rejecting!",
                     rec.id, str(parent[1]))
-        return
+        return None
     LOG.info('Parent of %s found: %s at %sm...\n',
              rec.id, parent[0], parent[1])
     return parent
 
 
 def serialize_data(data):
+    """Serialize an object for export to pubsub, handling timestamps."""
     if isinstance(data, pw.Model):
         data = model_to_dict(data)
     return json.dumps(data, default=json_serial).encode('utf-8')
@@ -133,7 +133,6 @@ def line_to_dict(line, ref):
 
 def process_line(obj_dict, pubsub=None):
     """Parse a single line from tacview stream."""
-
     rec = Object.get_or_none(id=obj_dict['id'])
     prev_coord = None
     prev_ts = None
@@ -160,10 +159,6 @@ def process_line(obj_dict, pubsub=None):
                 rec.parent = parent_info[0]
                 rec.parent_dist = parent_info[1]
                 rec.save()
-
-        if DEBUG:
-            rec.debug = obj_dict
-            rec.save()
 
         if pubsub:
             # Only send first update to pubsub.
@@ -204,7 +199,7 @@ def process_line(obj_dict, pubsub=None):
                              secs_from_last=secs_from_last,
                              update_num=rec.updates)
 
-        event.save()
+        # event.save()
         if pubsub:
             pubsub_rec = model_to_dict(event)
             obj_id = pubsub_rec.pop('object')
@@ -214,7 +209,7 @@ def process_line(obj_dict, pubsub=None):
         LOG.debug("Event row created successfully...")
 
 
-class Ref:
+class Ref: #pylint: disable=too-many-instance-attributes
     """Hold and extract Reference values used as offsets."""
 
     def __init__(self):
@@ -291,12 +286,10 @@ class Ref:
 
 class ServerExitException(Exception):
     """Throw this exception when there is a socket read timeout."""
-    pass
 
 
 class SocketReader:
     """Read from Tacview socket."""
-    handshake = HANDSHAKE
 
     def __init__(self, host, port, debug=False):
         self.host = host
@@ -313,12 +306,12 @@ class SocketReader:
         """Initialize the socket connection and write handshake data."""
         while True:
             try:
-                LOG.info(
-                    f'Attempting connection at {self.host}:{self.port}...')
+                LOG.info('Attempting connection at %s:%s...',
+                         self.host, self.port)
                 self.reader, self.writer = await asyncio.open_connection(
                     self.host, self.port)
                 LOG.info('Socket connection opened...sending handshake...')
-                self.writer.write(self.handshake)
+                self.writer.write(HANDSHAKE)
                 await self.reader.readline()
                 LOG.info('Connection opened successfully...')
                 break
