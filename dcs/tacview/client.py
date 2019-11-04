@@ -43,16 +43,18 @@ def determine_parent(rec):
     """Determine the parent of missiles, rockets, and bombs."""
     # LOG.info("Determing parent for object id: %s -- %s-%s...",
     #          rec.id, rec.name, rec.type)
-    offset_min = rec.last_seen - timedelta(seconds=2)
+    offset_min = rec.last_seen - timedelta(seconds=1)
     offset_max = rec.last_seen + timedelta(seconds=1)
     current_point = Point(rec.lat, rec.long, rec.alt)
 
     nearby_objs = (Object.select().
-                   where(Object.alive == 1 and
-                         Object.id != rec.id and
-                         Object.last_seen >= offset_min and
-                         Object.last_seen <= offset_max))
-    if rec.color != "Violet":
+                   where((Object.alive == 1) &
+                         (Object.id != rec.id) &
+                         (Object.last_seen >= offset_min) &
+                         (Object.last_seen <= offset_max)))
+    if rec.color == "Violet":
+        nearby_objs = nearby_objs.where(Object.color != rec.color)
+    else:
         nearby_objs = nearby_objs.where(Object.color == rec.color)
 
     if not nearby_objs:
