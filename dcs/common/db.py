@@ -87,7 +87,11 @@ class Session(BaseModel):
 
 def init_db(replace_db=True):
     """Initialize the database and execute create table statements."""
+    db_path = Path(config.DB_LOC)
     DB.init(config.DB_LOC)
+    if not db_path.parent.exists():
+        db_path.parent.mkdir()
+
     try:
         DB.drop_tables([Object, Event, Session])
     except Exception:

@@ -53,8 +53,6 @@ def determine_parent(rec):
                                  Object.long, Object.name).
                    where((Object.alive == 1) &
                          (Object.id != rec.id) &
-                         # (round(Object.lat, 1) == round(rec.lat, 1)) &
-                         # (round(Object.long, 1) == round(rec.long, 1)) &
                          (Object.color != "Violet") &
                          (Object.last_seen >= offset_min) &
                          (Object.last_seen <= offset_max)))
@@ -160,12 +158,14 @@ def process_line(obj_dict):
         # Create new record
         LOG.debug("Record not found...creating....")
         rec = Object.create(**obj_dict, first_seen=obj_dict['last_seen'])
-        if any([t in rec.type.lower() for t in ['weapon', 'projectile', 'shrapnel']]):
-            parent_info = determine_parent(rec)
-            if parent_info:
-                rec.parent = parent_info[0]
-                rec.parent_dist = parent_info[1]
-                rec.save()
+        if PUB_SUB:
+            if any([t in rec.type.lower() for t in ['weapon', 'projectile',
+                                                    'shrapnel']]):
+                parent_info = determine_parent(rec)
+                if parent_info:
+                    rec.parent = parent_info[0]
+                    rec.parent_dist = parent_info[1]
+                    rec.save()
 
         if PUB_SUB:
             # Only send first update to PUB_SUB.

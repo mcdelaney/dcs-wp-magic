@@ -47,7 +47,6 @@ function wpmanager_load()
         current_page = 'coords'
         wpmanager.log("loading page coordinates...")
         textarea:setText(coord_data)
-        -- targetarea:setText(target_data)
         window:setText("Coords")
     end
 
@@ -55,7 +54,6 @@ function wpmanager_load()
         current_page = "targets"
         wpmanager.log("loading page targets...")
         textarea:setText(target_data)
-        -- targetarea:setText(target_data)
         window:setText("Targets")
     end
 
@@ -66,7 +64,7 @@ function wpmanager_load()
             wpmanager.log("Configuration exists...")
             wpmanager.config = tbl.config
             if wpmanager.config.fontSize == nil then
-                wpmanager.config.fontSize = 16
+                wpmanager.config.fontSize = 14
                 wpmanager.saveConfiguration()
             end
             -- move content into text file
