@@ -3,7 +3,7 @@ __pycache__/**/*
 **.pyc
 __pycache__
 scratch.py
-data/
+data/**
 log/**
 .DS_Store
 */.idea/libraries/*
