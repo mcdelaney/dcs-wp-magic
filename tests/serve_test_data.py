@@ -1,5 +1,6 @@
 """Socket Perf Test.
 """
+import argparse
 import asyncio
 from asyncio.log import logging
 import sys
@@ -7,6 +8,7 @@ import sys
 logging.basicConfig(level=logging.INFO)
 LOG = logging.getLogger('test_server')
 LOG.setLevel(logging.DEBUG)
+# N = -1
 
 
 async def handle_req(reader, writer):
@@ -14,27 +16,35 @@ async def handle_req(reader, writer):
     handshake = await reader.read(4026)
     LOG.info(handshake.decode())
     with open('tests/data/raw_sink.txt', 'r') as fp_:
-        lines = fp_.readlines()
-    i = 0
-    while i < 50:
-        writer.write(lines[i].encode('utf-8'))
-        LOG.info(lines[i])
-        i += 1
+        for i, line in enumerate(fp_):
+            if N != -1 and N <= i:
+                break
+            writer.write(line.encode('utf-8'))
+            LOG.info(line)
 
+    LOG.info("All lines sent...draining...")
     await writer.drain()
+    LOG.info("Socket drained...closing...")
     writer.close()
+    LOG.info("Writer closed...exiting...")
 
 
-async def serve_test_data(host='127.0.0.1', port=5555):
+async def serve_test_data():
     """Read from Tacview socket."""
-    LOG.info('Attempting connection at %s:%s...', host, port)
-    server = await asyncio.start_server(handle_req, host, port)
+    LOG.info('Attempting connection at 127.0.0.1:5555...')
+    server = await asyncio.start_server(handle_req, "127.0.0.1", "5555")
     async with server:
         await server.serve_forever()
 
 
 if __name__ == "__main__":
+    PARSER = argparse.ArgumentParser()
+    PARSER.add_argument('-n', type=int, default=-1)
+    ARGS = PARSER.parse_args()
+    N = ARGS.n
+    loop = asyncio.get_event_loop()
     try:
         asyncio.run(serve_test_data())
     except KeyboardInterrupt:
+        loop.stop()
         sys.exit(0)

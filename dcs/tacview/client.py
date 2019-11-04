@@ -7,9 +7,10 @@ database.
 import asyncio
 from asyncio.log import logging
 from datetime import datetime, timedelta, date
+import json
 import math
 from uuid import uuid1
-import json
+import sys
 
 import peewee as pw
 from playhouse.shortcuts import model_to_dict
@@ -23,6 +24,7 @@ from dcs.common import config
 
 
 DEBUG = False
+PUB_SUB = None
 EVENTS = True
 LOG = get_logger(logging.getLogger('tacview_client'), False)
 LOG.setLevel(logging.DEBUG if DEBUG else logging.INFO)
@@ -41,42 +43,45 @@ REF_TIME_FMT = '%Y-%m-%dT%H:%M:%SZ'
 
 def determine_parent(rec):
     """Determine the parent of missiles, rockets, and bombs."""
-    # LOG.info("Determing parent for object id: %s -- %s-%s...",
-    #          rec.id, rec.name, rec.type)
+    LOG.info("Determing parent for object id: %s -- %s-%s...",
+             rec.id, rec.name, rec.type)
     offset_min = rec.last_seen - timedelta(seconds=1)
     offset_max = rec.last_seen + timedelta(seconds=1)
     current_point = Point(rec.lat, rec.long, rec.alt)
 
-    nearby_objs = (Object.select().
+    nearby_objs = (Object.select(Object.id, Object.alt, Object.lat,
+                                 Object.long, Object.name).
                    where((Object.alive == 1) &
                          (Object.id != rec.id) &
+                         # (round(Object.lat, 1) == round(rec.lat, 1)) &
+                         # (round(Object.long, 1) == round(rec.long, 1)) &
+                         (Object.color != "Violet") &
                          (Object.last_seen >= offset_min) &
                          (Object.last_seen <= offset_max)))
-    if rec.color == "Violet":
-        nearby_objs = nearby_objs.where(Object.color != rec.color)
-    else:
+
+    if rec.color != "Violet":
         nearby_objs = nearby_objs.where(Object.color == rec.color)
 
     if not nearby_objs:
         LOG.warning("No nearby objects found for weapon %s", rec.name)
 
-    dists = []
+    parent = []
     for nearby in nearby_objs:
-        if nearby.id == rec.id:
-            continue
         near_pt = Point(nearby.lat, nearby.long, nearby.alt)
         prox = distance.distance(current_point, near_pt).m
-        dists.append([nearby.id, prox])
         LOG.debug("Distance to object %s is %s...", nearby.name, str(prox))
+        if not parent or (prox < parent[1]):
+            parent = [nearby.id, prox]
+        if prox < 2:
+            LOG.debug("Distance is very close...breaking...")
+            break
 
-    dists.sort(key=lambda x: x[1])
-    parent = dists[0]
     if parent[1] > 25:
-        LOG.warning("Closest parent candidate for %s is %sm...rejecting!",
-                    rec.id, str(parent[1]))
+        LOG.warning("Closest parent for %s: %sm...%d considered...rejecting!",
+                    rec.id, str(parent[1]), len(nearby_objs))
         return None
-    LOG.info('Parent of %s found: %s at %sm...\n',
-             rec.id, parent[0], parent[1])
+    LOG.info('Parent of %s found: %s at %sm...%d considered...\n',
+             rec.id, parent[0], parent[1], len(nearby_objs))
     return parent
 
 
@@ -133,7 +138,7 @@ def line_to_dict(line, ref):
     return obj_dict
 
 
-def process_line(obj_dict, pubsub=None):
+def process_line(obj_dict):
     """Parse a single line from tacview stream."""
     rec = Object.get_or_none(id=obj_dict['id'])
     prev_coord = None
@@ -162,9 +167,9 @@ def process_line(obj_dict, pubsub=None):
                 rec.parent_dist = parent_info[1]
                 rec.save()
 
-        if pubsub:
-            # Only send first update to pubsub.
-            pubsub.writer.publish(pubsub.objects, data=serialize_data(rec))
+        if PUB_SUB:
+            # Only send first update to PUB_SUB.
+            PUB_SUB.writer.publish(PUB_SUB.objects, data=serialize_data(rec))
 
     if EVENTS:
         true_dist = None
@@ -201,13 +206,13 @@ def process_line(obj_dict, pubsub=None):
                              secs_from_last=secs_from_last,
                              update_num=rec.updates)
 
-        # event.save()
-        if pubsub:
+        if PUB_SUB:
             pubsub_rec = model_to_dict(event)
             obj_id = pubsub_rec.pop('object')
             pubsub_rec['object'] = obj_id['id']
-            pubsub.writer.publish(pubsub.events,
-                                  data=serialize_data(pubsub_rec))
+            LOG.debug("Pushing record to pubsub...")
+            PUB_SUB.writer.publish(PUB_SUB.events,
+                                   data=serialize_data(pubsub_rec))
         LOG.debug("Event row created successfully...")
 
 
@@ -271,6 +276,16 @@ class Ref: #pylint: disable=too-many-instance-attributes
                 self.start_time = datetime.strptime(val[1], REF_TIME_FMT)
 
             self.all_refs = self.lat and self.long and self.time
+            if self.all_refs and not self.written:
+                LOG.info("Writing session data to db...")
+                sess_ser = self.ser()
+                Session.create(**sess_ser)
+                if PUB_SUB:
+                    PUB_SUB.writer.publish(PUB_SUB.sessions,
+                                           data=serialize_data(sess_ser))
+                self.written = True
+                LOG.info("Session session data saved...")
+
         except IndexError:
             pass
 
@@ -338,13 +353,9 @@ class SocketReader:
         await self.writer.wait_closed()
 
 
-async def consumer(host=config.HOST, port=config.PORT, mode='local'):
+async def consumer(host=config.HOST, port=config.PORT):
     """Main method to consume stream."""
     conn = init_db()
-    if mode == "remote":
-        pubsub = Publisher()
-    else:
-        pubsub = None
     sock = SocketReader(host, port, DEBUG)
     await sock.open_connection()
     ref = Ref()
@@ -353,36 +364,25 @@ async def consumer(host=config.HOST, port=config.PORT, mode='local'):
         try:
             obj = await sock.read_stream()
             try:
-                if obj == '' or obj[0:2] == '\\':
+                if obj[0:2] == '\\':
                     continue
-            except IndexError:
-                pass
 
-            try:
+                if obj[0] == "#":
+                    ref.update_time(obj[1:])
+                    continue
+
                 if obj[0:2] == "0," or not ref.all_refs:
                     ref.parse_ref_obj(obj)
-
-                    if ref.all_refs and not ref.written:
-                        LOG.info("Writing session data to db...")
-                        sess_ser = ref.ser()
-                        Session.create(**sess_ser)
-                        if pubsub:
-                            pubsub.writer.publish(pubsub.sessions,
-                                                  data=serialize_data(sess_ser))
-                        ref.written = True
-                        LOG.info("Session session data saved...")
                     continue
+
             except IndexError:
                 pass
 
-            if obj[0] == "#":
-                ref.update_time(obj[1:])
-                continue
-
             obj_dict = line_to_dict(obj, ref)
-            process_line(obj_dict, pubsub)
+            process_line(obj_dict)
             iter_counter += 1
-        except (asyncio.TimeoutError, ConnectionError, ServerExitException) as err:
+        except (asyncio.TimeoutError, ConnectionError,
+                ServerExitException) as err:
             LOG.error('Closing socket due to exception...')
             LOG.exception(err)
             await sock.close()
@@ -391,7 +391,63 @@ async def consumer(host=config.HOST, port=config.PORT, mode='local'):
             ref = Ref()
             await sock.open_connection()
 
+        except KeyboardInterrupt:
+            await sock.close()
+            conn.close()
+            sys.exit(0)
 
-def main(host, port, mode='local'):
+
+async def run_once_local():
+    """Main method to consume stream."""
+    init_db()
+    sock = SocketReader('127.0.0.1', 5555, True)
+    await sock.open_connection()
+    ref = Ref()
+    iter_counter = 0
+    while True:
+        try:
+            obj = await sock.read_stream()
+            try:
+                if obj[0:2] == '\\':
+                    continue
+
+                if obj[0] == "#":
+                    ref.update_time(obj[1:])
+                    continue
+
+                if obj[0:2] == "0," or not ref.all_refs:
+                    ref.parse_ref_obj(obj)
+
+                    if ref.all_refs and not ref.written:
+                        LOG.info("Writing session data to db...")
+                        sess_ser = ref.ser()
+                        Session.create(**sess_ser)
+                        if PUB_SUB:
+                            PUB_SUB.writer.publish(PUB_SUB.sessions,
+                                                   data=serialize_data(sess_ser))
+                        ref.written = True
+                        LOG.info("Session session data saved...")
+                    continue
+            except IndexError:
+                pass
+
+            obj_dict = line_to_dict(obj, ref)
+            process_line(obj_dict)
+            iter_counter += 1
+        except (asyncio.TimeoutError, ConnectionError, KeyboardInterrupt,
+                ServerExitException):
+            return
+
+
+def main(host, port, mode='local', debug=False):
     """Start event loop to consume stream."""
-    asyncio.run(consumer(host, port, mode))
+    global DEBUG # pylint: disable=global-statement
+
+    DEBUG = debug
+    if DEBUG:
+        LOG.setLevel(logging.DEBUG)
+
+    global PUB_SUB # pylint: disable=global-statement
+    if mode == 'remote':
+        PUB_SUB = Publisher()
+    asyncio.run(consumer(host, port))

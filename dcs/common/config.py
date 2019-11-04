@@ -80,3 +80,13 @@ for key, val in CATS.items():
 
 
 PROJECT_ID = 'dcs-analytics-257714'
+
+STREAM_PROTOCOL = "XtraLib.Stream.0"
+TACVIEW_PROTOCOL = 'Tacview.RealTimeTelemetry.0'
+HANDSHAKE_TERMINATOR = "\0"
+
+HANDSHAKE = '\n'.join([STREAM_PROTOCOL,
+                       TACVIEW_PROTOCOL,
+                       CLIENT,
+                       PASSWORD]) + HANDSHAKE_TERMINATOR
+HANDSHAKE = HANDSHAKE.encode('utf-8')
