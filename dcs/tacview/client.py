@@ -60,6 +60,7 @@ def determine_parent(rec):
                    where((Object.alive == 1) &
                          (Object.id != rec.id) &
                          (Object.color != "Violet") &
+                         # (Object.alt.between(rec.alt-200, rec.alt+200)) &
                          (Object.last_seen >= offset_min) &
                          (Object.last_seen <= offset_max)))
 
@@ -68,6 +69,7 @@ def determine_parent(rec):
 
     if not nearby_objs:
         LOG.warning("No nearby objects found for weapon %s", rec.name)
+        return None
 
     parent = []
     for nearby in nearby_objs:
@@ -80,11 +82,11 @@ def determine_parent(rec):
             LOG.debug("Distance is very close...breaking...")
             break
 
-    if parent[1] > 25:
-        LOG.warning("Closest parent for %s: %sm...%d considered...rejecting!",
-                    rec.id, str(parent[1]), len(nearby_objs))
+    if parent[1] > 50:
+        LOG.warning("Closest parent for %s-%s-%s: %sm...%d considered...rejecting!",
+                    rec.id, rec.name, rec.type, str(parent[1]), len(nearby_objs))
         return None
-    LOG.debug('Parent of %s found: %s at %sm...%d considered...',
+    LOG.info('Parent of %s found: %s at %sm...%d considered...',
               rec.id, parent[0], parent[1], len(nearby_objs))
     return parent
 
@@ -127,6 +129,9 @@ def line_to_dict(line):
     try:
         coord = obj_dict.pop('t')
     except KeyError as err:
+        if line[0] == '0' and 'AuthenticationKey' in line[1]:
+            LOG.info('Ref value found in line: %s...', ','.join(line))
+            return
         LOG.error(line, obj_dict)
         LOG.exception(err)
         raise err
@@ -393,11 +398,9 @@ class SocketReader:
 
 def handle_line(obj):
     """Wrapper for line processing methods called in thread."""
-    process_line(line_to_dict(obj))
-
-async def handle_line_asyncio(obj):
-    """Wrapper for line processing methods called in thread."""
-    process_line(line_to_dict(obj))
+    obj = line_to_dict(obj)
+    if obj:
+        process_line(obj)
 
 
 async def consumer(host=config.HOST, port=config.PORT, max_iters=None,
@@ -409,16 +412,17 @@ async def consumer(host=config.HOST, port=config.PORT, max_iters=None,
 
     if run_async:
         LOG.info("Async mode active...creating threadpool...")
-        max_tasks = 1000
+        max_tasks = 500
         n_tasks = 0
         # from multiprocessing.pool import ThreadPool
         # pool = ThreadPool(processes=max_tasks)
-        tasks = []
 
+    tasks_complete = 1
     timer = []
     sock = SocketReader(host, port)
     await sock.open_connection()
     init_time = time.time()
+    main_thread = threading.current_thread()
     while True:
         try:
             start_time = time.time()
@@ -426,27 +430,19 @@ async def consumer(host=config.HOST, port=config.PORT, max_iters=None,
 
             if obj[0] == "#":
                 sock.ref.update_time(obj[1:])
+                for t in threading.enumerate():
+                    if t is main_thread:
+                        continue
+                    t.join()
+                    tasks_complete += 1
+                runtime = time.time() - init_time
+                LOG.info('Average task/sec: %.2f...', tasks_complete/runtime)
                 continue
 
             if run_async:
-
                 thread = threading.Thread(target=handle_line, args=(obj,),
                                           daemon=True)
                 thread.start()
-                tasks.append(thread)
-                n_tasks += 1
-
-                while n_tasks >= max_tasks:
-                    # LOG.info("Max tasks found... checking for complete task...")
-                    for i, _ in enumerate(tasks):
-                        tasks[i].join(0.0)
-                        if not tasks[i].isAlive():
-                            # LOG.info("Task removed...")
-                            n_tasks -= 1
-                            tasks.pop(i)
-                            break
-                        # threading.sleep(0.1)
-
                 # tasks.append(pool.apply_async(handle_line, (obj, )))
                 # await asyncio.wrap_future(handle_line_asyncio, (obj,))
                 # await handle_line_asyncio(obj)
@@ -461,7 +457,7 @@ async def consumer(host=config.HOST, port=config.PORT, max_iters=None,
             if max_iters and max_iters <= len(timer):
                 LOG.info("Max iterations reached...collecting tasks and exiting...")
                 raise MaxItersException
-        except (asyncio.TimeoutError, ConnectionError,
+        except (asyncio.TimeoutError, ConnectionError, ConnectionResetError,
                 ServerExitException) as err:
             if run_async:
                 [t.join() for t in tasks] # pylint: disable=expression-not-assigned
