@@ -10,7 +10,8 @@ from datetime import datetime, timedelta, date
 import json
 import math
 from uuid import uuid1
-import sys
+import time
+import threading
 
 import peewee as pw
 from playhouse.shortcuts import model_to_dict
@@ -24,8 +25,10 @@ from dcs.common import config
 
 
 DEBUG = False
+PARENTS = False
 PUB_SUB = None
 EVENTS = True
+
 LOG = get_logger(logging.getLogger('tacview_client'), False)
 LOG.setLevel(logging.DEBUG if DEBUG else logging.INFO)
 
@@ -40,11 +43,14 @@ HANDSHAKE = '\n'.join([STREAM_PROTOCOL,
 HANDSHAKE = HANDSHAKE.encode('utf-8')
 REF_TIME_FMT = '%Y-%m-%dT%H:%M:%SZ'
 
+COORD_KEYS = ['long', 'lat', 'alt', 'roll', 'pitch', 'yaw', 'u_coord',
+              'v_coord', 'heading']
+
 
 def determine_parent(rec):
     """Determine the parent of missiles, rockets, and bombs."""
-    LOG.info("Determing parent for object id: %s -- %s-%s...",
-             rec.id, rec.name, rec.type)
+    LOG.debug("Determing parent for object id: %s -- %s-%s...",
+              rec.id, rec.name, rec.type)
     offset_min = rec.last_seen - timedelta(seconds=1)
     offset_max = rec.last_seen + timedelta(seconds=1)
     current_point = Point(rec.lat, rec.long, rec.alt)
@@ -78,8 +84,8 @@ def determine_parent(rec):
         LOG.warning("Closest parent for %s: %sm...%d considered...rejecting!",
                     rec.id, str(parent[1]), len(nearby_objs))
         return None
-    LOG.info('Parent of %s found: %s at %sm...%d considered...\n',
-             rec.id, parent[0], parent[1], len(nearby_objs))
+    LOG.debug('Parent of %s found: %s at %sm...%d considered...',
+              rec.id, parent[0], parent[1], len(nearby_objs))
     return parent
 
 
@@ -98,8 +104,9 @@ def json_serial(obj):
     raise TypeError("Type %s not serializable" % type(obj))
 
 
-def line_to_dict(line, ref):
+def line_to_dict(line):
     """Process a line into a dictionary."""
+    ref = Session.select().limit(1)[0]
     line = line.split(',')
     if line[0][0] == '-':
         LOG.debug("Record %s is now dead...updating...", id)
@@ -126,13 +133,22 @@ def line_to_dict(line, ref):
 
     coord = coord.split('|')
 
-    for i, k in enumerate(config.COORD_KEYS):
+    for i, k in enumerate(COORD_KEYS):
         try:
             obj_dict[k] = float(coord[i])
-            if k in ['lat', 'long']:
-                obj_dict[k] = obj_dict[k] + getattr(ref, k)
         except (ValueError, TypeError, IndexError) as err:
             pass
+
+    try:
+        obj_dict['lat'] = obj_dict['lat'] + ref.lat
+    except KeyError:
+        pass
+
+    try:
+        obj_dict['long'] = obj_dict['long'] + ref.long
+    except KeyError:
+        pass
+
     return obj_dict
 
 
@@ -147,7 +163,7 @@ def process_line(obj_dict):
         # Update existing record
         rec.updates = rec.updates + 1
         LOG.debug("Record %s found ...will updated...", obj_dict['id'])
-        for k in config.COORD_KEYS + ['alive', 'last_seen']:
+        for k in COORD_KEYS + ['alive', 'last_seen']:
             try:
                 setattr(rec, k, obj_dict[k])
             except KeyError:
@@ -158,7 +174,7 @@ def process_line(obj_dict):
         # Create new record
         LOG.debug("Record not found...creating....")
         rec = Object.create(**obj_dict, first_seen=obj_dict['last_seen'])
-        if PUB_SUB:
+        if PARENTS:
             if any([t in rec.type.lower() for t in ['weapon', 'projectile',
                                                     'shrapnel']]):
                 parent_info = determine_parent(rec)
@@ -171,49 +187,48 @@ def process_line(obj_dict):
             # Only send first update to PUB_SUB.
             PUB_SUB.writer.publish(PUB_SUB.objects, data=serialize_data(rec))
 
-    if EVENTS:
-        true_dist = None
-        secs_from_last = None
-        velocity = None
-        if prev_coord:
-            secs_from_last = (rec.last_seen - prev_ts).total_seconds()
-            true_dist = geodesic((rec.lat, rec.long),
-                                 (prev_coord[0], prev_coord[1])).meters
+    if not EVENTS:
+        return
 
-            if 'alt' in obj_dict.keys():
-                h_dist = rec.alt - prev_coord[2]
-                true_dist = math.sqrt(true_dist**2 + h_dist**2)
+    true_dist = None
+    secs_from_last = None
+    velocity = None
+    if prev_coord:
+        secs_from_last = (rec.last_seen - prev_ts).total_seconds()
+        flat_dist = geodesic((rec.lat, rec.long),
+                             (prev_coord[0], prev_coord[1])).meters
 
-            if secs_from_last > 0:
-                velocity = true_dist / secs_from_last
+        h_dist = rec.alt - prev_coord[2]
+        true_dist = math.sqrt(flat_dist**2 + h_dist**2)
 
-        LOG.debug("Creating event row for %s...", rec.id)
-        event = Event.create(object=obj_dict['id'],
-                             last_seen=rec.last_seen,
-                             alt=rec.alt,
-                             lat=rec.lat,
-                             long=rec.long,
-                             alive=rec.alive,
-                             yaw=rec.yaw,
-                             heading=rec.heading,
-                             roll=rec.roll,
-                             pitch=rec.pitch,
-                             u_coord=rec.u_coord,
-                             v_coord=rec.v_coord,
-                             velocity_ms=velocity,
-                             dist_m=true_dist,
-                             session_id=rec.session_id,
-                             secs_from_last=secs_from_last,
-                             update_num=rec.updates)
+        try:
+            velocity = true_dist / secs_from_last
+        except ZeroDivisionError:
+            # This happens if the object has never been updated.
+            pass
 
-        if PUB_SUB:
-            pubsub_rec = model_to_dict(event)
-            obj_id = pubsub_rec.pop('object')
-            pubsub_rec['object'] = obj_id['id']
-            LOG.debug("Pushing record to pubsub...")
-            PUB_SUB.writer.publish(PUB_SUB.events,
-                                   data=serialize_data(pubsub_rec))
-        LOG.debug("Event row created successfully...")
+    LOG.debug("Creating event row for %s...", rec.id)
+    event = Event.create(object=obj_dict['id'],
+                         last_seen=rec.last_seen,
+                         alt=rec.alt,
+                         lat=rec.lat,
+                         long=rec.long,
+                         alive=rec.alive,
+                         yaw=rec.yaw,
+                         heading=rec.heading,
+                         roll=rec.roll,
+                         pitch=rec.pitch,
+                         u_coord=rec.u_coord,
+                         v_coord=rec.v_coord,
+                         velocity_ms=velocity,
+                         dist_m=true_dist,
+                         session_id=rec.session_id,
+                         secs_from_last=secs_from_last,
+                         update_num=rec.updates)
+
+    if PUB_SUB:
+        PUB_SUB.writer.publish(PUB_SUB.events, data=serialize_data(event))
+    LOG.debug("Event row created successfully...")
 
 
 class Ref: #pylint: disable=too-many-instance-attributes
@@ -230,7 +245,6 @@ class Ref: #pylint: disable=too-many-instance-attributes
         self.last_time = 0.0
         self.all_refs = False
         self.session_id = str(uuid1())
-
         self.written = False
 
     def update_time(self, offset):
@@ -240,6 +254,9 @@ class Ref: #pylint: disable=too-many-instance-attributes
         diff = offset - self.last_time
         LOG.debug("Incremening time offset by %s...", diff)
         self.time = self.time + timedelta(seconds=diff)
+        sess = Session.select().limit(1)[0]
+        sess.time = self.time
+        sess.save()
         self.last_time = offset
 
     def parse_ref_obj(self, line):
@@ -277,10 +294,11 @@ class Ref: #pylint: disable=too-many-instance-attributes
 
             self.all_refs = self.lat and self.long and self.time
             if self.all_refs and not self.written:
-                LOG.info("Writing session data to db...")
+                LOG.info("All Refs found...writing session data to db...")
                 sess_ser = self.ser()
                 Session.create(**sess_ser)
                 if PUB_SUB:
+                    LOG.info('PubSub activated...pushing Session...')
                     PUB_SUB.writer.publish(PUB_SUB.sessions,
                                            data=serialize_data(sess_ser))
                 self.written = True
@@ -297,7 +315,8 @@ class Ref: #pylint: disable=too-many-instance-attributes
                 'title': self.title,
                 'datasource': self.datasource,
                 'author': self.author,
-                'start_time': self.start_time
+                'start_time': self.start_time,
+                'time': self.time
                 }
 
 
@@ -305,22 +324,28 @@ class ServerExitException(Exception):
     """Throw this exception when there is a socket read timeout."""
 
 
+class MaxItersException(Exception):
+    """Throw this exception when iterations exceeds preset value."""
+
+
 class SocketReader:
     """Read from Tacview socket."""
 
-    def __init__(self, host, port, debug=False):
+    def __init__(self, host, port):
         self.host = host
         self.port = port
-        self.debug = debug
         self.reader = None
+        self.ref = Ref()
         self.writer = None
-        self.last_recv = None
         self.sink = "log/raw_sink.txt"
-        if debug:
+        if DEBUG:
             open(self.sink, 'w').close()
 
     async def open_connection(self):
-        """Initialize the socket connection and write handshake data."""
+        """
+        Initialize the socket connection and write handshake data.
+        If connection fails, wait 3 seconds and retry.
+        """
         while True:
             try:
                 LOG.info('Attempting connection at %s:%s...',
@@ -330,124 +355,159 @@ class SocketReader:
                 LOG.info('Socket connection opened...sending handshake...')
                 self.writer.write(HANDSHAKE)
                 await self.reader.readline()
-                LOG.info('Connection opened successfully...')
+
+                LOG.info('Connection opened...creating db and processing refs...')
+                init_db()
+                while not self.ref.all_refs:
+                    obj = await self.read_stream()
+                    if obj[0:2] == "0,":
+                        self.ref.parse_ref_obj(obj)
+                        continue
                 break
             except ConnectionError:
                 LOG.error('Connection attempt failed....will retry in 3 sec...')
                 await asyncio.sleep(3)
 
+
     async def read_stream(self):
         """Read lines from socket stream."""
+        if not self.reader:
+            await self.open_connection()
         data = await asyncio.wait_for(self.reader.readline(), timeout=5.0)
         if not data:
             raise ServerExitException("No data in message!")
         msg = data.decode().strip()
-        if self.debug:
+        if DEBUG:
             with open(self.sink, 'a+') as fp_:
                 fp_.write(msg + '\n')
         return msg
 
     async def close(self):
-        """Close the socket connection."""
+        """Close the socket connection and reset ref object."""
         self.writer.close()
         await self.writer.wait_closed()
+        self.reader = None
+        self.writer = None
+        self.ref = Ref()
 
 
-async def consumer(host=config.HOST, port=config.PORT):
+def handle_line(obj):
+    """Wrapper for line processing methods called in thread."""
+    process_line(line_to_dict(obj))
+
+async def handle_line_asyncio(obj):
+    """Wrapper for line processing methods called in thread."""
+    process_line(line_to_dict(obj))
+
+
+async def consumer(host=config.HOST, port=config.PORT, max_iters=None,
+                   run_async=False):
     """Main method to consume stream."""
-    conn = init_db()
-    sock = SocketReader(host, port, DEBUG)
+    LOG.info("Starting consumer with settings: events: %s -- parents: %s \
+             pubsub: %s -- debug: %s --  iters %s",
+             EVENTS, PARENTS, PUB_SUB, DEBUG, max_iters)
+
+    if run_async:
+        LOG.info("Async mode active...creating threadpool...")
+        max_tasks = 1000
+        n_tasks = 0
+        # from multiprocessing.pool import ThreadPool
+        # pool = ThreadPool(processes=max_tasks)
+        tasks = []
+
+    timer = []
+    sock = SocketReader(host, port)
     await sock.open_connection()
-    ref = Ref()
-    iter_counter = 0
+    init_time = time.time()
     while True:
         try:
+            start_time = time.time()
             obj = await sock.read_stream()
-            try:
-                if obj[0:2] == '\\':
-                    continue
 
-                if obj[0] == "#":
-                    ref.update_time(obj[1:])
-                    continue
+            if obj[0] == "#":
+                sock.ref.update_time(obj[1:])
+                continue
 
-                if obj[0:2] == "0," or not ref.all_refs:
-                    ref.parse_ref_obj(obj)
-                    continue
+            if run_async:
 
-            except IndexError:
-                pass
+                thread = threading.Thread(target=handle_line, args=(obj,),
+                                          daemon=True)
+                thread.start()
+                tasks.append(thread)
+                n_tasks += 1
 
-            obj_dict = line_to_dict(obj, ref)
-            process_line(obj_dict)
-            iter_counter += 1
+                while n_tasks >= max_tasks:
+                    # LOG.info("Max tasks found... checking for complete task...")
+                    for i, _ in enumerate(tasks):
+                        tasks[i].join(0.0)
+                        if not tasks[i].isAlive():
+                            # LOG.info("Task removed...")
+                            n_tasks -= 1
+                            tasks.pop(i)
+                            break
+                        # threading.sleep(0.1)
+
+                # tasks.append(pool.apply_async(handle_line, (obj, )))
+                # await asyncio.wrap_future(handle_line_asyncio, (obj,))
+                # await handle_line_asyncio(obj)
+            else:
+                obj = line_to_dict(obj)
+                process_line(obj)
+
+            comp_time = time.time() - start_time
+            LOG.debug('Time since last line processed: %f', comp_time)
+            timer.append(comp_time)
+
+            if max_iters and max_iters <= len(timer):
+                LOG.info("Max iterations reached...collecting tasks and exiting...")
+                raise MaxItersException
         except (asyncio.TimeoutError, ConnectionError,
                 ServerExitException) as err:
-            LOG.error('Closing socket due to exception...')
+            if run_async:
+                [t.join() for t in tasks] # pylint: disable=expression-not-assigned
             LOG.exception(err)
             await sock.close()
-            conn.close()
-            init_db()
-            ref = Ref()
-            await sock.open_connection()
 
-        except KeyboardInterrupt:
+        except (KeyboardInterrupt, MaxItersException):
+            if run_async:
+                # [t.join() for t in tasks] # pylint: disable=expression-not-assigned
+                LOG.info("Total threads active: %d", n_tasks)
+                while n_tasks != 0:
+                    for i, _ in enumerate(tasks):
+                        tasks[i].join(0.0)
+                        if not tasks[i].isAlive():
+                            n_tasks -= 1
+                            tasks.pop(i)
+                            break
+                        # threading.sleep(0.1)
+
+            total_time = time.time() - init_time
             await sock.close()
-            conn.close()
-            sys.exit(0)
+            LOG.info('Total iters : %s', str(len(timer)))
+            LOG.info('Total seconds running : %.2f', total_time)
+            LOG.info('Lines/second: %.4f', len(timer)/total_time)
+            LOG.info('Avg iter time: %.4f', sum(timer)/len(timer))
+            LOG.info('Longest iter time: %.4f', max(timer))
+            LOG.info('Exiting tacview-client!')
+            break
 
 
-async def run_once_local():
-    """Main method to consume stream."""
-    init_db()
-    sock = SocketReader('127.0.0.1', 5555, True)
-    await sock.open_connection()
-    ref = Ref()
-    iter_counter = 0
-    while True:
-        try:
-            obj = await sock.read_stream()
-            try:
-                if obj[0:2] == '\\':
-                    continue
-
-                if obj[0] == "#":
-                    ref.update_time(obj[1:])
-                    continue
-
-                if obj[0:2] == "0," or not ref.all_refs:
-                    ref.parse_ref_obj(obj)
-
-                    if ref.all_refs and not ref.written:
-                        LOG.info("Writing session data to db...")
-                        sess_ser = ref.ser()
-                        Session.create(**sess_ser)
-                        if PUB_SUB:
-                            PUB_SUB.writer.publish(PUB_SUB.sessions,
-                                                   data=serialize_data(sess_ser))
-                        ref.written = True
-                        LOG.info("Session session data saved...")
-                    continue
-            except IndexError:
-                pass
-
-            obj_dict = line_to_dict(obj, ref)
-            process_line(obj_dict)
-            iter_counter += 1
-        except (asyncio.TimeoutError, ConnectionError, KeyboardInterrupt,
-                ServerExitException):
-            return
-
-
-def main(host, port, mode='local', debug=False):
+def main(host, port, mode, debug, parents, events, max_iters, run_async): # pylint: disable=too-many-arguments
     """Start event loop to consume stream."""
-    global DEBUG # pylint: disable=global-statement
-
+    # pylint: disable=global-statement
+    global DEBUG, PARENTS, EVENTS, PUB_SUB
     DEBUG = debug
     if DEBUG:
         LOG.setLevel(logging.DEBUG)
 
-    global PUB_SUB # pylint: disable=global-statement
+    # global PARENTS
+    PARENTS = parents
+
+    # global EVENTS
+    EVENTS = events
+
+    # global PUB_SUB
     if mode == 'remote':
         PUB_SUB = Publisher()
-    asyncio.run(consumer(host, port))
+
+    asyncio.run(consumer(host, port, max_iters, run_async))

@@ -10,7 +10,7 @@ from dcs.common  import config
 
 DB = pw.SqliteDatabase(None,
                        pragmas={'journal_mode': 'wal',
-                                'cache_size': -64 * 1000})
+                                'cache_size': -1024 * 1000})
 
 
 class BaseModel(pw.Model):
@@ -23,7 +23,7 @@ class BaseModel(pw.Model):
 
 class Object(BaseModel):
     """DCS Object."""
-    id = pw.CharField(primary_key=True, index=True)
+    id = pw.CharField(primary_key=True)
     session_id = pw.CharField()
     name = pw.CharField(null=True)
     color = pw.CharField(null=True)
@@ -55,7 +55,7 @@ class Event(BaseModel):
     """Event History."""
     id = pw.AutoField()
     session_id = pw.CharField()
-    object = pw.ForeignKeyField(Object, 'id', unique=False)
+    object = pw.CharField()
     alive = pw.IntegerField(default=1)
     last_seen = pw.DateTimeField()
     lat = pw.FloatField(null=True)
@@ -76,26 +76,24 @@ class Event(BaseModel):
 
 class Session(BaseModel):
     """Session Reference Data."""
-    session_id = pw.CharField(primary_key=True)
+    session_id = pw.CharField()
     start_time = pw.DateTimeField()
     datasource = pw.CharField()
     author = pw.CharField()
     title = pw.CharField()
     lat = pw.FloatField()
     long = pw.FloatField()
+    time = pw.DateTimeField()
 
 
-def init_db(replace_db=True):
+def init_db():
     """Initialize the database and execute create table statements."""
     db_path = Path(config.DB_LOC)
     DB.init(config.DB_LOC)
     if not db_path.parent.exists():
         db_path.parent.mkdir()
-
-    try:
-        DB.drop_tables([Object, Event, Session])
-    except Exception:
-        pass
+    DB.connect()
+    DB.drop_tables([Object, Event, Session])
     DB.create_tables([Object, Event, Session])
     return DB
 
@@ -104,6 +102,7 @@ class Publisher: # pylint: disable=too-few-public-methods
     """Pubsub writer."""
 
     def __init__(self):
+        # pylint: disable=no-member
         self.writer = pubsub_v1.PublisherClient()
         self.objects = self.writer.topic_path(
             config.PROJECT_ID, 'tacview_objects')

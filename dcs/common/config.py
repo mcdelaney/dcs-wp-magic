@@ -1,5 +1,7 @@
 """Shared config settings for the app."""
+
 DB_LOC = "data/dcs.db"
+
 # Tacview server settings
 CLIENT = 'someone_somewhere'
 PASSWORD = '0'
@@ -8,18 +10,6 @@ HOST = '147.135.9.159'  # PGAW
 HOST = '147.135.8.169'  # Hoggit Gaw
 PORT = 42674
 START_UNITS = [CLIENT, "CVN-74", "Stennis"]
-EXCLUDED_EXPORT = ['Ground+Light+Human+Air+Parachutist',
-                   'Navaid+Static+Bullseye',
-                   'Air+FixedWing',
-                   'Misc+Decoy+Chaff',
-                   'Misc+Decoy+Flare',
-                   "Air+Rotorcraft",
-                   "Misc+Shrapnel",
-                   'Weapon+Missile',
-                   'weapon+Missile',
-                   'Projectile+Shell',
-                   'Misc+Container'
-                   ]
 
 EXCLUDED_TYPES = ['Air+FixedWing',
                   '',
@@ -35,11 +25,7 @@ EXCLUDED_TYPES = ['Air+FixedWing',
                   'Projectile+Shell',
                   'Misc+Container']
 
-EXCLUDED_PILOTS = ["FARP"]
-COALITION = "Enemies"''
-
-COORD_KEYS = ['long', 'lat', 'alt', 'roll', 'pitch', 'yaw', 'u_coord',
-              'v_coord', 'heading']
+COALITION = "Enemies"
 
 MAX_DIST = 1000
 
