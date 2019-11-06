@@ -2,20 +2,21 @@
 from pathlib import Path
 
 import peewee as pw
-from google.cloud import pubsub_v1
+
 from playhouse.apsw_ext import APSWDatabase, DateTimeField
 
 from dcs.common  import config
 
 
-# DB = pw.SqliteDatabase(None,
-#                        pragmas={'journal_mode': 'wal',
-#                                 'cache_size': -1024 * 1000})
-
-DB = APSWDatabase(None,
+DB = pw.SqliteDatabase(None,
                        pragmas={'journal_mode': 'wal',
                                 'synchronous': 'OFF',
                                 'cache_size': -1024 * 1000})
+
+# DB = APSWDatabase(None,
+#                        pragmas={'journal_mode': 'wal',
+#                                 'synchronous': 'OFF',
+#                                 'cache_size': -1024 * 1000})
 
 class BaseModel(pw.Model):
     """Base model with DB defined from which all others inherit."""
@@ -37,8 +38,8 @@ class Object(BaseModel):
     platform = pw.CharField(null=True)
     type = pw.CharField(null=True)
     alive = pw.IntegerField(default=1, index=True)
-    first_seen = DateTimeField()
-    last_seen = DateTimeField()
+    first_seen = pw.DateTimeField()
+    last_seen = pw.DateTimeField()
     coalition = pw.CharField(null=True)
     lat = pw.FloatField()
     long = pw.FloatField()
@@ -61,7 +62,7 @@ class Event(BaseModel):
     session_id = pw.CharField()
     object = pw.CharField()
     alive = pw.IntegerField(default=1)
-    last_seen = DateTimeField()
+    last_seen = pw.DateTimeField()
     lat = pw.FloatField(null=True)
     long = pw.FloatField(null=True)
     alt = pw.FloatField(null=True)
@@ -81,13 +82,13 @@ class Event(BaseModel):
 class Session(BaseModel):
     """Session Reference Data."""
     session_id = pw.CharField()
-    start_time = DateTimeField()
+    start_time = pw.DateTimeField()
     datasource = pw.CharField()
     author = pw.CharField()
     title = pw.CharField()
     lat = pw.FloatField()
     long = pw.FloatField()
-    time = DateTimeField()
+    time = pw.DateTimeField()
 
 
 class TestTable(BaseModel):
@@ -111,6 +112,7 @@ class Publisher: # pylint: disable=too-few-public-methods
     """Pubsub writer."""
 
     def __init__(self):
+        from google.cloud import pubsub_v1
         # pylint: disable=no-member
         self.writer = pubsub_v1.PublisherClient()
         self.objects = self.writer.topic_path(

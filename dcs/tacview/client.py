@@ -483,7 +483,8 @@ async def consumer(host=config.HOST, port=config.PORT, max_iters=None,
             break
 
 
-def main(host, port, mode, debug, parents, events, max_iters, run_async): # pylint: disable=too-many-arguments
+def main(host, port, mode='local', debug=False, parents=False,
+         events=False, max_iters=None, run_async=False): # pylint: disable=too-many-arguments
     """Start event loop to consume stream."""
     # pylint: disable=global-statement
     global DEBUG, PARENTS, EVENTS, PUB_SUB
