@@ -3,8 +3,6 @@ from pathlib import Path
 
 import peewee as pw
 
-from playhouse.apsw_ext import APSWDatabase, DateTimeField
-
 from dcs.common  import config
 
 
@@ -13,6 +11,7 @@ DB = pw.SqliteDatabase(None,
                                 'synchronous': 'OFF',
                                 'cache_size': -1024 * 1000})
 
+# from playhouse.apsw_ext import APSWDatabase, DateTimeField
 # DB = APSWDatabase(None,
 #                        pragmas={'journal_mode': 'wal',
 #                                 'synchronous': 'OFF',
