@@ -77,7 +77,8 @@ class DCSWPControllerApp(Tk):
             raise ValueError("Tacview client process already exists!")
         LOG.info('Starting tacview client process...')
         self.tac_proc = Process(target=tacview.main, args=(self.host.get(),
-                                                           self.port.get(),))
+                                                           self.port.get(),
+                                                           ))
         self.tac_proc.start()
         LOG.info("Tacview client process started successfully...")
 
