@@ -15,13 +15,32 @@ import threading
 
 import peewee as pw
 from playhouse.shortcuts import model_to_dict
+import subprocess
 from geopy.distance import geodesic
 from geopy import distance
 from geopy.point import Point
+import redis
 
 from dcs.common.db import init_db, Object, Event, Session, Publisher, TestTable
 from dcs.common import get_logger
 from dcs.common import config
+
+
+server = redis.Redis(port=7777)
+try:
+    server.ping()
+except redis.exceptions.ConnectionError:
+    subprocess.call(["redis-server", "--port", "7777",
+                     "--daemonize", "yes"])
+
+# rec1 = {'id':'object1', 'alive': 1}
+#          # 'color': 'Violet'}
+# server.hmset('object1', rec1)
+# server.hgetall(rec1['id'])
+#
+# rec2 = {'id':'object2', 'alive': 0, 'color': 'Red'}
+# server.hmset(rec2['id'], rec2)
+# server.hgetall(rec2['id'])
 
 
 DEBUG = False
@@ -32,19 +51,24 @@ EVENTS = True
 LOG = get_logger(logging.getLogger('tacview_client'), False)
 LOG.setLevel(logging.DEBUG if DEBUG else logging.INFO)
 
-STREAM_PROTOCOL = "XtraLib.Stream.0"
-TACVIEW_PROTOCOL = 'Tacview.RealTimeTelemetry.0'
-HANDSHAKE_TERMINATOR = "\0"
-
-HANDSHAKE = '\n'.join([STREAM_PROTOCOL,
-                       TACVIEW_PROTOCOL,
+HANDSHAKE = '\n'.join(["XtraLib.Stream.0",
+                       'Tacview.RealTimeTelemetry.0',
                        "tacview_reader",
-                       config.PASSWORD]) + HANDSHAKE_TERMINATOR
+                       config.PASSWORD]) + "\0"
 HANDSHAKE = HANDSHAKE.encode('utf-8')
 REF_TIME_FMT = '%Y-%m-%dT%H:%M:%SZ'
 
 COORD_KEYS = ['long', 'lat', 'alt', 'roll', 'pitch', 'yaw', 'u_coord',
               'v_coord', 'heading']
+
+
+def to_redis(obj):
+    """Save to redis cache."""
+    if 'last_seen' in obj.keys():
+        obj['last_seen'] = obj['last_seen'].timestamp()
+    if 'first_seen' in obj.keys():
+        obj['first_seen'] = obj['first_seen'].timestamp()
+    server.hmset(obj['id'], obj)
 
 
 def determine_parent(rec):
@@ -112,6 +136,7 @@ def line_to_dict(line, ref):
                     'last_seen': ref.time,
                     'session_id': ref.session_id
                    }
+        to_redis(obj_dict.copy())
         return obj_dict
 
     obj_dict = {'id': line[0],
@@ -152,6 +177,7 @@ def line_to_dict(line, ref):
     if 'long' in obj_dict.keys():
         obj_dict['long'] = obj_dict['long'] + ref.long
 
+    # to_redis(obj_dict.copy())
     return obj_dict
 
 
@@ -438,7 +464,7 @@ async def consumer(host=config.HOST, port=config.PORT, max_iters=None,
             else:
                 if run_async:
                     obj = line_to_dict(obj, ref)
-                    tasks.append(handle_line(obj, ref, conn))
+                    tasks.append(handle_line(obj, conn))
                 else:
                     obj = line_to_dict(obj, ref)
                     if obj:
