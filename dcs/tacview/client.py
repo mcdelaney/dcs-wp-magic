@@ -395,9 +395,9 @@ class SocketReader:
         self.ref = Ref()
 
 
-def handle_line(obj, ref, db):
+async def handle_line(obj, db):
     """Wrapper for line processing methods called in thread."""
-    obj = line_to_dict(obj, ref)
+    # obj = line_to_dict(obj, ref)
     if obj:
         process_line(obj, db)
 
@@ -408,20 +408,16 @@ async def consumer(host=config.HOST, port=config.PORT, max_iters=None,
     LOG.info("Starting consumer with settings: events: %s -- parents: %s \
              pubsub: %s -- debug: %s --  iters %s",
              EVENTS, PARENTS, PUB_SUB, DEBUG, max_iters)
-    if run_async:
-        LOG.info("Async mode active...creating threadpool...")
-        # from multiprocessing.pool import ThreadPool
-        # pool = ThreadPool(processes=max_tasks)
     tasks_complete = 1 # I know this is wrong.  It just makes division easier.
     timer = []
     conn = init_db()
     sock = SocketReader(host, port)
 
     await sock.open_connection()
-
+    tasks = []
     init_time = time.time()
     ref = Session.select().limit(1)[0]
-    main_thread = threading.current_thread()
+    loop = asyncio.get_event_loop()
 
     while True:
         try:
@@ -432,20 +428,17 @@ async def consumer(host=config.HOST, port=config.PORT, max_iters=None,
                 sock.ref.update_time(obj[1:])
                 ref = Session.select().limit(1)[0]
                 if run_async:
-                    for t in threading.enumerate():
-                        if t is main_thread:
-                            continue
-                        while t.isAlive():
-                            t.join()
-                        tasks_complete += 1
+                    tasks_complete += len(tasks)
+                    await asyncio.wait(tasks)
+
+                    tasks = []
+
                 LOG.info('Average task/sec: %.2f...',
                          tasks_complete/(time.time() - init_time))
             else:
                 if run_async:
-                    thread = threading.Thread(target=handle_line,
-                                              args=(obj, ref, conn),
-                                              daemon=True)
-                    thread.start()
+                    obj = line_to_dict(obj, ref)
+                    tasks.append(handle_line(obj, ref, conn))
                 else:
                     obj = line_to_dict(obj, ref)
                     if obj:
@@ -467,11 +460,9 @@ async def consumer(host=config.HOST, port=config.PORT, max_iters=None,
             conn = init_db()
 
         except (KeyboardInterrupt, MaxItersException):
-            if run_async:
-                for t in threading.enumerate():
-                    if t is main_thread:
-                        continue
-                    t.join()
+            if run_async and tasks:
+                tasks_complete += len(tasks)
+                await asyncio.wait(tasks)
 
             total_time = time.time() - init_time
             await sock.close()
