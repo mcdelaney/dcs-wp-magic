@@ -236,7 +236,8 @@ def construct_enemy_set(start_unit, result_as_string=True, coord_fmt='dms'):
     results = [f"{i+1}) {r}" for i, r in enumerate(results)]
     results = '\r\n\r\n'.join(results)
     results = f"Start Ref: {start_coord['pilot']} "\
-              f"{(round(start_coord['lat'], 3), round(start_coord['long'], 3))}"\
+              f"{(round(start_coord['lat'], 3), round(start_coord['long'], 3))} "\
+              f"{start_coord['last_seen']}" \
               f"\r\n\r\n{results}"
     return results.encode('UTF-8')
 

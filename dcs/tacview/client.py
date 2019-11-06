@@ -19,7 +19,7 @@ from geopy.distance import geodesic
 from geopy import distance
 from geopy.point import Point
 
-from dcs.common.db import init_db, Object, Event, Session, Publisher
+from dcs.common.db import init_db, Object, Event, Session, Publisher, TestTable
 from dcs.common import get_logger
 from dcs.common import config
 
@@ -38,7 +38,7 @@ HANDSHAKE_TERMINATOR = "\0"
 
 HANDSHAKE = '\n'.join([STREAM_PROTOCOL,
                        TACVIEW_PROTOCOL,
-                       config.CLIENT,
+                       "tacview_reader",
                        config.PASSWORD]) + HANDSHAKE_TERMINATOR
 HANDSHAKE = HANDSHAKE.encode('utf-8')
 REF_TIME_FMT = '%Y-%m-%dT%H:%M:%SZ'
@@ -52,20 +52,16 @@ def determine_parent(rec):
     LOG.debug("Determing parent for object id: %s -- %s-%s...",
               rec.id, rec.name, rec.type)
     offset_min = rec.last_seen - timedelta(seconds=1)
-    offset_max = rec.last_seen + timedelta(seconds=1)
     current_point = Point(rec.lat, rec.long, rec.alt)
 
+    accpt_colors = ['Blue', 'Red'] if rec.color == 'Violet' else [rec.color]
     nearby_objs = (Object.select(Object.id, Object.alt, Object.lat,
                                  Object.long, Object.name).
                    where((Object.alive == 1) &
                          (Object.id != rec.id) &
-                         (Object.color != "Violet") &
-                         # (Object.alt.between(rec.alt-200, rec.alt+200)) &
-                         (Object.last_seen >= offset_min) &
-                         (Object.last_seen <= offset_max)))
-
-    if rec.color != "Violet":
-        nearby_objs = nearby_objs.where(Object.color == rec.color)
+                         (Object.color in accpt_colors) &
+                         (Object.alt.between(rec.alt-200, rec.alt+200)) &
+                         (Object.first_seen >= offset_min)))
 
     if not nearby_objs:
         LOG.warning("No nearby objects found for weapon %s", rec.name)
@@ -78,8 +74,8 @@ def determine_parent(rec):
         LOG.debug("Distance to object %s is %s...", nearby.name, str(prox))
         if not parent or (prox < parent[1]):
             parent = [nearby.id, prox]
-        if prox < 2:
-            LOG.debug("Distance is very close...breaking...")
+        if prox < 5:
+            LOG.debug("Distance is very close...breaking early...")
             break
 
     if parent[1] > 50:
@@ -100,68 +96,71 @@ def serialize_data(data):
 
 def json_serial(obj):
     """JSON serializer for objects not serializable by default json code"""
-
     if isinstance(obj, (datetime, date)):
         return obj.isoformat()
     raise TypeError("Type %s not serializable" % type(obj))
 
 
-def line_to_dict(line):
+def line_to_dict(line, ref):
     """Process a line into a dictionary."""
-    ref = Session.select().limit(1)[0]
     line = line.split(',')
+
     if line[0][0] == '-':
         LOG.debug("Record %s is now dead...updating...", id)
         obj_dict = {'id': line[0][1:].strip(),
                     'alive': 0,
                     'last_seen': ref.time,
                     'session_id': ref.session_id
-                    }
+                   }
         return obj_dict
 
-    obj_dict = {k.lower(): v for k, v in [l.split('=', 1) for l in line[1:]]}
-    obj_dict['id'] = line[0]
-    obj_dict['last_seen'] = ref.time
-    obj_dict['session_id'] = ref.session_id
+    obj_dict = {'id': line[0],
+                'last_seen': ref.time,
+                'session_id': ref.session_id
+                }
+
+    for chunk in line[1:]:
+        key, val = chunk.split('=', 1)
+        obj_dict[key.lower()] = val
+
     if 'group' in obj_dict.keys():
         obj_dict['grp'] = obj_dict.pop('group')
 
-    try:
+    if 't' in obj_dict.keys():
         coord = obj_dict.pop('t')
-    except KeyError as err:
-        if line[0] == '0' and 'AuthenticationKey' in line[1]:
-            LOG.info('Ref value found in line: %s...', ','.join(line))
-            return
+    elif line[0] == '0' and 'AuthenticationKey' in line[1]:
+        LOG.info('Ref value found in line: %s...', ','.join(line))
+        return
+    else:
+        LOG.error("No location key in line!")
         LOG.error(line, obj_dict)
-        LOG.exception(err)
-        raise err
+        return
 
     coord = coord.split('|')
 
-    for i, k in enumerate(COORD_KEYS):
-        try:
-            obj_dict[k] = float(coord[i])
-        except (ValueError, TypeError, IndexError) as err:
-            pass
+    i = 0
+    for key in COORD_KEYS:
+        if i > len(coord)-1:
+            break
+        if coord[i] != '':
+            obj_dict[key] = float(coord[i])
+        i += 1
 
-    try:
+    if 'lat' in obj_dict.keys():
         obj_dict['lat'] = obj_dict['lat'] + ref.lat
-    except KeyError:
-        pass
 
-    try:
+    if 'long' in obj_dict.keys():
         obj_dict['long'] = obj_dict['long'] + ref.long
-    except KeyError:
-        pass
 
     return obj_dict
 
 
-def process_line(obj_dict):
+def process_line(obj_dict, db):
     """Parse a single line from tacview stream."""
     rec = Object.get_or_none(id=obj_dict['id'])
     prev_coord = None
     prev_ts = None
+    # with db.atomic():
     if rec:
         prev_ts = rec.last_seen
         prev_coord = [rec.lat, rec.long, rec.alt]
@@ -198,6 +197,7 @@ def process_line(obj_dict):
     true_dist = None
     secs_from_last = None
     velocity = None
+    prev_coord = False
     if prev_coord:
         secs_from_last = (rec.last_seen - prev_ts).total_seconds()
         flat_dist = geodesic((rec.lat, rec.long),
@@ -223,8 +223,8 @@ def process_line(obj_dict):
                          heading=rec.heading,
                          roll=rec.roll,
                          pitch=rec.pitch,
-                         u_coord=rec.u_coord,
-                         v_coord=rec.v_coord,
+                         # u_coord=rec.u_coord,
+                         # v_coord=rec.v_coord,
                          velocity_ms=velocity,
                          dist_m=true_dist,
                          session_id=rec.session_id,
@@ -362,7 +362,6 @@ class SocketReader:
                 await self.reader.readline()
 
                 LOG.info('Connection opened...creating db and processing refs...')
-                init_db()
                 while not self.ref.all_refs:
                     obj = await self.read_stream()
                     if obj[0:2] == "0,":
@@ -396,11 +395,11 @@ class SocketReader:
         self.ref = Ref()
 
 
-def handle_line(obj):
+def handle_line(obj, ref, db):
     """Wrapper for line processing methods called in thread."""
-    obj = line_to_dict(obj)
+    obj = line_to_dict(obj, ref)
     if obj:
-        process_line(obj)
+        process_line(obj, db)
 
 
 async def consumer(host=config.HOST, port=config.PORT, max_iters=None,
@@ -409,20 +408,21 @@ async def consumer(host=config.HOST, port=config.PORT, max_iters=None,
     LOG.info("Starting consumer with settings: events: %s -- parents: %s \
              pubsub: %s -- debug: %s --  iters %s",
              EVENTS, PARENTS, PUB_SUB, DEBUG, max_iters)
-
     if run_async:
         LOG.info("Async mode active...creating threadpool...")
-        max_tasks = 500
-        n_tasks = 0
         # from multiprocessing.pool import ThreadPool
         # pool = ThreadPool(processes=max_tasks)
-
-    tasks_complete = 1
+    tasks_complete = 1 # I know this is wrong.  It just makes division easier.
     timer = []
+    conn = init_db()
     sock = SocketReader(host, port)
+
     await sock.open_connection()
+
     init_time = time.time()
+    ref = Session.select().limit(1)[0]
     main_thread = threading.current_thread()
+
     while True:
         try:
             start_time = time.time()
@@ -430,60 +430,55 @@ async def consumer(host=config.HOST, port=config.PORT, max_iters=None,
 
             if obj[0] == "#":
                 sock.ref.update_time(obj[1:])
-                for t in threading.enumerate():
-                    if t is main_thread:
-                        continue
-                    t.join()
-                    tasks_complete += 1
-                runtime = time.time() - init_time
-                LOG.info('Average task/sec: %.2f...', tasks_complete/runtime)
-                continue
-
-            if run_async:
-                thread = threading.Thread(target=handle_line, args=(obj,),
-                                          daemon=True)
-                thread.start()
-                # tasks.append(pool.apply_async(handle_line, (obj, )))
-                # await asyncio.wrap_future(handle_line_asyncio, (obj,))
-                # await handle_line_asyncio(obj)
+                ref = Session.select().limit(1)[0]
+                if run_async:
+                    for t in threading.enumerate():
+                        if t is main_thread:
+                            continue
+                        while t.isAlive():
+                            t.join()
+                        tasks_complete += 1
+                LOG.info('Average task/sec: %.2f...',
+                         tasks_complete/(time.time() - init_time))
             else:
-                obj = line_to_dict(obj)
-                process_line(obj)
+                if run_async:
+                    thread = threading.Thread(target=handle_line,
+                                              args=(obj, ref, conn),
+                                              daemon=True)
+                    thread.start()
+                else:
+                    obj = line_to_dict(obj, ref)
+                    if obj:
+                        process_line(obj, conn)
+                    tasks_complete += 1
 
-            comp_time = time.time() - start_time
-            LOG.debug('Time since last line processed: %f', comp_time)
-            timer.append(comp_time)
-
-            if max_iters and max_iters <= len(timer):
+            if max_iters and max_iters <= tasks_complete:
                 LOG.info("Max iterations reached...collecting tasks and exiting...")
                 raise MaxItersException
         except (asyncio.TimeoutError, ConnectionError, ConnectionResetError,
                 ServerExitException) as err:
-            if run_async:
-                [t.join() for t in tasks] # pylint: disable=expression-not-assigned
+            for t in threading.enumerate():
+                if t is main_thread:
+                    continue
+                t.join()
+                tasks_complete += 1
             LOG.exception(err)
             await sock.close()
+            conn = init_db()
 
         except (KeyboardInterrupt, MaxItersException):
             if run_async:
-                # [t.join() for t in tasks] # pylint: disable=expression-not-assigned
-                LOG.info("Total threads active: %d", n_tasks)
-                while n_tasks != 0:
-                    for i, _ in enumerate(tasks):
-                        tasks[i].join(0.0)
-                        if not tasks[i].isAlive():
-                            n_tasks -= 1
-                            tasks.pop(i)
-                            break
-                        # threading.sleep(0.1)
+                for t in threading.enumerate():
+                    if t is main_thread:
+                        continue
+                    t.join()
 
             total_time = time.time() - init_time
             await sock.close()
-            LOG.info('Total iters : %s', str(len(timer)))
+            LOG.info('Total iters : %s', str(tasks_complete))
             LOG.info('Total seconds running : %.2f', total_time)
-            LOG.info('Lines/second: %.4f', len(timer)/total_time)
-            LOG.info('Avg iter time: %.4f', sum(timer)/len(timer))
-            LOG.info('Longest iter time: %.4f', max(timer))
+            LOG.info('Lines/second: %.4f', tasks_complete/total_time)
+            # LOG.info('Longest iter time: %.4f', max(timer))
             LOG.info('Exiting tacview-client!')
             break
 
