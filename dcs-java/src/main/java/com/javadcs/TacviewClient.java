@@ -21,6 +21,7 @@ public class TacviewClient
         // serverThread.join();
     }
 
+
     // private static class Server implements Runnable
     // {
     //     @Override
