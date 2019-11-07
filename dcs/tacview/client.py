@@ -76,6 +76,8 @@ async def determine_parent(rec):
                          (Object.id != rec.id) &
                          (Object.color in accpt_colors) &
                          (Object.alt.between(rec.alt-200, rec.alt+200)) &
+                         (Object.lat.between(rec.lat-0.05, rec.lat+0.05)) &
+                         (Object.long.between(rec.long-0.05, rec.long+0.05)) &
                          (Object.first_seen >= offset_min)))
 
     if not nearby_objs:
@@ -127,7 +129,7 @@ def line_to_dict(line, ref):
                     'last_seen': ref.time,
                     'session_id': ref.session_id
                    }
-        server.delete(obj_dict['id'])
+        # server.delete(obj_dict['id'])
         return obj_dict
 
     obj_dict = {'id': line[0],
@@ -419,8 +421,7 @@ async def handle_line(obj, ref, db):
         await process_line(obj, db)
 
 
-async def consumer(host=config.HOST, port=config.PORT, max_iters=None,
-                   run_async=False):
+async def consumer(host=config.HOST, port=config.PORT, max_iters=None):
     """Main method to consume stream."""
     LOG.info("Starting consumer with settings: events: %s -- parents: %s \
              pubsub: %s -- debug: %s --  iters %s",
@@ -444,21 +445,15 @@ async def consumer(host=config.HOST, port=config.PORT, max_iters=None,
             if obj[0] == "#":
                 sock.ref.update_time(obj[1:])
                 ref = Session.select().limit(1)[0]
-                if run_async:
-                    tasks_complete += len(tasks)
+                if tasks:
                     await asyncio.gather(*tasks)
                     tasks = []
 
                 LOG.debug('Average task/sec: %.2f...',
                          tasks_complete/(time.time() - init_time))
             else:
-                if run_async:
-                    tasks.append(asyncio.ensure_future(handle_line(obj, ref, conn)))
-                else:
-                    obj = line_to_dict(obj, ref)
-                    if obj:
-                        process_line(obj, conn)
-                    tasks_complete += 1
+                tasks.append(asyncio.ensure_future(handle_line(obj, ref, conn)))
+                tasks_complete += 1
 
             if max_iters and max_iters <= tasks_complete:
                 LOG.info("Max iterations reached...collecting tasks and exiting...")
@@ -472,7 +467,7 @@ async def consumer(host=config.HOST, port=config.PORT, max_iters=None,
             conn = init_db()
 
         except (KeyboardInterrupt, MaxItersException):
-            if run_async and tasks:
+            if tasks:
                 tasks_complete += len(tasks)
                 await asyncio.gather(*tasks)
 
@@ -487,7 +482,7 @@ async def consumer(host=config.HOST, port=config.PORT, max_iters=None,
 
 
 def main(host, port, mode='local', debug=False, parents=False,
-         events=False, max_iters=None, run_async=False): # pylint: disable=too-many-arguments
+         events=False, max_iters=None): # pylint: disable=too-many-arguments
     """Start event loop to consume stream."""
     # pylint: disable=global-statement
     global DEBUG, PARENTS, EVENTS, PUB_SUB
@@ -505,7 +500,7 @@ def main(host, port, mode='local', debug=False, parents=False,
     if mode == 'remote':
         PUB_SUB = Publisher()
 
-    asyncio.run(consumer(host, port, max_iters, run_async))
+    asyncio.run(consumer(host, port, max_iters))
     import sqlite3
     import pandas as pd
     conn = sqlite3.connect("data/dcs.db",
