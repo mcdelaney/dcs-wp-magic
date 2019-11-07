@@ -1,3 +1,5 @@
+package com.javadcs;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -15,9 +17,11 @@ public class TacviewClient
     {
         // Thread serverThread = new Thread(new Server());
         // serverThread.start();
-        Thread tacviewClientThread = new Thread(new TacviewClient());
-        tacviewClientThread.start();
-        tacviewClientThread.join();
+        new Client().run();
+        // client.run();
+        // Thread clientThread = new Thread(new Client());
+        // clientThread.start();
+        // clientThread.join();
         // serverThread.join();
     }
 
@@ -72,7 +76,7 @@ public class TacviewClient
     //     }
     // }
 
-    private static class TacviewClient implements Runnable
+    private static class Client implements Runnable
     {
 
         @Override
@@ -97,8 +101,6 @@ public class TacviewClient
                 out = new PrintWriter(socket.getOutputStream(), true);
                 in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                 debug("Connected");
-
-                String textToServer;
 
                 // textToServer = read.readLine();
                 debug("Sending '" + handshake + "'");
