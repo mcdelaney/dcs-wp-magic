@@ -34,9 +34,12 @@ if __name__ == '__main__':
     parser.add_argument("--events", default=True, type=str2bool,
                         help="If true, events will be recorded to the database.")
     parser.add_argument("--max_iters", default=None, type=int,
-                        help="Sets the maximum number of iterations before exiting..")
+                        help="Sets the maximum number of iterations before exiting.")
+    parser.add_argument("--only_proc", default=False, type=str2bool,
+                        help="If true, only convert line to dict.")
     args = parser.parse_args() # pylint: disable=invalid-name
 
     tacview.client.main(host=args.host, port=args.port, mode=args.mode,
                         debug=args.debug, parents=args.parents,
-                        events=args.events, max_iters=args.max_iters) # pylint: disable=too-many-function-args
+                        events=args.events, max_iters=args.max_iters,
+                        only_proc=args.only_proc) # pylint: disable=too-many-function-args
