@@ -415,7 +415,7 @@ class SocketReader:
 
 async def handle_line(obj, ref, db):
     """Wrapper for line processing methods called in thread."""
-    obj = line_to_dict(obj, ref)
+    obj = await line_to_dict(obj, ref)
     if obj:
         await process_line(obj, db)
 
