@@ -82,15 +82,11 @@ public class TacviewClient
                                    "XtraLib.Stream.0",
                                    "Tacview.RealTimeTelemetry.0",
                                    "tacview_reader",
-                                   "0"
-              );
-            String result = String.join("\n", list);
-            Handshake = HANDSHAKE = '\n'.join(["XtraLib.Stream.0",
-                                   'Tacview.RealTimeTelemetry.0',
-                                   "tacview_reader",
                                    "0",
-                                   "\0"])
-            HANDSHAKE = HANDSHAKE.encode('utf-8')
+                                   "\0"
+              );
+            String handshake = String.join("\n", handshake_params);
+
             Socket socket = null;
             PrintWriter out = null;
             BufferedReader in = null;
@@ -104,9 +100,9 @@ public class TacviewClient
 
                 String textToServer;
 
-                textToServer = read.readLine();
-                debug("Sending '" + textToServer + "'");
-                out.print(textToServer + "\r\n"); // send to server
+                // textToServer = read.readLine();
+                debug("Sending '" + handshake + "'");
+                out.print(handshake + "\r\n"); // send to server
                 out.flush();
 
                 String serverResponse = null;
