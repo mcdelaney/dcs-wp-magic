@@ -11,17 +11,15 @@ import json
 import math
 from uuid import uuid1
 import time
-import threading
 
 import peewee as pw
 from playhouse.shortcuts import model_to_dict
-import subprocess
 from geopy.distance import geodesic
 from geopy import distance
 from geopy.point import Point
 # import redis
 
-from dcs.common.db import init_db, Object, Event, Session, Publisher, TestTable
+from dcs.common.db import init_db, Object, Event, Session, Publisher
 from dcs.common import get_logger
 from dcs.common import config
 
@@ -45,7 +43,8 @@ LOG.setLevel(logging.DEBUG if DEBUG else logging.INFO)
 HANDSHAKE = '\n'.join(["XtraLib.Stream.0",
                        'Tacview.RealTimeTelemetry.0',
                        "tacview_reader",
-                       config.PASSWORD]) + "\0"
+                       config.PASSWORD,
+                       "\0"])
 HANDSHAKE = HANDSHAKE.encode('utf-8')
 REF_TIME_FMT = '%Y-%m-%dT%H:%M:%SZ'
 
@@ -72,13 +71,13 @@ async def determine_parent(rec):
     accpt_colors = ['Blue', 'Red'] if rec.color == 'Violet' else [rec.color]
     nearby_objs = (Object.select(Object.id, Object.alt, Object.lat,
                                  Object.long, Object.name).
-                   where((Object.alive == 1) &
-                         (Object.id != rec.id) &
-                         (Object.color in accpt_colors) &
-                         (Object.alt.between(rec.alt-200, rec.alt+200)) &
-                         (Object.lat.between(rec.lat-0.05, rec.lat+0.05)) &
-                         (Object.long.between(rec.long-0.05, rec.long+0.05)) &
-                         (Object.first_seen >= offset_min)))
+                   where((Object.alive == 1)
+                         & (Object.id != rec.id)
+                         & (Object.color in accpt_colors)
+                         & (Object.alt.between(rec.alt-200, rec.alt+200))
+                         & (Object.lat.between(rec.lat-0.05, rec.lat+0.05))
+                         & (Object.long.between(rec.long-0.05, rec.long+0.05))
+                         & (Object.first_seen >= offset_min)))
 
     if not nearby_objs:
         LOG.warning("No nearby objects found for weapon %s", rec.name)
@@ -96,11 +95,12 @@ async def determine_parent(rec):
             break
 
     if parent[1] > 50:
-        LOG.warning("Closest parent for %s-%s-%s: %sm...%d considered...rejecting!",
-                    rec.id, rec.name, rec.type, str(parent[1]), len(nearby_objs))
+        LOG.warning("Rejecting closest parent for %s-%s-%s: %sm...%d checked!",
+                    rec.id, rec.name, rec.type, str(parent[1]),
+                    len(nearby_objs))
         return None
     LOG.info('Parent of %s found: %s at %sm...%d considered...',
-              rec.id, parent[0], parent[1], len(nearby_objs))
+             rec.id, parent[0], parent[1], len(nearby_objs))
     return parent
 
 
@@ -118,7 +118,7 @@ def json_serial(obj):
     raise TypeError("Type %s not serializable" % type(obj))
 
 
-def line_to_dict(line, ref):
+async def line_to_dict(line, ref):
     """Process a line into a dictionary."""
     line = line.split(',')
 
@@ -128,7 +128,7 @@ def line_to_dict(line, ref):
                     'alive': 0,
                     'last_seen': ref.time,
                     'session_id': ref.session_id
-                   }
+                    }
         # server.delete(obj_dict['id'])
         return obj_dict
 
@@ -255,7 +255,7 @@ async def process_line(obj_dict, db):
     LOG.debug("Event row created successfully...")
 
 
-class Ref: #pylint: disable=too-many-instance-attributes
+class Ref:  # pylint: disable=too-many-instance-attributes
     """Hold and extract Reference values used as offsets."""
 
     def __init__(self):
@@ -380,7 +380,7 @@ class SocketReader:
                 self.writer.write(HANDSHAKE)
                 await self.reader.readline()
 
-                LOG.info('Connection opened...creating db and processing refs...')
+                LOG.info('Connection opened...creating db and reading refs...')
                 while not self.ref.all_refs:
                     obj = await self.read_stream()
                     if obj[0:2] == "0,":
@@ -388,9 +388,8 @@ class SocketReader:
                         continue
                 break
             except ConnectionError:
-                LOG.error('Connection attempt failed....will retry in 3 sec...')
+                LOG.error('Connection attempt failed....retry in 3 sec...')
                 await asyncio.sleep(3)
-
 
     async def read_stream(self):
         """Read lines from socket stream."""
@@ -421,13 +420,13 @@ async def handle_line(obj, ref, db):
         await process_line(obj, db)
 
 
-async def consumer(host=config.HOST, port=config.PORT, max_iters=None):
+async def consumer(host=config.HOST, port=config.PORT, max_iters=None,
+                   only_proc=False):
     """Main method to consume stream."""
-    LOG.info("Starting consumer with settings: events: %s -- parents: %s \
-             pubsub: %s -- debug: %s --  iters %s",
+    LOG.info("Starting consumer with settings: events: %s -- parents: %s"
+             "pubsub: %s -- debug: %s --  iters %s",
              EVENTS, PARENTS, PUB_SUB, DEBUG, max_iters)
-    tasks_complete = 1 # I know this is wrong.  It just makes division easier.
-    timer = []
+    tasks_complete = 1  # I know this is wrong.  It just makes division easier.
     conn = init_db()
     sock = SocketReader(host, port)
 
@@ -435,11 +434,9 @@ async def consumer(host=config.HOST, port=config.PORT, max_iters=None):
     tasks = []
     init_time = time.time()
     ref = Session.select().limit(1)[0]
-    loop = asyncio.get_event_loop()
 
     while True:
         try:
-            start_time = time.time()
             obj = await sock.read_stream()
 
             if obj[0] == "#":
@@ -450,17 +447,23 @@ async def consumer(host=config.HOST, port=config.PORT, max_iters=None):
                     tasks = []
 
                 LOG.debug('Average task/sec: %.2f...',
-                         tasks_complete/(time.time() - init_time))
+                          tasks_complete/(time.time() - init_time))
+
             else:
-                tasks.append(asyncio.ensure_future(handle_line(obj, ref, conn)))
+                if only_proc:
+                    tasks.append(asyncio.ensure_future(line_to_dict(obj, ref)))
+                else:
+                    tasks.append(
+                        asyncio.ensure_future(handle_line(obj, ref, conn)))
                 tasks_complete += 1
 
             if max_iters and max_iters <= tasks_complete:
-                LOG.info("Max iterations reached...collecting tasks and exiting...")
+                LOG.info("Max iters reached...collecting tasks and exiting...")
                 raise MaxItersException
         except (asyncio.TimeoutError, ConnectionError, ConnectionResetError,
                 ServerExitException) as err:
-            if run_async and tasks:
+            if tasks:
+                LOG.info("Gathering remaining tasks...")
                 await asyncio.gather(*tasks)
             LOG.exception(err)
             await sock.close()
@@ -468,7 +471,7 @@ async def consumer(host=config.HOST, port=config.PORT, max_iters=None):
 
         except (KeyboardInterrupt, MaxItersException):
             if tasks:
-                tasks_complete += len(tasks)
+                LOG.info("Gathering remaining tasks...")
                 await asyncio.gather(*tasks)
 
             total_time = time.time() - init_time
@@ -482,9 +485,9 @@ async def consumer(host=config.HOST, port=config.PORT, max_iters=None):
 
 
 def main(host, port, mode='local', debug=False, parents=False,
-         events=False, max_iters=None): # pylint: disable=too-many-arguments
+         events=False, max_iters=None, only_proc=False):
     """Start event loop to consume stream."""
-    # pylint: disable=global-statement
+    # pylint: disable=global-statement,disable=too-many-arguments
     global DEBUG, PARENTS, EVENTS, PUB_SUB
     DEBUG = debug
     if DEBUG:
@@ -500,11 +503,11 @@ def main(host, port, mode='local', debug=False, parents=False,
     if mode == 'remote':
         PUB_SUB = Publisher()
 
-    asyncio.run(consumer(host, port, max_iters))
+    asyncio.run(consumer(host, port, max_iters, only_proc))
     import sqlite3
     import pandas as pd
     conn = sqlite3.connect("data/dcs.db",
-                            detect_types=sqlite3.PARSE_DECLTYPES)
+                           detect_types=sqlite3.PARSE_DECLTYPES)
     print(pd.read_sql("select count(*) from event", conn))
     print(pd.read_sql("select count(*), count(parent) from object", conn))
     conn.close()
