@@ -4,6 +4,9 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.Arrays;
+import java.util.List;
+
 
 public class TacviewClient
 {
@@ -12,77 +15,89 @@ public class TacviewClient
     {
         // Thread serverThread = new Thread(new Server());
         // serverThread.start();
-        Thread clientThread = new Thread(new Client());
-        clientThread.start();
-
+        Thread tacviewClientThread = new Thread(new TacviewClient());
+        tacviewClientThread.start();
+        tacviewClientThread.join();
         // serverThread.join();
-        clientThread.join();
     }
 
-    private static class Server implements Runnable
+    // private static class Server implements Runnable
+    // {
+    //     @Override
+    //     public void run()
+    //     {
+    //         ServerSocket serverSocket = null;
+    //         try
+    //         {
+    //             serverSocket = new ServerSocket(5555);
+    //
+    //             Socket clientSocket = null;
+    //             clientSocket = serverSocket.accept();
+    //             debug("Connected");
+    //
+    //             PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
+    //             BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+    //
+    //             String textFromClient = null;
+    //             String textToClient = null;
+    //             textFromClient = in.readLine(); // read the text from client
+    //             debug("Read '" + textFromClient + "'");
+    //             if ("A".equals(textFromClient))
+    //             {
+    //                 textToClient = "1111";
+    //             }
+    //             else if ("B".equals(textFromClient))
+    //             {
+    //                 textToClient = "2222\r\n3333";
+    //             }
+    //
+    //             debug("Writing '" + textToClient + "'");
+    //             out.print(textToClient + "\r\n"); // send the response to client
+    //             out.flush();
+    //             out.close();
+    //             in.close();
+    //             clientSocket.close();
+    //             serverSocket.close();
+    //         }
+    //         catch (Exception e)
+    //         {
+    //             e.printStackTrace();
+    //         }
+    //
+    //     }
+    //
+    //     private static void debug(String msg)
+    //     {
+    //         System.out.println("Server: " + msg);
+    //     }
+    // }
+
+    private static class TacviewClient implements Runnable
     {
+
         @Override
         public void run()
         {
-            ServerSocket serverSocket = null;
-            try
-            {
-                serverSocket = new ServerSocket(5555);
-
-                Socket clientSocket = null;
-                clientSocket = serverSocket.accept();
-                debug("Connected");
-
-                PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
-                BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-
-                String textFromClient = null;
-                String textToClient = null;
-                textFromClient = in.readLine(); // read the text from client
-                debug("Read '" + textFromClient + "'");
-                if ("A".equals(textFromClient))
-                {
-                    textToClient = "1111";
-                }
-                else if ("B".equals(textFromClient))
-                {
-                    textToClient = "2222\r\n3333";
-                }
-
-                debug("Writing '" + textToClient + "'");
-                out.print(textToClient + "\r\n"); // send the response to client
-                out.flush();
-                out.close();
-                in.close();
-                clientSocket.close();
-                serverSocket.close();
-            }
-            catch (Exception e)
-            {
-                e.printStackTrace();
-            }
-
-        }
-
-        private static void debug(String msg)
-        {
-            System.out.println("Server: " + msg);
-        }
-    }
-
-    private static class Client implements Runnable
-    {
-
-        @Override
-        public void run()
-        {
+            List<String> handshake_params = Arrays.asList(
+                                   "XtraLib.Stream.0",
+                                   "Tacview.RealTimeTelemetry.0",
+                                   "tacview_reader",
+                                   "0"
+              );
+            String result = String.join("\n", list);
+            Handshake = HANDSHAKE = '\n'.join(["XtraLib.Stream.0",
+                                   'Tacview.RealTimeTelemetry.0',
+                                   "tacview_reader",
+                                   "0",
+                                   "\0"])
+            HANDSHAKE = HANDSHAKE.encode('utf-8')
             Socket socket = null;
             PrintWriter out = null;
             BufferedReader in = null;
             BufferedReader read = new BufferedReader(new InputStreamReader(System.in));
             try
             {
-                socket = new Socket("localhost", 5555);
+                socket = new Socket("127.0.0.1", 5555);
                 out = new PrintWriter(socket.getOutputStream(), true);
                 in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                 debug("Connected");
