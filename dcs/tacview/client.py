@@ -19,28 +19,19 @@ import subprocess
 from geopy.distance import geodesic
 from geopy import distance
 from geopy.point import Point
-import redis
+# import redis
 
 from dcs.common.db import init_db, Object, Event, Session, Publisher, TestTable
 from dcs.common import get_logger
 from dcs.common import config
 
 
-server = redis.Redis(port=7777)
-try:
-    server.ping()
-except redis.exceptions.ConnectionError:
-    subprocess.call(["redis-server", "--port", "7777",
-                     "--daemonize", "yes"])
-
-# rec1 = {'id':'object1', 'alive': 1}
-#          # 'color': 'Violet'}
-# server.hmset('object1', rec1)
-# server.hgetall(rec1['id'])
-#
-# rec2 = {'id':'object2', 'alive': 0, 'color': 'Red'}
-# server.hmset(rec2['id'], rec2)
-# server.hgetall(rec2['id'])
+# server = redis.Redis(port=7777)
+# try:
+#     server.ping()
+# except redis.exceptions.ConnectionError:
+#     subprocess.call(["redis-server", "--port", "7777",
+#                      "--daemonize", "yes"])
 
 
 DEBUG = False
@@ -62,16 +53,16 @@ COORD_KEYS = ['long', 'lat', 'alt', 'roll', 'pitch', 'yaw', 'u_coord',
               'v_coord', 'heading']
 
 
-def to_redis(obj):
-    """Save to redis cache."""
-    if 'last_seen' in obj.keys():
-        obj['last_seen'] = obj['last_seen'].timestamp()
-    if 'first_seen' in obj.keys():
-        obj['first_seen'] = obj['first_seen'].timestamp()
-    server.hmset(obj['id'], obj)
+# def to_redis(obj):
+#     """Save to redis cache."""
+#     if 'last_seen' in obj.keys():
+#         obj['last_seen'] = obj['last_seen'].timestamp()
+#     if 'first_seen' in obj.keys():
+#         obj['first_seen'] = obj['first_seen'].timestamp()
+#     server.hmset(obj['id'], obj)
 
 
-def determine_parent(rec):
+async def determine_parent(rec):
     """Determine the parent of missiles, rockets, and bombs."""
     LOG.debug("Determing parent for object id: %s -- %s-%s...",
               rec.id, rec.name, rec.type)
@@ -136,7 +127,7 @@ def line_to_dict(line, ref):
                     'last_seen': ref.time,
                     'session_id': ref.session_id
                    }
-        to_redis(obj_dict.copy())
+        server.delete(obj_dict['id'])
         return obj_dict
 
     obj_dict = {'id': line[0],
@@ -181,12 +172,12 @@ def line_to_dict(line, ref):
     return obj_dict
 
 
-def process_line(obj_dict, db):
+async def process_line(obj_dict, db):
     """Parse a single line from tacview stream."""
     rec = Object.get_or_none(id=obj_dict['id'])
     prev_coord = None
     prev_ts = None
-    # with db.atomic():
+
     if rec:
         prev_ts = rec.last_seen
         prev_coord = [rec.lat, rec.long, rec.alt]
@@ -207,7 +198,7 @@ def process_line(obj_dict, db):
         if PARENTS:
             if any([t in rec.type.lower() for t in ['weapon', 'projectile',
                                                     'shrapnel']]):
-                parent_info = determine_parent(rec)
+                parent_info = await determine_parent(rec)
                 if parent_info:
                     rec.parent = parent_info[0]
                     rec.parent_dist = parent_info[1]
@@ -249,8 +240,8 @@ def process_line(obj_dict, db):
                          heading=rec.heading,
                          roll=rec.roll,
                          pitch=rec.pitch,
-                         # u_coord=rec.u_coord,
-                         # v_coord=rec.v_coord,
+                         u_coord=rec.u_coord,
+                         v_coord=rec.v_coord,
                          velocity_ms=velocity,
                          dist_m=true_dist,
                          session_id=rec.session_id,
@@ -421,11 +412,11 @@ class SocketReader:
         self.ref = Ref()
 
 
-async def handle_line(obj, db):
+async def handle_line(obj, ref, db):
     """Wrapper for line processing methods called in thread."""
-    # obj = line_to_dict(obj, ref)
+    obj = line_to_dict(obj, ref)
     if obj:
-        process_line(obj, db)
+        await process_line(obj, db)
 
 
 async def consumer(host=config.HOST, port=config.PORT, max_iters=None,
@@ -455,16 +446,14 @@ async def consumer(host=config.HOST, port=config.PORT, max_iters=None,
                 ref = Session.select().limit(1)[0]
                 if run_async:
                     tasks_complete += len(tasks)
-                    await asyncio.wait(tasks)
-
+                    await asyncio.gather(*tasks)
                     tasks = []
 
-                LOG.info('Average task/sec: %.2f...',
+                LOG.debug('Average task/sec: %.2f...',
                          tasks_complete/(time.time() - init_time))
             else:
                 if run_async:
-                    obj = line_to_dict(obj, ref)
-                    tasks.append(handle_line(obj, conn))
+                    tasks.append(asyncio.ensure_future(handle_line(obj, ref, conn)))
                 else:
                     obj = line_to_dict(obj, ref)
                     if obj:
@@ -476,11 +465,8 @@ async def consumer(host=config.HOST, port=config.PORT, max_iters=None,
                 raise MaxItersException
         except (asyncio.TimeoutError, ConnectionError, ConnectionResetError,
                 ServerExitException) as err:
-            for t in threading.enumerate():
-                if t is main_thread:
-                    continue
-                t.join()
-                tasks_complete += 1
+            if run_async and tasks:
+                await asyncio.gather(*tasks)
             LOG.exception(err)
             await sock.close()
             conn = init_db()
@@ -488,7 +474,7 @@ async def consumer(host=config.HOST, port=config.PORT, max_iters=None,
         except (KeyboardInterrupt, MaxItersException):
             if run_async and tasks:
                 tasks_complete += len(tasks)
-                await asyncio.wait(tasks)
+                await asyncio.gather(*tasks)
 
             total_time = time.time() - init_time
             await sock.close()
@@ -520,3 +506,10 @@ def main(host, port, mode='local', debug=False, parents=False,
         PUB_SUB = Publisher()
 
     asyncio.run(consumer(host, port, max_iters, run_async))
+    import sqlite3
+    import pandas as pd
+    conn = sqlite3.connect("data/dcs.db",
+                            detect_types=sqlite3.PARSE_DECLTYPES)
+    print(pd.read_sql("select count(*) from event", conn))
+    print(pd.read_sql("select count(*), count(parent) from object", conn))
+    conn.close()

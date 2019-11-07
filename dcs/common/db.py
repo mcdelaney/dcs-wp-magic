@@ -2,14 +2,16 @@
 from pathlib import Path
 
 import peewee as pw
+from playhouse.pool import PooledSqliteDatabase
 
 from dcs.common  import config
 
 
-DB = pw.SqliteDatabase(None,
-                       pragmas={'journal_mode': 'wal',
-                                'synchronous': 'OFF',
-                                'cache_size': -1024 * 1000})
+DB = PooledSqliteDatabase(None,
+                          max_connections=300,
+                          pragmas={'journal_mode': 'wal',
+                                    'synchronous': 'OFF',
+                                    'cache_size': -1024 * 1000})
 
 # from playhouse.apsw_ext import APSWDatabase, DateTimeField
 # DB = APSWDatabase(None,
