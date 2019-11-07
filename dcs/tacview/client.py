@@ -44,7 +44,7 @@ HANDSHAKE = '\n'.join(["XtraLib.Stream.0",
                        'Tacview.RealTimeTelemetry.0',
                        "tacview_reader",
                        config.PASSWORD,
-                       "\0"])
+                       ]) + "\0"
 HANDSHAKE = HANDSHAKE.encode('utf-8')
 REF_TIME_FMT = '%Y-%m-%dT%H:%M:%SZ'
 
@@ -415,7 +415,7 @@ class SocketReader:
 
 async def handle_line(obj, ref, db):
     """Wrapper for line processing methods called in thread."""
-    obj = line_to_dict(obj, ref)
+    obj = await line_to_dict(obj, ref)
     if obj:
         await process_line(obj, db)
 
