@@ -4,20 +4,15 @@ from pathlib import Path
 import peewee as pw
 from playhouse.pool import PooledSqliteDatabase
 
-from dcs.common  import config
+from dcs.common import config
 
 
 DB = PooledSqliteDatabase(None,
                           max_connections=300,
                           pragmas={'journal_mode': 'wal',
-                                    'synchronous': 'OFF',
-                                    'cache_size': -1024 * 1000})
+                                   'synchronous': 'OFF',
+                                   'cache_size': -1024 * 1000})
 
-# from playhouse.apsw_ext import APSWDatabase, DateTimeField
-# DB = APSWDatabase(None,
-#                        pragmas={'journal_mode': 'wal',
-#                                 'synchronous': 'OFF',
-#                                 'cache_size': -1024 * 1000})
 
 class BaseModel(pw.Model):
     """Base model with DB defined from which all others inherit."""
@@ -109,7 +104,7 @@ def init_db():
     return DB
 
 
-class Publisher: # pylint: disable=too-few-public-methods
+class Publisher:  # pylint: disable=too-few-public-methods
     """Pubsub writer."""
 
     def __init__(self):
