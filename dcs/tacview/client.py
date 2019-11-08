@@ -121,21 +121,16 @@ def json_serial(obj):
 async def line_to_dict(line, ref):
     """Process a line into a dictionary."""
     line = line.split(',')
+    obj_dict = {'last_seen': ref.time, 'session_id': ref.session_id}
 
     if line[0][0] == '-':
         LOG.debug("Record %s is now dead...updating...", id)
-        obj_dict = {'id': line[0][1:].strip(),
-                    'alive': 0,
-                    'last_seen': ref.time,
-                    'session_id': ref.session_id
-                    }
+        obj_dict['alive'] = 0
+        obj_dict['id'] = line[0][1:].strip()
         # server.delete(obj_dict['id'])
         return obj_dict
 
-    obj_dict = {'id': line[0],
-                'last_seen': ref.time,
-                'session_id': ref.session_id
-                }
+    obj_dict['id'] = line[0]
 
     for chunk in line[1:]:
         key, val = chunk.split('=', 1)
