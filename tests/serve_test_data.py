@@ -7,7 +7,7 @@ import sys
 
 logging.basicConfig(level=logging.INFO)
 LOG = logging.getLogger('test_server')
-LOG.setLevel(logging.DEBUG)
+LOG.setLevel(logging.INFO)
 # N = -1
 
 
@@ -16,16 +16,17 @@ async def handle_req(reader, writer):
     try:
         handshake = await reader.read(4026)
         LOG.info(handshake.decode())
+        LOG.info("Handshake complete...serving data...")
         with open('tests/data/raw_sink.txt', 'r') as fp_:
             for i, line in enumerate(fp_):
                 if N != -1 and N <= i:
                     break
-                writer.write(line.encode('utf-8'))
-                LOG.info(line)
 
-        LOG.info("All lines sent...draining...")
-        await writer.drain()
-        LOG.info("Socket drained...closing...")
+                writer.write(line.encode('utf-8'))
+                await writer.drain()
+                LOG.debug(line)
+
+        LOG.info("All lines sent...closing...")
         writer.close()
         LOG.info("Writer closed...exiting...")
     except (ConnectionResetError, BrokenPipeError):
