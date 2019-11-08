@@ -104,7 +104,7 @@ def init_db():
     return DB
 
 
-class Publisher: # pylint: disable=too-few-public-methods
+class Publisher:  # pylint: disable=too-few-public-methods
     """Pubsub writer."""
 
     def __init__(self):
