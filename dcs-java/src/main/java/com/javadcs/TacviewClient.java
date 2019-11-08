@@ -25,6 +25,9 @@ public class TacviewClient
         @Override
         public void run()
         {
+            int max_iters = 5000;
+
+
             List<String> handshake_params = Arrays.asList(
                                    "XtraLib.Stream.0",
                                    "Tacview.RealTimeTelemetry.0",
@@ -51,8 +54,12 @@ public class TacviewClient
                 out.flush();
 
                 String obj = null;
-                while ((obj = in.readLine()) != null)
-                    debug(obj); // read from server and print it.
+                int total_iters = 0;
+                while (total_iters <= max_iters & ((obj = in.readLine()) != null))
+                    // debug(obj); // read from server and print it.
+                    total_iters += 1;
+                    debug(String.valueOf(total_iters));
+
 
                 out.close();
                 in.close();
