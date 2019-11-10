@@ -47,10 +47,10 @@ def start_entry(rack, coord_string):
         return Response(status=500)
 
 
-@app.route("/coords/<coord_fmt>")
-def as_strings_coords(coord_fmt):
+@app.route("/coords/<coord_fmt>/<pilot>")
+def as_strings_coords(coord_fmt, pilot=None):
     try:
-        enemies = construct_enemy_set(app.coord_user, coord_fmt=coord_fmt)
+        enemies = construct_enemy_set(pilot, coord_fmt=coord_fmt)
         app.logger.info('Enemeies Collected...')
         return enemies
 
