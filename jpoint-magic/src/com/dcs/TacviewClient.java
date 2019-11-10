@@ -59,7 +59,7 @@ class ObjectDict
         Field[] fields = this.getClass().getFields();
         for(int i = 0; i < fields.length; i++) {
             try{
-                LOGGER.info(fields[i].toString() + ": " + fields[i].get(this));
+                LOGGER.debug(fields[i].toString() + ": " + fields[i].get(this));
             }catch (IllegalAccessException e) {
                 e.printStackTrace();
             }
@@ -71,17 +71,19 @@ class ObjectDict
 
 public class TacviewClient {
     private static Logger LOGGER = LogManager.getLogger("Tacview");
-    private static String[] coord_keys = new String[]{"lon", "lat", "alt", "roll", "pitch", "yaw", "u_coord", "v_coord", "heading"};
-    public HashMap<String, ObjectDict> tac_objects = new HashMap();
+    private static String[] coord_keys = new String[]{"lon", "lat", "alt", "roll", "pitch", "yaw", "u_coord",
+            "v_coord", "heading"};
 
-    public Float ref_lat;
-    public Float ref_lon;
-    public Instant ref_time = Instant.now();
-    public Double last_offset = 0.0;
-    public String datasource;
-    public String author;
-    public String title;
-    public String session_id = UUID.randomUUID().toString();
+    HashMap<String, ObjectDict> tac_objects = new HashMap();
+
+    Float ref_lat;
+    Float ref_lon;
+    Instant ref_time = Instant.now();
+    Double last_offset = 0.0;
+    String datasource;
+    String author;
+    String title;
+    String session_id = UUID.randomUUID().toString();
 
     public static void main(String[] args) {
         try {
@@ -137,7 +139,7 @@ public class TacviewClient {
             boolean has_refs = false;
 
             String obj;
-            while (total_iter < max_iter & ((obj = in.readLine()) != null)) {
+            while ((max_iter == 0 || total_iter < max_iter) & ((obj = in.readLine()) != null)) {
                 total_iter++;
                 if (has_refs) {
                     if (obj.substring(0,1).equals("#")){
@@ -145,6 +147,10 @@ public class TacviewClient {
                         long diff = Math.round(new_offset - last_offset);
                         last_offset = new_offset;
                         ref_time = ref_time.plus(diff, ChronoUnit.SECONDS);
+                        float time_diff = (int) ((new Date().getTime() - start_time));
+                        float iter_per_sec = (total_iter / time_diff) * 1000;
+                        LOGGER.info("Updating ref time with offset: " + new_offset + "...Lines per sec: " + iter_per_sec);
+
                     }else{
                         line_to_dict(obj);
                     }
@@ -252,5 +258,4 @@ public class TacviewClient {
         }
         obj_dict.print();
     }
-
 }
