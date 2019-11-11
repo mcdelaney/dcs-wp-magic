@@ -69,7 +69,9 @@ def main():
         bigquery.SchemaField("secs_from_last", "float", mode="NULLABLE"),
         bigquery.SchemaField("updates", "INTEGER", mode="NULLABLE"),
         bigquery.SchemaField("parent", "STRING", mode="NULLABLE"),
-        bigquery.SchemaField("parent_dist", "FLOAT", mode="NULLABLE")
+        bigquery.SchemaField("parent_dist", "FLOAT", mode="NULLABLE"),
+        bigquery.SchemaField("impactor", "STRING", mode="NULLABLE"),
+        bigquery.SchemaField("impactor_dist", "FLOAT", mode="NULLABLE")
     ]
 
     try:
