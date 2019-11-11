@@ -463,9 +463,9 @@ async def handle_line(obj, ref, db):
 async def consumer(host=config.HOST, port=config.PORT, max_iters=None,
                    only_proc=False):
     """Main method to consume stream."""
-    LOG.info("Starting consumer with settings: events: %s -- parents: %s "
+    LOG.info("Starting consumer with settings: events: %s -- "
              "pubsub: %s -- debug: %s --  iters %s",
-             EVENTS, PARENTS, PUB_SUB, DEBUG, max_iters)
+             EVENTS, PUB_SUB, DEBUG, max_iters)
     tasks_complete = 1  # I know this is wrong.  It just makes division easier.
     conn = init_db()
     sock = SocketReader(host, port)
