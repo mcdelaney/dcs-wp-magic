@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Socket Perf Test.
 """
 import argparse

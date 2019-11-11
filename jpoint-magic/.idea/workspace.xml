@@ -2,11 +2,12 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="92e7080b-9083-48a6-92b6-15e8f5599ec5" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/../.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/../.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/log/CrunchifyTest.log" beforeDir="false" afterPath="$PROJECT_DIR$/log/CrunchifyTest.log" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/out/artifacts/jpoint_magic_jar/jpoint-magic.jar" beforeDir="false" afterPath="$PROJECT_DIR$/out/artifacts/jpoint_magic_jar/jpoint-magic.jar" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/jpoint-magic/com/dcs/ObjectDict.class" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/jpoint-magic/com/dcs/TacviewClient.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/jpoint-magic/com/dcs/TacviewClient.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/com/dcs/TacviewClient.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/com/dcs/TacviewClient.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../tests/serve_test_data.py" beforeDir="false" afterPath="$PROJECT_DIR$/../tests/serve_test_data.py" afterDir="false" />
     </list>
     <ignored path="$PROJECT_DIR$/out/" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -23,8 +24,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/com/dcs/TacviewClient.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="179">
-              <caret line="141" column="45" selection-start-line="141" selection-start-column="45" selection-end-line="141" selection-end-column="45" />
+            <state relative-caret-position="457">
+              <caret line="252" column="84" selection-start-line="252" selection-start-column="84" selection-end-line="252" selection-end-column="84" />
               <folding>
                 <element signature="imports" expanded="true" />
               </folding>
@@ -38,13 +39,17 @@
     <findStrings>
       <find>debug</find>
       <find>parseI</find>
-      <find>alive</find>
       <find>time</find>
       <find>Pattern</find>
       <find>print</find>
       <find>null</find>
       <find>UUID</find>
       <find>LO</find>
+      <find>OBJ</find>
+      <find>alive</find>
+      <find>start_time</find>
+      <find>for(</find>
+      <find>this.lat</find>
     </findStrings>
   </component>
   <component name="Git.Settings">
@@ -66,10 +71,10 @@
       <select />
     </treeState>
   </component>
-  <component name="ProjectFrameBounds" extendedState="1">
-    <option name="x" value="384" />
+  <component name="ProjectFrameBounds">
+    <option name="x" value="300" />
     <option name="y" value="23" />
-    <option name="width" value="1296" />
+    <option name="width" value="1380" />
     <option name="height" value="956" />
   </component>
   <component name="ProjectLevelVcsManager" settingsEditedManually="true">
@@ -167,7 +172,7 @@
     </configuration>
     <configuration name="TacviewJar" type="JarApplication" singleton="false">
       <option name="JAR_PATH" value="$PROJECT_DIR$/out/artifacts/jpoint_magic_jar/jpoint-magic.jar" />
-      <option name="PROGRAM_PARAMETERS" value="host 127.0.0.1 port 5555 max_iter 10000" />
+      <option name="PROGRAM_PARAMETERS" value="host 127.0.0.1 port 5555 max_iter 50000" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
       <option name="ALTERNATIVE_JRE_PATH" />
       <method v="2" />
@@ -189,18 +194,18 @@
       <updated>1573236127457</updated>
       <workItem from="1573236135492" duration="1096000" />
       <workItem from="1573237308627" duration="10015000" />
-      <workItem from="1573254627114" duration="10711000" />
+      <workItem from="1573254627114" duration="14218000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="21822000" />
+    <option name="totallyTimeSpent" value="25329000" />
   </component>
   <component name="ToolWindowManager">
-    <frame x="384" y="23" width="1296" height="956" extended-state="0" />
+    <frame x="300" y="23" width="1380" height="956" extended-state="0" />
     <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.23285486" />
+      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.21823618" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Image Layers" order="2" />
       <window_info id="Designer" order="3" />
@@ -208,8 +213,8 @@
       <window_info id="Capture Tool" order="5" />
       <window_info id="Favorites" order="6" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
-      <window_info anchor="bottom" id="Find" order="1" />
-      <window_info anchor="bottom" id="Run" order="2" visible="true" weight="0.35185185" />
+      <window_info anchor="bottom" id="Find" order="1" weight="0.3298611" />
+      <window_info anchor="bottom" id="Run" order="2" weight="0.35185185" />
       <window_info anchor="bottom" id="Debug" order="3" weight="0.39930555" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
@@ -271,10 +276,17 @@
         </state>
       </provider>
     </entry>
+    <entry file="jar:///Library/Java/JavaVirtualMachines/jdk-9.jdk/Contents/Home/lib/src.zip!/java.base/java/util/function/IntConsumer.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="375">
+          <caret line="48" column="9" selection-start-line="48" selection-start-column="9" selection-end-line="48" selection-end-column="15" />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/src/com/dcs/TacviewClient.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="179">
-          <caret line="141" column="45" selection-start-line="141" selection-start-column="45" selection-end-line="141" selection-end-column="45" />
+        <state relative-caret-position="457">
+          <caret line="252" column="84" selection-start-line="252" selection-start-column="84" selection-end-line="252" selection-end-column="84" />
           <folding>
             <element signature="imports" expanded="true" />
           </folding>
