@@ -29,9 +29,6 @@ if __name__ == '__main__':
     parser.add_argument("--debug", default=False, type=str2bool,
                         help="If local, records only written to sqlite."
                         "If remote, they are written to pubsub also.")
-    parser.add_argument("--parents", default=False, type=str2bool,
-                        help="If true, parents will be calculated for weapons "
-                        "and shrapnel.")
     parser.add_argument("--events", default=True, type=str2bool,
                         help="If true, events will be saved to the database.")
     parser.add_argument("--max_iters", default=None, type=int,
@@ -41,6 +38,5 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     tacview.client.main(host=args.host, port=args.port, mode=args.mode,
-                        debug=args.debug, parents=args.parents,
-                        events=args.events, max_iters=args.max_iters,
-                        only_proc=args.only_proc)
+                        debug=args.debug, events=args.events,
+                        max_iters=args.max_iters, only_proc=args.only_proc)
