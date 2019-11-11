@@ -15,7 +15,6 @@ import time
 
 import peewee as pw
 from playhouse.shortcuts import model_to_dict
-# import redis
 
 from dcs.common.db import init_db, Object, Event, Session, Publisher
 from dcs.common import get_logger
@@ -23,7 +22,6 @@ from dcs.common import config
 
 
 DEBUG = False
-PARENTS = False
 PUB_SUB = None
 EVENTS = True
 
@@ -41,13 +39,6 @@ REF_TIME_FMT = '%Y-%m-%dT%H:%M:%SZ'
 COORD_KEYS = ['long', 'lat', 'alt', 'roll', 'pitch', 'yaw', 'u_coord',
               'v_coord', 'heading']
 
-# def to_redis(obj):
-#     """Save to redis cache."""
-#     if 'last_seen' in obj.keys():
-#         obj['last_seen'] = obj['last_seen'].timestamp()
-#     if 'first_seen' in obj.keys():
-#         obj['first_seen'] = obj['first_seen'].timestamp()
-#     server.hmset(obj['id'], obj)
 
 @dataclass
 class ObjectRec:
@@ -215,8 +206,6 @@ async def line_to_dict(line, ref):
 
     if 'long' in obj_dict.keys():
         obj_dict['long'] = obj_dict['long'] + ref.long
-
-    # to_redis(obj_dict.copy())
     return obj_dict
 
 
