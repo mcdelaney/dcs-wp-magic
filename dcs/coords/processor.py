@@ -204,7 +204,8 @@ def create_enemy_groups(enemy_state, start_coord, coord_fmt='dms'):
     return enemy_groups
 
 
-def construct_enemy_set(start_unit, result_as_string=True, coord_fmt='dms'):
+def construct_enemy_set(start_unit=None, result_as_string=True, coord_fmt='dms',
+                        pilot=None):
     """Constuct a EnemyGroup of Enemies, returning a formatted string."""
 
     enemy_state, start_coord = read_coords(start_unit)

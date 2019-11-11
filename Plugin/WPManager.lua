@@ -1,4 +1,4 @@
-WP-Managerrequire "os"
+-- WPManagerrequire "os"
 
 function wpmanager_load()
     programPath = lfs.realpath(lfs.currentdir())
@@ -99,7 +99,8 @@ function wpmanager_load()
     end
 
     local function updateCoordinates()
-        local resp, status, err = http.request("http://127.0.0.1:5000/coords/" .. fmt)
+        local pilot = "someone_somewhere"
+        local resp, status, err = http.request("http://127.0.0.1:5000/coords/" .. fmt .. "/" .. pilot)
         if status ~= 200 then
             return "Error updating coordinates!"
         end
@@ -149,15 +150,11 @@ function wpmanager_load()
     end
 
     function wpmanager.createWindow()
-        local file_path = lfs.writedir() .. [[WP-Manager\]] .. [[target.txt]]
-        local file, err = io.open(file_path, "w")
-        file:write("")
-        file:close()
-
-        window = DialogLoader.spawnDialogFromFile(lfs.writedir() .. "Scripts\\WP-Manager\\WPManager.dlg", cdata)
+        window = DialogLoader.spawnDialogFromFile(lfs.writedir() .. "Scripts\\WP-Manager\\WPManager.dlg")
+        -- , cdata)
         windowDefaultSkin = window:getSkin()
         panel = window.Box
-        textarea = panel.WP-ManagerEditBox
+        textarea = panel.WPManagerEditBox
         coordButton = panel.WPManagerCoordButton
         coordButton:setState(true)
 
@@ -266,16 +263,6 @@ function wpmanager_load()
             end
         )
 
-        -- keepAllBtn:addMouseDownCallback(
-        --     function(self)
-        --         if status == "alive" then
-        --             status = "all"
-        --         else
-        --             status = "alive"
-        --         end
-        --     end
-        -- )
-
         wpmanager.log("Adding section callbacks...")
         for k, v in pairs(sections) do
             sections[k]:addMouseDownCallback(
@@ -339,6 +326,16 @@ function wpmanager_load()
 
         wpmanager.hide()
         wpmanager.log("WPManager Window created")
+
+        local dev = GetSelf()
+        m=getmetatable(dev)
+        str=dump("GetSelf meta",m)
+        local lines=strsplit("\n",str)
+        for k,v in ipairs(lines) do
+           wpmanager.log(v)
+        end
+
+
     end
 
     function wpmanager.setVisible(b)

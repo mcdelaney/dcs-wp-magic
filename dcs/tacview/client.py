@@ -163,6 +163,8 @@ def json_serial(obj):
 async def line_to_dict(line, ref):
     """Process a line into a dictionary."""
     line = line.split(',')
+    if line[0] == "0":
+        return
     obj_dict = {'last_seen': ref.time, 'session_id': ref.session_id}
 
     if line[0][0] == '-':
