@@ -171,7 +171,6 @@ async def line_to_dict(line, ref):
         LOG.debug("Record %s is now dead...updating...", id)
         obj_dict['alive'] = 0
         obj_dict['id'] = line[0][1:].strip()
-        # server.delete(obj_dict['id'])
         return obj_dict
 
     obj_dict['id'] = line[0]
@@ -185,9 +184,6 @@ async def line_to_dict(line, ref):
 
     if 't' in obj_dict.keys():
         coord = obj_dict.pop('t')
-    elif line[0] == '0' and 'AuthenticationKey' in line[1]:
-        LOG.info('Ref value found in line: %s...', ','.join(line))
-        return
     else:
         LOG.error("No location key in line!")
         LOG.error(line, obj_dict)
@@ -490,18 +486,13 @@ async def consumer(host=config.HOST, port=config.PORT, max_iters=None,
                              runtime, sock.ref.last_time - runtime,
                              tasks_complete/(time.time() - init_time))
                     last_log = runtime
-
                 ref = Session.select().limit(1)[0]
-                if tasks:
-                    await asyncio.gather(*tasks)
-                    tasks = []
 
             else:
                 if only_proc:
-                    tasks.append(asyncio.ensure_future(line_to_dict(obj, ref)))
+                    await line_to_dict(obj, ref)
                 else:
-                    tasks.append(
-                        asyncio.ensure_future(handle_line(obj, ref, conn)))
+                    await handle_line(obj, ref, conn)
                 tasks_complete += 1
 
             if max_iters and max_iters <= tasks_complete:

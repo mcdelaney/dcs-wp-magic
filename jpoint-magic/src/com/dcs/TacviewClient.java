@@ -285,76 +285,74 @@ public class TacviewClient {
         return obj_dict;
     }
 
-    private DCSObject check_for_parent(DCSObject obj_dict) {
+    private DistanceComparison check_for_parent(DCSObject current_rec) {
 
         Instant recent_rec_offset = ref.referencetime.plus(1, ChronoUnit.MINUTES);
 
-        if (obj_dict.update_num > 1 || obj_dict.color == null || !Arrays.stream(parent_types).anyMatch(obj_dict.type::equals)) {
-            return obj_dict;
+        if (current_rec.update_num > 1 || current_rec.color == null || !Arrays.stream(parent_types).anyMatch(current_rec.type::equals)) {
+            return null;
         }
 
-        String[] accept_colors = (obj_dict.color.equals("Violet")) ? new String[] {"Red", "Blue"} : new String[] {obj_dict.color};
+        String[] accept_colors = (current_rec.color.equals("Violet")) ? new String[] {"Red", "Blue"} : new String[] {current_rec.color};
         Optional<DistanceComparison> possible_parents = tac_objects.entrySet()
                 .stream()
                 .map(Map.Entry::getValue)
                 .filter(rec -> (!Arrays.asList(parent_types).contains(rec.type)))
                 .filter(rec -> Arrays.asList(accept_colors ).contains(rec.color))
-                .filter(rec -> !rec.type.equals(obj_dict.type))
+                .filter(rec -> !rec.type.equals(current_rec.type))
                 .filter(rec -> (rec.alive == 1 | rec.last_seen.compareTo(recent_rec_offset)>0))
-                .map(rec -> dist_calc.compute_distance(rec, obj_dict))
-                .sorted((l1, l2) -> l1.dist.compareTo(l2.dist))
+                .map(rec -> dist_calc.compute_distance(rec, current_rec))
+                .sorted((l1, l2) -> Double.compare(l1.dist, l2.dist))
                 .findFirst();
 
         if (possible_parents.isPresent()) {
             DistanceComparison closest = possible_parents.get();
-            LOGGER.info("Parent lookup for {}-{} -- {}-{}: {}", obj_dict.type,obj_dict.id, closest.id, closest.type, closest.dist);
+            LOGGER.info("Parent lookup for {}-{} -- {}-{}: {}", current_rec.type,current_rec.id, closest.id, closest.type, closest.dist);
             if (closest.dist < 100) {
-                obj_dict.parent = closest.id;
-                obj_dict.parent_dist= closest.dist;
+                return closest;
             }else {
                 LOGGER.warn("Rejecting closest match : {} {}!", closest.type, closest.dist);
             }
         }
 
-        return obj_dict;
+        return null;
     }
 
-    private DCSObject check_for_impactor(DCSObject obj_dict) {
+    private DistanceComparison check_for_impactor(DCSObject current_rec) {
 
         Instant recent_rec_offset = ref.referencetime.plus(1, ChronoUnit.MINUTES);
 
-        if (Arrays.stream(impact_types).anyMatch(obj_dict.type::equals)) {
-            return obj_dict;
+        if (Arrays.stream(impact_types).anyMatch(current_rec.type::equals)) {
+            return null;
         }
-        LOGGER.info("Attempting to find impactor for {}...", obj_dict.type);
-        String[] accept_colors = (obj_dict.color.equals("Blue")) ? new String[] {"Red"} : new String[] {"Blue"};
+        LOGGER.info("Attempting to find impactor for {}...", current_rec.type);
+        String[] accept_colors = (current_rec.color.equals("Blue")) ? new String[] {"Red"} : new String[] {"Blue"};
         Optional<DistanceComparison> possible_impactors = tac_objects.entrySet()
                 .stream()
                 .map(Map.Entry::getValue)
                 .filter(rec -> Arrays.asList(impact_types).contains(rec.type))
                 .filter(rec -> Arrays.asList(accept_colors ).contains(rec.color))
-                .filter(rec -> !rec.type.equals(obj_dict.type))
+                .filter(rec -> !rec.type.equals(current_rec.type))
                 .filter(rec -> (rec.alive == 1 | rec.last_seen.compareTo(recent_rec_offset)>0))
-                .map(rec -> dist_calc.compute_distance(rec, obj_dict))
+                .map(rec -> dist_calc.compute_distance(rec, current_rec))
                 .sorted((l1, l2) -> l1.dist.compareTo(l2.dist))
                 .findFirst();
 
         if (possible_impactors.isPresent()) {
             DistanceComparison closest = possible_impactors.get();
-            LOGGER.info("Impactor lookup for {}-{} -- {}-{}: {}", obj_dict.type, obj_dict.id, closest.id,
-                    closest.type, closest.dist);
             if (closest.dist < 100) {
-                obj_dict.impactor= closest.id;
-                obj_dict.impactor_dist= closest.dist;
+                LOGGER.info("Impactor lookup for {}-{} -- {}-{}: {}", current_rec.type, current_rec.id, closest.id,
+                        closest.type, closest.dist);
+                return closest;
             }else {
                 LOGGER.warn("Rejecting closest match : {} {}!", closest.type, closest.dist);
             }
 
         }else{
-            LOGGER.warn("No impactor found for {} {}....", obj_dict.id, obj_dict.type);
+            LOGGER.warn("No impactor found for {} {}....", current_rec.id, current_rec.type);
         }
 
-        return obj_dict;
+        return null;
     }
 
     private void line_to_dict(String obj) {
@@ -390,7 +388,6 @@ public class TacviewClient {
                             }else{
                                 obj_dict.put(coord_keys[e], Double.valueOf(coordinate_elem[e]));
                             }
-
                         }
                     }
                 } else {
@@ -399,13 +396,18 @@ public class TacviewClient {
             }
         }
 
-        check_for_parent(obj_dict);
-        if (obj_dict.update_num == 1 && obj_dict.parent != null) {
+        DistanceComparison distance = check_for_parent(obj_dict);
+//        System.out.println(distance);
+        if (distance != null) {
             total_parents++;
+            obj_dict.parent = distance.id;
+            obj_dict.parent_dist= distance.dist;
             DCSObject parent = tac_objects.get(obj_dict.parent);
-            check_for_impactor(parent);
-            if (parent.impactor != null) {
+            DistanceComparison impactor_dist = check_for_impactor(parent);
+            if (impactor_dist!= null) {
                 total_impactors++;
+                parent.parent = impactor_dist.id;
+                parent.parent_dist= impactor_dist.dist;
             }
         }
 

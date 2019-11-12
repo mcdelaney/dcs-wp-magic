@@ -3,13 +3,7 @@
   <component name="ChangeListManager">
     <list default="true" id="92e7080b-9083-48a6-92b6-15e8f5599ec5" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/../dcs/tacview/client.py" beforeDir="false" afterPath="$PROJECT_DIR$/../dcs/tacview/client.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/dictionaries/mattdelaney.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dictionaries/mattdelaney.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/out/artifacts/jpoint_magic_jar/jpoint-magic.jar" beforeDir="false" afterPath="$PROJECT_DIR$/out/artifacts/jpoint_magic_jar/jpoint-magic.jar" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/out/production/jpoint-magic/com/dcs/DCSObject.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/jpoint-magic/com/dcs/DCSObject.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/out/production/jpoint-magic/com/dcs/DCSRef.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/jpoint-magic/com/dcs/DCSRef.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/out/production/jpoint-magic/com/dcs/DcsDict.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/jpoint-magic/com/dcs/DcsDict.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/out/production/jpoint-magic/com/dcs/TacviewClient.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/jpoint-magic/com/dcs/TacviewClient.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/com/dcs/TacviewClient.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/com/dcs/TacviewClient.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../tests/data/raw_sink.txt" beforeDir="false" afterPath="$PROJECT_DIR$/../tests/data/raw_sink.txt" afterDir="false" />
     </list>
@@ -28,11 +22,17 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/com/dcs/TacviewClient.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="270">
-              <caret line="18" selection-start-line="18" selection-end-line="18" />
+            <state relative-caret-position="158">
+              <caret line="400" column="21" selection-start-line="400" selection-start-column="21" selection-end-line="400" selection-end-column="21" />
               <folding>
                 <element signature="imports" expanded="true" />
+                <element signature="class#DistanceCalculator#0" />
+                <element signature="class#DcsDict#0" />
+                <element signature="class#DCSObject#0" />
+                <element signature="class#DCSRef#0" />
+                <element signature="method#update_ref_value#0;class#DCSRef#0" />
                 <element signature="method#get_or_create#0;class#TacviewClient#0" />
+                <element signature="method#check_for_impactor#0;class#TacviewClient#0" />
               </folding>
             </state>
           </provider>
@@ -64,6 +64,7 @@
       <find>Keys</find>
       <find>total_impac</find>
       <find>Distance</find>
+      <find>parent</find>
     </findStrings>
   </component>
   <component name="Git.Settings">
@@ -99,8 +100,8 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
-      <pane id="PackagesPane" />
       <pane id="Scope" />
+      <pane id="PackagesPane" />
       <pane id="ProjectPane">
         <subPane>
           <expand>
@@ -209,18 +210,19 @@
       <workItem from="1573236135492" duration="1096000" />
       <workItem from="1573237308627" duration="10015000" />
       <workItem from="1573254627114" duration="14218000" />
-      <workItem from="1573516358667" duration="11245000" />
+      <workItem from="1573516358667" duration="11772000" />
+      <workItem from="1573532591521" duration="2057000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="36574000" />
+    <option name="totallyTimeSpent" value="39158000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="300" y="23" width="1380" height="956" extended-state="0" />
     <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.22122571" />
+      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.22421524" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Image Layers" order="2" />
       <window_info id="Designer" order="3" />
@@ -307,11 +309,17 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/com/dcs/TacviewClient.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="270">
-          <caret line="18" selection-start-line="18" selection-end-line="18" />
+        <state relative-caret-position="158">
+          <caret line="400" column="21" selection-start-line="400" selection-start-column="21" selection-end-line="400" selection-end-column="21" />
           <folding>
             <element signature="imports" expanded="true" />
+            <element signature="class#DistanceCalculator#0" />
+            <element signature="class#DcsDict#0" />
+            <element signature="class#DCSObject#0" />
+            <element signature="class#DCSRef#0" />
+            <element signature="method#update_ref_value#0;class#DCSRef#0" />
             <element signature="method#get_or_create#0;class#TacviewClient#0" />
+            <element signature="method#check_for_impactor#0;class#TacviewClient#0" />
           </folding>
         </state>
       </provider>
