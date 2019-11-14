@@ -1,11 +1,12 @@
 -- WPManagerrequire "os"
+programPath = lfs.realpath(lfs.currentdir())
+package.path = programPath .. "\\?.lua;" .. package.path
+package.path = package.path .. ";.\\Scripts\\?.lua;.\\Scripts\\UI\\?.lua;"
+
 local io = require("io")
 
-function wpmanager_load()
-    programPath = lfs.realpath(lfs.currentdir())
-    package.path = programPath .. "\\?.lua;" .. package.path
-    package.path = package.path .. ";.\\Scripts\\?.lua;.\\Scripts\\UI\\?.lua;"
 
+function wpmanager_load()
     local io = require("io")
     -- local http = require("socket.http")
     require("LuaSocket.socket")
@@ -436,28 +437,31 @@ function wpmanager_load()
 end
 
 
-function LuaExportStart()
-
-  programPath = lfs.realpath(lfs.currentdir())
-  package.path = programPath .. "\\?.lua;" .. package.path
-  package.path = package.path .. ";.\\Scripts\\?.lua;.\\Scripts\\UI\\?.lua;"
-
-  local io = require("io")
-  local socket = require("LuaSocket.socket")
-  require("LuaSocket.url")
-  require("LuaSocket.http")
-  local http = require('socket.http')
-
-  host = "127.0.0.1"
-  port = 5000
-  local username = LoGetPilotName()
-  local resp, status, err = http.request("http://127.0.0.1:5000/set_username/" .. username)
-end
-
-
 local status, err = pcall(wpmanager_load)
 if not status then
     local logFile = io.open(lfs.writedir() .. [[Logs\WP-Manager_Error.log]], "w")
     logFile.write("[WP-Manager] Load Error: " .. tostring(err))
     logFile:flush()
+end
+
+
+
+function LuaExportStart()
+  socket = require("socket")
+  cli = socket.tcp()
+  cli:connect("127.0.0.1", 5000)
+end
+
+
+function LuaExportStop()
+  cli:close()
+end
+
+
+function LuaExportAfterNextFrame()
+  username = LoGetPilotName()
+  if username == nil then
+    username = "someone_somewhere"
+  end
+  cli:send("GET /set_username/" .. username .. " HTTP/1.1\r\nHost: 127.0.0.1:5000\r\n\r\n")
 end

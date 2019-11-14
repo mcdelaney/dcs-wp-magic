@@ -261,9 +261,12 @@ def read_coords(start_units=config.START_UNITS, coalition='Enemies'):
                      FROM object \
                      WHERE coalition = '%s' AND \
                        alive = 1 AND pilot = '%s'" % (coalition, unit))
-        start = [dict(r) for r in cur.fetchall()][0]
+        start = [dict(r) for r in cur.fetchall()]
         if start:
+            start = start[0]
             break
+    if not start:
+        raise ValueError("No record found for start_unit %s..." % start_units)
     LOG.info('Start coord found: %s...', start)
     conn.close()
     return enemies, start

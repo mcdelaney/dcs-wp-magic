@@ -8,18 +8,11 @@ from dcs.coords.processor import construct_enemy_set
 from dcs.coords.wp_ctrl import lookup_coords, update_coord
 
 
-# class CoordServer:
-#
-#     def __init__(self, coord_user="someone_somewhere"):
-#         self.app = Flask("coord_server")
-#         self.logger = self.app.logger
-#         self.coord_user = coord_user
-#
-
 app = Flask('coord_server')
 app.logger.setLevel(level=logging.INFO)
 JOB = None
-COORD_USER = "someone_somewhere"
+COORD_USER = "none"
+
 
 @app.route("/stop")
 def stop_job():
@@ -50,14 +43,15 @@ def start_entry(rack, coord_string):
 
 
 @app.route('/set_username/<username>')
-def username(username, *args):
+def username(username):
+    app.logger.info(username)
     try:
         global COORD_USER
         COORD_USER = username
     except Exception:
         pass
     app.logger.info("New username: %s...", COORD_USER)
-    return "ok"
+    return Response(status=200)
 
 
 @app.route("/coords/<coord_fmt>")
@@ -75,7 +69,7 @@ def as_strings_coords(coord_fmt, pilot=None):
         return resp
 
 
-def main(coord_user=None, *args):
+def main(*args):
     app.logger.info("Starting app...")
     app.run(debug=False, threaded=False)
 
