@@ -1,4 +1,5 @@
 -- WPManagerrequire "os"
+local io = require("io")
 
 function wpmanager_load()
     programPath = lfs.realpath(lfs.currentdir())
@@ -99,8 +100,8 @@ function wpmanager_load()
     end
 
     local function updateCoordinates()
-        local pilot = "someone_somewhere"
-        local resp, status, err = http.request("http://127.0.0.1:5000/coords/" .. fmt .. "/" .. pilot)
+
+        local resp, status, err = http.request("http://127.0.0.1:5000/coords/" .. fmt)
         if status ~= 200 then
             return "Error updating coordinates!"
         end
@@ -391,7 +392,7 @@ function wpmanager_load()
             local status, err = pcall(wpmanager.createWindow)
           end
             if not status then
-                net.log("[WP-Manager] Error creating window: " .. tostring(err))
+                wpmanager.log("[WP-Manager] Error creating window: " .. tostring(err))
         end
 
         window:setVisible(true)
@@ -431,10 +432,32 @@ function wpmanager_load()
 
     DCS.setUserCallbacks(wpmanager)
 
-    net.log("[WP-Manager] Loaded ...")
+    wpmanager.log("[WP-Manager] Loaded ...")
 end
+
+
+function LuaExportStart()
+
+  programPath = lfs.realpath(lfs.currentdir())
+  package.path = programPath .. "\\?.lua;" .. package.path
+  package.path = package.path .. ";.\\Scripts\\?.lua;.\\Scripts\\UI\\?.lua;"
+
+  local io = require("io")
+  local socket = require("LuaSocket.socket")
+  require("LuaSocket.url")
+  require("LuaSocket.http")
+  local http = require('socket.http')
+
+  host = "127.0.0.1"
+  port = 5000
+  local username = LoGetPilotName()
+  local resp, status, err = http.request("http://127.0.0.1:5000/set_username/" .. username)
+end
+
 
 local status, err = pcall(wpmanager_load)
 if not status then
-    net.log("[WP-Manager] Load Error: " .. tostring(err))
+    local logFile = io.open(lfs.writedir() .. [[Logs\WP-Manager_Error.log]], "w")
+    logFile.write("[WP-Manager] Load Error: " .. tostring(err))
+    logFile:flush()
 end

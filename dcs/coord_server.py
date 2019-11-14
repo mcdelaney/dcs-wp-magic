@@ -60,7 +60,7 @@ def username(username, *args):
     return "ok"
 
 
-@app.route("/coords/<coord_fmt>/<pilot>")
+@app.route("/coords/<coord_fmt>")
 def as_strings_coords(coord_fmt, pilot=None):
     try:
         app.logger.info("Settings coords from user: %s...", COORD_USER)
