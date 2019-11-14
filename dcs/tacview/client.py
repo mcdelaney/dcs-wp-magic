@@ -106,7 +106,7 @@ async def determine_contact(rec, type='parent'):
     else:
         accpt_colors = ['Red'] if rec.color == 'Blue' else ['Red']
         filter = ((Object.type.startswith('Projectile')) |
-                   (Object.type.startswith('Weapon')))
+                  (Object.type.startswith('Weapon')))
 
     nearby_objs = (Object.select(Object.id, Object.alt, Object.lat,
                                  Object.long, Object.name, Object.pilot,
@@ -141,8 +141,8 @@ async def determine_contact(rec, type='parent'):
         return None
 
     LOG.debug('%s of %s %s found: %s - %s at %sm...%d considered...',
-             type, rec.type, rec.id, parent[4], parent[0], parent[1],
-             len(nearby_objs))
+              type, rec.type, rec.id, parent[4], parent[0], parent[1],
+              len(nearby_objs))
     return parent
 
 
@@ -225,7 +225,6 @@ async def process_line(obj_dict, db):
 
         LOG.debug("Record %s found ...will updated...", obj_dict['id'])
         for key, val in obj_dict.items():
-        # for k in COORD_KEYS + ['alive', 'last_seen']:
             try:
                 setattr(rec, key, val)
             except KeyError:
@@ -269,7 +268,7 @@ async def process_line(obj_dict, db):
         secs_from_last = (rec.last_seen - prev_ts).total_seconds()
         true_dist = compute_dist(get_cartesian_coord(rec.lat, rec.long, rec.alt),
                                  prev_coord)
-        velocity =  true_dist / secs_from_last if secs_from_last > 0 else None
+        velocity = true_dist / secs_from_last if secs_from_last > 0 else None
 
     LOG.debug("Creating event row for %s...", rec.id)
     event = Event.create(object=obj_dict['id'],
@@ -435,7 +434,8 @@ class SocketReader:
         """Read lines from socket stream."""
         if not self.reader:
             await self.open_connection()
-        data = await asyncio.wait_for(self.reader.readline(), timeout=5.0)
+        data = await self.reader.readline()
+        # data = await asyncio.wait_for(self.reader.readline(), timeout=5.0)
         if not data:
             raise ServerExitException("No data in message!")
         msg = data.decode().strip()
@@ -531,7 +531,7 @@ async def consumer(host=config.HOST, port=config.PORT, max_iters=None,
 
 
 def main(host, port, mode='local', debug=False, events=False, max_iters=None,
-          only_proc=False):
+         only_proc=False):
     """Start event loop to consume stream."""
     # pylint: disable=global-statement,disable=too-many-arguments
     global DEBUG, EVENTS, PUB_SUB
