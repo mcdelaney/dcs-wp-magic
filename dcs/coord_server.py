@@ -2,21 +2,16 @@
 import logging
 from multiprocessing import Process
 
-from flask import Flask, abort, Response
+from flask import Flask, Response
 
 from dcs.coords.processor import construct_enemy_set
 from dcs.coords.wp_ctrl import lookup_coords, update_coord
 
 
-class CoordServer(Flask):
-
-    def __init__(self, coord_user="someone_somewhere"):
-        super().__init__('coord_server')
-        coord_user = coord_user
-
-
-app = CoordServer()
+app = Flask('coord_server')
+app.logger.setLevel(level=logging.INFO)
 JOB = None
+COORD_USER = "none"
 
 
 @app.route("/stop")
@@ -47,10 +42,23 @@ def start_entry(rack, coord_string):
         return Response(status=500)
 
 
-@app.route("/coords/<coord_fmt>")
-def as_strings_coords(coord_fmt):
+@app.route('/set_username/<username>')
+def username(username):
+    app.logger.info(username)
     try:
-        enemies = construct_enemy_set(app.coord_user, coord_fmt=coord_fmt)
+        global COORD_USER
+        COORD_USER = username
+    except Exception:
+        pass
+    app.logger.info("New username: %s...", COORD_USER)
+    return Response(status=200)
+
+
+@app.route("/coords/<coord_fmt>")
+def as_strings_coords(coord_fmt, pilot=None):
+    try:
+        app.logger.info("Settings coords from user: %s...", COORD_USER)
+        enemies = construct_enemy_set(COORD_USER, coord_fmt=coord_fmt)
         app.logger.info('Enemeies Collected...')
         return enemies
 
@@ -61,10 +69,8 @@ def as_strings_coords(coord_fmt):
         return resp
 
 
-def main(coord_user=None, *args):
-    app.logger.setLevel(level=logging.INFO)
-    if coord_user:
-        app.coord_user = coord_user
+def main(*args):
+    app.logger.info("Starting app...")
     app.run(debug=False, threaded=False)
 
 

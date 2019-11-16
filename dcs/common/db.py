@@ -3,21 +3,17 @@ from pathlib import Path
 
 import peewee as pw
 from playhouse.pool import PooledSqliteDatabase
+from playhouse.sqlite_udf import sqrt
 
-from dcs.common  import config
+from dcs.common import config
 
 
 DB = PooledSqliteDatabase(None,
                           max_connections=300,
                           pragmas={'journal_mode': 'wal',
-                                    'synchronous': 'OFF',
-                                    'cache_size': -1024 * 1000})
+                                   'synchronous': 'OFF',
+                                   'cache_size': -1024 * 1000})
 
-# from playhouse.apsw_ext import APSWDatabase, DateTimeField
-# DB = APSWDatabase(None,
-#                        pragmas={'journal_mode': 'wal',
-#                                 'synchronous': 'OFF',
-#                                 'cache_size': -1024 * 1000})
 
 class BaseModel(pw.Model):
     """Base model with DB defined from which all others inherit."""
@@ -52,8 +48,13 @@ class Object(BaseModel):
     v_coord = pw.FloatField(null=True)
     heading = pw.FloatField(null=True)
     updates = pw.IntegerField(default=1)
+
+    impactor = pw.CharField(null=True)
+    impactor_dist = pw.FloatField(null=True)
+
     parent = pw.CharField(null=True)
     parent_dist = pw.FloatField(null=True)
+
     debug = pw.CharField(null=True)
 
 
@@ -96,20 +97,24 @@ class TestTable(BaseModel):
     debug = pw.CharField()
 
 
-def init_db():
+def init_db(drop=True, memory=False):
     """Initialize the database and execute create table statements."""
-    db_path = Path(config.DB_LOC)
-    if not db_path.parent.exists():
-        db_path.parent.mkdir()
-    DB.init(config.DB_LOC)
-    # DB.init(':memory:')
+    if memory:
+        DB.init(":memory:")
+    else:
+        db_path = Path(config.DB_LOC)
+        if not db_path.parent.exists():
+            db_path.parent.mkdir()
+        DB.init(config.DB_LOC)
+
     DB.connect()
-    DB.drop_tables([Object, Event, Session, TestTable])
+    if drop:
+        DB.drop_tables([Object, Event, Session, TestTable])
     DB.create_tables([Object, Event, Session, TestTable])
     return DB
 
 
-class Publisher: # pylint: disable=too-few-public-methods
+class Publisher:  # pylint: disable=too-few-public-methods
     """Pubsub writer."""
 
     def __init__(self):

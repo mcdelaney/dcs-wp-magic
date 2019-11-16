@@ -1,10 +1,12 @@
-WP-Managerrequire "os"
+-- WPManagerrequire "os"
+programPath = lfs.realpath(lfs.currentdir())
+package.path = programPath .. "\\?.lua;" .. package.path
+package.path = package.path .. ";.\\Scripts\\?.lua;.\\Scripts\\UI\\?.lua;"
+
+local io = require("io")
+
 
 function wpmanager_load()
-    programPath = lfs.realpath(lfs.currentdir())
-    package.path = programPath .. "\\?.lua;" .. package.path
-    package.path = package.path .. ";.\\Scripts\\?.lua;.\\Scripts\\UI\\?.lua;"
-
     local io = require("io")
     -- local http = require("socket.http")
     require("LuaSocket.socket")
@@ -99,6 +101,7 @@ function wpmanager_load()
     end
 
     local function updateCoordinates()
+
         local resp, status, err = http.request("http://127.0.0.1:5000/coords/" .. fmt)
         if status ~= 200 then
             return "Error updating coordinates!"
@@ -149,15 +152,11 @@ function wpmanager_load()
     end
 
     function wpmanager.createWindow()
-        local file_path = lfs.writedir() .. [[WP-Manager\]] .. [[target.txt]]
-        local file, err = io.open(file_path, "w")
-        file:write("")
-        file:close()
-
-        window = DialogLoader.spawnDialogFromFile(lfs.writedir() .. "Scripts\\WP-Manager\\WPManager.dlg", cdata)
+        window = DialogLoader.spawnDialogFromFile(lfs.writedir() .. "Scripts\\WP-Manager\\WPManager.dlg")
+        -- , cdata)
         windowDefaultSkin = window:getSkin()
         panel = window.Box
-        textarea = panel.WP-ManagerEditBox
+        textarea = panel.WPManagerEditBox
         coordButton = panel.WPManagerCoordButton
         coordButton:setState(true)
 
@@ -266,16 +265,6 @@ function wpmanager_load()
             end
         )
 
-        -- keepAllBtn:addMouseDownCallback(
-        --     function(self)
-        --         if status == "alive" then
-        --             status = "all"
-        --         else
-        --             status = "alive"
-        --         end
-        --     end
-        -- )
-
         wpmanager.log("Adding section callbacks...")
         for k, v in pairs(sections) do
             sections[k]:addMouseDownCallback(
@@ -339,6 +328,16 @@ function wpmanager_load()
 
         wpmanager.hide()
         wpmanager.log("WPManager Window created")
+
+        local dev = GetSelf()
+        m=getmetatable(dev)
+        str=dump("GetSelf meta",m)
+        local lines=strsplit("\n",str)
+        for k,v in ipairs(lines) do
+           wpmanager.log(v)
+        end
+
+
     end
 
     function wpmanager.setVisible(b)
@@ -394,7 +393,7 @@ function wpmanager_load()
             local status, err = pcall(wpmanager.createWindow)
           end
             if not status then
-                net.log("[WP-Manager] Error creating window: " .. tostring(err))
+                wpmanager.log("[WP-Manager] Error creating window: " .. tostring(err))
         end
 
         window:setVisible(true)
@@ -434,10 +433,35 @@ function wpmanager_load()
 
     DCS.setUserCallbacks(wpmanager)
 
-    net.log("[WP-Manager] Loaded ...")
+    wpmanager.log("[WP-Manager] Loaded ...")
 end
+
 
 local status, err = pcall(wpmanager_load)
 if not status then
-    net.log("[WP-Manager] Load Error: " .. tostring(err))
+    local logFile = io.open(lfs.writedir() .. [[Logs\WP-Manager_Error.log]], "w")
+    logFile.write("[WP-Manager] Load Error: " .. tostring(err))
+    logFile:flush()
+end
+
+
+
+function LuaExportStart()
+  socket = require("socket")
+  cli = socket.tcp()
+  cli:connect("127.0.0.1", 5000)
+end
+
+
+function LuaExportStop()
+  cli:close()
+end
+
+
+function LuaExportAfterNextFrame()
+  username = LoGetPilotName()
+  if username == nil then
+    username = "someone_somewhere"
+  end
+  cli:send("GET /set_username/" .. username .. " HTTP/1.1\r\nHost: 127.0.0.1:5000\r\n\r\n")
 end

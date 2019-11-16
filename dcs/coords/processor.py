@@ -204,7 +204,8 @@ def create_enemy_groups(enemy_state, start_coord, coord_fmt='dms'):
     return enemy_groups
 
 
-def construct_enemy_set(start_unit, result_as_string=True, coord_fmt='dms'):
+def construct_enemy_set(start_unit=None, result_as_string=True, coord_fmt='dms',
+                        pilot=None):
     """Constuct a EnemyGroup of Enemies, returning a formatted string."""
 
     enemy_state, start_coord = read_coords(start_unit)
@@ -260,9 +261,12 @@ def read_coords(start_units=config.START_UNITS, coalition='Enemies'):
                      FROM object \
                      WHERE coalition = '%s' AND \
                        alive = 1 AND pilot = '%s'" % (coalition, unit))
-        start = [dict(r) for r in cur.fetchall()][0]
+        start = [dict(r) for r in cur.fetchall()]
         if start:
+            start = start[0]
             break
+    if not start:
+        raise ValueError("No record found for start_unit %s..." % start_units)
     LOG.info('Start coord found: %s...', start)
     conn.close()
     return enemies, start

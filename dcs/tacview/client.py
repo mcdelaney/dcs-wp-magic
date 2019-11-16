@@ -6,34 +6,22 @@ database.
 """
 import asyncio
 from asyncio.log import logging
+from dataclasses import dataclass
 from datetime import datetime, timedelta, date
 import json
-import math
+from math import cos, sin, sqrt
 from uuid import uuid1
 import time
 
 import peewee as pw
 from playhouse.shortcuts import model_to_dict
-from geopy.distance import geodesic
-from geopy import distance
-from geopy.point import Point
-# import redis
 
 from dcs.common.db import init_db, Object, Event, Session, Publisher
 from dcs.common import get_logger
 from dcs.common import config
 
 
-# server = redis.Redis(port=7777)
-# try:
-#     server.ping()
-# except redis.exceptions.ConnectionError:
-#     subprocess.call(["redis-server", "--port", "7777",
-#                      "--daemonize", "yes"])
-
-
 DEBUG = False
-PARENTS = False
 PUB_SUB = None
 EVENTS = True
 
@@ -44,7 +32,7 @@ HANDSHAKE = '\n'.join(["XtraLib.Stream.0",
                        'Tacview.RealTimeTelemetry.0',
                        "tacview_reader",
                        config.PASSWORD,
-                       "\0"])
+                       ]) + "\0"
 HANDSHAKE = HANDSHAKE.encode('utf-8')
 REF_TIME_FMT = '%Y-%m-%dT%H:%M:%SZ'
 
@@ -52,55 +40,109 @@ COORD_KEYS = ['long', 'lat', 'alt', 'roll', 'pitch', 'yaw', 'u_coord',
               'v_coord', 'heading']
 
 
-# def to_redis(obj):
-#     """Save to redis cache."""
-#     if 'last_seen' in obj.keys():
-#         obj['last_seen'] = obj['last_seen'].timestamp()
-#     if 'first_seen' in obj.keys():
-#         obj['first_seen'] = obj['first_seen'].timestamp()
-#     server.hmset(obj['id'], obj)
+@dataclass
+class ObjectRec:
+    id: str
+    first_seen: datetime
+    alive: int
+    session_id: str
+    last_seen: datetime
+    updates: int = 1
+
+    name: str = None
+    color: str = None
+    country: str = None
+    grp: str = None
+    pilot: str = None
+    platform: str = None
+    type: str = None
+
+    coalition: str = None
+    lat: float = None
+    long: float = None
+    alt: float = None
+    roll: float = None
+    pitch: float = None
+    yaw: float = None
+    u_coord: float = None
+    v_coord: float = None
+    heading: float = None
+
+    impactor: str = None
+    impactor_dist: float = None
+    parent: str = None
+    parent_dist: float = None
 
 
-async def determine_parent(rec):
+def get_cartesian_coord(lat, long, alt):
+    """Convert coords from geodesic to cartesian."""
+    x = alt * cos(lat) * sin(long)
+    y = alt * sin(lat)
+    z = alt * cos(lat) * cos(long)
+    return x, y, z
+
+
+def compute_dist(p_1, p_2):
+    """Compute cartesian distance between points."""
+    return sqrt((p_2[0]-p_1[0])**2 + (p_2[1]-p_1[1])**2 + (p_2[2]-p_1[2])**2)
+
+
+async def determine_contact(rec, type='parent'):
     """Determine the parent of missiles, rockets, and bombs."""
+    if type not in ['parent', 'impactor']:
+        raise ValueError("Type must be impactor or parent!")
+
     LOG.debug("Determing parent for object id: %s -- %s-%s...",
               rec.id, rec.name, rec.type)
     offset_min = rec.last_seen - timedelta(seconds=1)
-    current_point = Point(rec.lat, rec.long, rec.alt)
+    current_point = get_cartesian_coord(rec.lat, rec.long, rec.alt)
 
-    accpt_colors = ['Blue', 'Red'] if rec.color == 'Violet' else [rec.color]
+    if type == "parent":
+        accpt_colors = ['Blue', 'Red'] if rec.color == 'Violet' else [rec.color]
+        filter = (~(Object.type.startswith('Decoy')) &
+                  ~(Object.type == 'Misc+Shrapnel') &
+                  ~(Object.type.startswith('Projectile'))
+                  )
+    else:
+        accpt_colors = ['Red'] if rec.color == 'Blue' else ['Red']
+        filter = ((Object.type.startswith('Projectile')) |
+                  (Object.type.startswith('Weapon')))
+
     nearby_objs = (Object.select(Object.id, Object.alt, Object.lat,
-                                 Object.long, Object.name).
-                   where((Object.alive == 1)
-                         & (Object.id != rec.id)
+                                 Object.long, Object.name, Object.pilot,
+                                 Object.type).
+                   where((~Object.id == rec.id)
+                         & (~Object.type == rec.type)
+                         & ((Object.alive == 1) | (Object.last_seen >= offset_min))
                          & (Object.color in accpt_colors)
-                         & (Object.alt.between(rec.alt-200, rec.alt+200))
-                         & (Object.lat.between(rec.lat-0.05, rec.lat+0.05))
-                         & (Object.long.between(rec.long-0.05, rec.long+0.05))
-                         & (Object.first_seen >= offset_min)))
-
-    if not nearby_objs:
-        LOG.warning("No nearby objects found for weapon %s", rec.name)
-        return None
-
+                         & (Object.alt.between(rec.alt-1000, rec.alt+1000))
+                         & (Object.lat.between(rec.lat-0.01, rec.lat+0.01))
+                         & (Object.long.between(rec.long-0.01, rec.long+0.01))
+                         & filter
+                         ))
+    init_matches = len(nearby_objs)
     parent = []
     for nearby in nearby_objs:
-        near_pt = Point(nearby.lat, nearby.long, nearby.alt)
-        prox = distance.distance(current_point, near_pt).m
+        near_pt = get_cartesian_coord(nearby.lat, nearby.long, nearby.alt)
+        prox = compute_dist(current_point, near_pt)
         LOG.debug("Distance to object %s is %s...", nearby.name, str(prox))
         if not parent or (prox < parent[1]):
-            parent = [nearby.id, prox]
-        if prox < 5:
-            LOG.debug("Distance is very close...breaking early...")
-            break
+            parent = [nearby.id, prox, nearby.name, nearby.pilot, nearby.type]
 
-    if parent[1] > 50:
-        LOG.warning("Rejecting closest parent for %s-%s-%s: %sm...%d checked!",
-                    rec.id, rec.name, rec.type, str(parent[1]),
+    if not parent:
+        LOG.warning("Zero possible %s matches found for %s %s, but there were %d at first...",
+                    type, rec.id, rec.type, init_matches)
+        return None
+
+    if parent[1] > 100:
+        LOG.warning("Rejecting closest parent for %s-%s-%s: %s %sm...%d checked!",
+                    rec.id, rec.name, rec.type, parent[4], str(parent[1]),
                     len(nearby_objs))
         return None
-    LOG.info('Parent of %s found: %s at %sm...%d considered...',
-             rec.id, parent[0], parent[1], len(nearby_objs))
+
+    LOG.debug('%s of %s %s found: %s - %s at %sm...%d considered...',
+              type, rec.type, rec.id, parent[4], parent[0], parent[1],
+              len(nearby_objs))
     return parent
 
 
@@ -121,21 +163,18 @@ def json_serial(obj):
 async def line_to_dict(line, ref):
     """Process a line into a dictionary."""
     line = line.split(',')
+    if line[0] == "0":
+        return
+    obj_dict = {'last_seen': ref.time, 'session_id': ref.session_id}
 
     if line[0][0] == '-':
         LOG.debug("Record %s is now dead...updating...", id)
-        obj_dict = {'id': line[0][1:].strip(),
-                    'alive': 0,
-                    'last_seen': ref.time,
-                    'session_id': ref.session_id
-                    }
+        obj_dict['alive'] = 0
+        obj_dict['id'] = line[0][1:].strip()
         # server.delete(obj_dict['id'])
         return obj_dict
 
-    obj_dict = {'id': line[0],
-                'last_seen': ref.time,
-                'session_id': ref.session_id
-                }
+    obj_dict['id'] = line[0]
 
     for chunk in line[1:]:
         key, val = chunk.split('=', 1)
@@ -169,8 +208,6 @@ async def line_to_dict(line, ref):
 
     if 'long' in obj_dict.keys():
         obj_dict['long'] = obj_dict['long'] + ref.long
-
-    # to_redis(obj_dict.copy())
     return obj_dict
 
 
@@ -182,13 +219,14 @@ async def process_line(obj_dict, db):
 
     if rec:
         prev_ts = rec.last_seen
-        prev_coord = [rec.lat, rec.long, rec.alt]
+        rec.updates += 1
+        prev_coord = get_cartesian_coord(rec.lat, rec.long, rec.alt)
         # Update existing record
-        rec.updates = rec.updates + 1
+
         LOG.debug("Record %s found ...will updated...", obj_dict['id'])
-        for k in COORD_KEYS + ['alive', 'last_seen']:
+        for key, val in obj_dict.items():
             try:
-                setattr(rec, k, obj_dict[k])
+                setattr(rec, key, val)
             except KeyError:
                 pass
         rec.last_seen = obj_dict['last_seen']
@@ -197,14 +235,23 @@ async def process_line(obj_dict, db):
         # Create new record
         LOG.debug("Record not found...creating....")
         rec = Object.create(**obj_dict, first_seen=obj_dict['last_seen'])
-        if PARENTS:
-            if any([t in rec.type.lower() for t in ['weapon', 'projectile',
-                                                    'shrapnel']]):
-                parent_info = await determine_parent(rec)
-                if parent_info:
-                    rec.parent = parent_info[0]
-                    rec.parent_dist = parent_info[1]
-                    rec.save()
+
+        if any([t in rec.type.lower() for t in ['weapon', 'projectile',
+                                                'decoy', 'container',
+                                                'parachutist', 'shrapnel']]):
+            parent_info = await determine_contact(rec, type='parent')
+            if parent_info:
+                rec.parent = parent_info[0]
+                rec.parent_dist = parent_info[1]
+                rec.save()
+
+            if parent_info and 'shrapnel' in rec.type.lower():
+                parent = Object.get(id=parent_info[0])
+                impactor = await determine_contact(rec, type='impactor')
+                if impactor:
+                    parent.impactor = impactor[0]
+                    parent.impactor_dist = impactor[1]
+                    parent.save()
 
         if PUB_SUB:
             # Only send first update to PUB_SUB.
@@ -215,21 +262,13 @@ async def process_line(obj_dict, db):
 
     true_dist = None
     secs_from_last = None
-    velocity = None
     prev_coord = False
+    velocity = None
     if prev_coord:
         secs_from_last = (rec.last_seen - prev_ts).total_seconds()
-        flat_dist = geodesic((rec.lat, rec.long),
-                             (prev_coord[0], prev_coord[1])).meters
-
-        h_dist = rec.alt - prev_coord[2]
-        true_dist = math.sqrt(flat_dist**2 + h_dist**2)
-
-        try:
-            velocity = true_dist / secs_from_last
-        except ZeroDivisionError:
-            # This happens if the object has never been updated.
-            pass
+        true_dist = compute_dist(get_cartesian_coord(rec.lat, rec.long, rec.alt),
+                                 prev_coord)
+        velocity = true_dist / secs_from_last if secs_from_last > 0 else None
 
     LOG.debug("Creating event row for %s...", rec.id)
     event = Event.create(object=obj_dict['id'],
@@ -395,7 +434,8 @@ class SocketReader:
         """Read lines from socket stream."""
         if not self.reader:
             await self.open_connection()
-        data = await asyncio.wait_for(self.reader.readline(), timeout=5.0)
+        data = await self.reader.readline()
+        # data = await asyncio.wait_for(self.reader.readline(), timeout=5.0)
         if not data:
             raise ServerExitException("No data in message!")
         msg = data.decode().strip()
@@ -423,9 +463,9 @@ async def handle_line(obj, ref, db):
 async def consumer(host=config.HOST, port=config.PORT, max_iters=None,
                    only_proc=False):
     """Main method to consume stream."""
-    LOG.info("Starting consumer with settings: events: %s -- parents: %s"
+    LOG.info("Starting consumer with settings: events: %s -- "
              "pubsub: %s -- debug: %s --  iters %s",
-             EVENTS, PARENTS, PUB_SUB, DEBUG, max_iters)
+             EVENTS, PUB_SUB, DEBUG, max_iters)
     tasks_complete = 1  # I know this is wrong.  It just makes division easier.
     conn = init_db()
     sock = SocketReader(host, port)
@@ -434,6 +474,7 @@ async def consumer(host=config.HOST, port=config.PORT, max_iters=None,
     tasks = []
     init_time = time.time()
     ref = Session.select().limit(1)[0]
+    last_log = 0
 
     while True:
         try:
@@ -441,13 +482,19 @@ async def consumer(host=config.HOST, port=config.PORT, max_iters=None,
 
             if obj[0] == "#":
                 sock.ref.update_time(obj[1:])
+                runtime = round(time.time() - init_time, 2)
+                log_check = runtime - last_log
+                if log_check > 5:
+                    LOG.info("Running time: %s -- We are %.2f seconds ahead..."
+                             "Lines/second: %.2f",
+                             runtime, sock.ref.last_time - runtime,
+                             tasks_complete/(time.time() - init_time))
+                    last_log = runtime
+
                 ref = Session.select().limit(1)[0]
                 if tasks:
                     await asyncio.gather(*tasks)
                     tasks = []
-
-                LOG.debug('Average task/sec: %.2f...',
-                          tasks_complete/(time.time() - init_time))
 
             else:
                 if only_proc:
@@ -479,27 +526,21 @@ async def consumer(host=config.HOST, port=config.PORT, max_iters=None,
             LOG.info('Total iters : %s', str(tasks_complete))
             LOG.info('Total seconds running : %.2f', total_time)
             LOG.info('Lines/second: %.4f', tasks_complete/total_time)
-            # LOG.info('Longest iter time: %.4f', max(timer))
             LOG.info('Exiting tacview-client!')
             break
 
 
-def main(host, port, mode='local', debug=False, parents=False,
-         events=False, max_iters=None, only_proc=False):
+def main(host, port, mode='local', debug=False, events=False, max_iters=None,
+         only_proc=False):
     """Start event loop to consume stream."""
     # pylint: disable=global-statement,disable=too-many-arguments
-    global DEBUG, PARENTS, EVENTS, PUB_SUB
+    global DEBUG, EVENTS, PUB_SUB
     DEBUG = debug
     if DEBUG:
         LOG.setLevel(logging.DEBUG)
 
-    # global PARENTS
-    PARENTS = parents
-
-    # global EVENTS
     EVENTS = events
 
-    # global PUB_SUB
     if mode == 'remote':
         PUB_SUB = Publisher()
 
@@ -509,5 +550,5 @@ def main(host, port, mode='local', debug=False, parents=False,
     conn = sqlite3.connect("data/dcs.db",
                            detect_types=sqlite3.PARSE_DECLTYPES)
     print(pd.read_sql("select count(*) from event", conn))
-    print(pd.read_sql("select count(*), count(parent) from object", conn))
+    print(pd.read_sql("select count(*), count(parent), COUNT(impactor) from object", conn))
     conn.close()

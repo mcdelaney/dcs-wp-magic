@@ -20,36 +20,30 @@ class DCSWPControllerApp(Tk):
         self.iconbitmap('icon.ico')
         self.title("DCS WP Manager")
 
-        self.user_label = Label(self, text='Username:')
-        self.user_label.grid(column=0, row=1)
-        self.user = Entry()
-        self.user.insert(50, 'someone_somewhere')
-        self.user.grid(column=1, row=1)
-
         self.host_label = Label(self, text='Host:')
-        self.host_label.grid(column=0, row=2)
+        self.host_label.grid(column=0, row=1)
         self.host = Entry()
         self.host.insert(50, config.HOST)
-        self.host.grid(column=1, row=2)
+        self.host.grid(column=1, row=1)
 
         self.port_label = Label(self, text='Port:')
-        self.port_label.grid(column=0, row=3)
+        self.port_label.grid(column=0, row=2)
         self.port = Entry()
         self.port.insert(10, config.PORT)
-        self.port.grid(column=1, row=3)
+        self.port.grid(column=1, row=2)
 
         self.start = Button(self, text="Start", state="normal",
-                               command=self.switch_status)
-        self.start.grid(column=0, row=5)
+                            command=self.switch_status)
+        self.start.grid(column=0, row=4)
 
         self.stop = Button(self, text="Stop", state='disabled',
-                              command=self.switch_status)
-        self.stop.grid(column=1, row=5)
+                           command=self.switch_status)
+        self.stop.grid(column=1, row=4)
 
         self.label = Label(self, text='Status:')
-        self.label.grid(column=0, row=6)
+        self.label.grid(column=0, row=5)
         self.status_value = Label(self, text="Stopped")
-        self.status_value.grid(column=1, row=6)
+        self.status_value.grid(column=1, row=5)
 
         self.tac_proc = None
         self.coord_proc = None
@@ -61,7 +55,7 @@ class DCSWPControllerApp(Tk):
             self.start_coord_server()
             self.stop.configure(state="normal")
             self.start.configure(state="disabled")
-            self.status_value.configure(text="Running with user:\n %s" % self.user.get())
+            self.status_value.configure(text="Running")
             LOG.info('Status values updated correctly...')
         else:
             self.stop_process()
@@ -87,8 +81,7 @@ class DCSWPControllerApp(Tk):
         if self.coord_proc:
             raise ValueError("Coord Server process already exists!")
         LOG.info('Starting coord server process...')
-        self.coord_proc = Process(target=coord_server.main,
-                                  args=(self.user.get(),))
+        self.coord_proc = Process(target=coord_server.main)
         self.coord_proc.start()
         LOG.info("Coord server process started successfully...")
 
