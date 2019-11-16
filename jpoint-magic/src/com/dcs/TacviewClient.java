@@ -296,6 +296,7 @@ public class TacviewClient {
         String[] accept_colors = (current_rec.color.equals("Violet")) ? new String[] {"Red", "Blue"} : new String[] {current_rec.color};
         Optional<DistanceComparison> possible_parents = tac_objects.entrySet()
                 .stream()
+                .parallel()
                 .map(Map.Entry::getValue)
                 .filter(rec -> (!Arrays.asList(parent_types).contains(rec.type)))
                 .filter(rec -> Arrays.asList(accept_colors ).contains(rec.color))
@@ -307,12 +308,11 @@ public class TacviewClient {
 
         if (possible_parents.isPresent()) {
             DistanceComparison closest = possible_parents.get();
-            LOGGER.info("Parent lookup for {}-{} -- {}-{}: {}", current_rec.type,current_rec.id, closest.id, closest.type, closest.dist);
+            LOGGER.debug("Parent lookup for {}-{} -- {}-{}: {}", current_rec.type,current_rec.id, closest.id, closest.type, closest.dist);
             if (closest.dist < 100) {
                 return closest;
             }else {
-                LOGGER.warn("Rejecting closest match : {} {}!", closest.type, closest.dist);
-            }
+                LOGGER.warn("Rejecting closest parent match for {}-{}: {} {}!", current_rec.id, current_rec.type, closest.type, closest.dist);            }
         }
 
         return null;
@@ -322,13 +322,14 @@ public class TacviewClient {
 
         Instant recent_rec_offset = ref.referencetime.plus(1, ChronoUnit.MINUTES);
 
-        if (Arrays.stream(impact_types).anyMatch(current_rec.type::equals)) {
-            return null;
-        }
-        LOGGER.info("Attempting to find impactor for {}...", current_rec.type);
+//        if (!current_rec.type.equals("Misc+Shrapnel")) {
+//            return null;
+//        }
+
         String[] accept_colors = (current_rec.color.equals("Blue")) ? new String[] {"Red"} : new String[] {"Blue"};
         Optional<DistanceComparison> possible_impactors = tac_objects.entrySet()
                 .stream()
+                .parallel()
                 .map(Map.Entry::getValue)
                 .filter(rec -> Arrays.asList(impact_types).contains(rec.type))
                 .filter(rec -> Arrays.asList(accept_colors ).contains(rec.color))
@@ -341,17 +342,13 @@ public class TacviewClient {
         if (possible_impactors.isPresent()) {
             DistanceComparison closest = possible_impactors.get();
             if (closest.dist < 100) {
-                LOGGER.info("Impactor lookup for {}-{} -- {}-{}: {}", current_rec.type, current_rec.id, closest.id,
+                LOGGER.debug("Impactor lookup for {}-{} -- {}-{}: {}", current_rec.type, current_rec.id, closest.id,
                         closest.type, closest.dist);
                 return closest;
             }else {
-                LOGGER.warn("Rejecting closest match : {} {}!", closest.type, closest.dist);
+                LOGGER.warn("Rejecting closest impactor match for {}-{}: {} {}!", current_rec.id, current_rec.type, closest.type, closest.dist);
             }
-
-        }else{
-            LOGGER.warn("No impactor found for {} {}....", current_rec.id, current_rec.type);
         }
-
         return null;
     }
 
@@ -397,17 +394,18 @@ public class TacviewClient {
         }
 
         DistanceComparison distance = check_for_parent(obj_dict);
-//        System.out.println(distance);
         if (distance != null) {
             total_parents++;
             obj_dict.parent = distance.id;
             obj_dict.parent_dist= distance.dist;
             DCSObject parent = tac_objects.get(obj_dict.parent);
-            DistanceComparison impactor_dist = check_for_impactor(parent);
-            if (impactor_dist!= null) {
-                total_impactors++;
-                parent.parent = impactor_dist.id;
-                parent.parent_dist= impactor_dist.dist;
+            if (obj_dict.type.equals("Misc+Shrapnel")){
+                DistanceComparison impactor_dist = check_for_impactor(obj_dict);
+                if (impactor_dist!= null) {
+                    total_impactors++;
+                    parent.parent = impactor_dist.id;
+                    parent.parent_dist= impactor_dist.dist;
+                }
             }
         }
 
