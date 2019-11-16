@@ -84,7 +84,7 @@ def get_cartesian_coord(lat, long, alt):
 
 def compute_dist(p_1, p_2):
     """Compute cartesian distance between points."""
-    return sqrt((p_2[0]-p_1[0])**2 + (p_2[1]-p_1[1])**2 + (p_2[2]-p_1[2])**2)
+    return sqrt((p_2[0] - p_1[0])**2 + (p_2[1] - p_1[1])**2 + (p_2[2] - p_1[2])**2)
 
 
 async def determine_contact(rec, type='parent'):
@@ -92,13 +92,14 @@ async def determine_contact(rec, type='parent'):
     if type not in ['parent', 'impactor']:
         raise ValueError("Type must be impactor or parent!")
 
-    LOG.debug("Determing parent for object id: %s -- %s-%s...",
-              rec.id, rec.name, rec.type)
+    LOG.info("Determing parent for object id: %s -- %s-%s...",
+             rec.id, rec.name, rec.type)
     offset_min = rec.last_seen - timedelta(seconds=1)
     current_point = get_cartesian_coord(rec.lat, rec.long, rec.alt)
 
     if type == "parent":
-        accpt_colors = ['Blue', 'Red'] if rec.color == 'Violet' else [rec.color]
+        accpt_colors = [
+            'Blue', 'Red'] if rec.color == 'Violet' else [rec.color]
         filter = (~(Object.type.startswith('Decoy')) &
                   ~(Object.type == 'Misc+Shrapnel') &
                   ~(Object.type.startswith('Projectile'))
@@ -115,9 +116,9 @@ async def determine_contact(rec, type='parent'):
                          & (~Object.type == rec.type)
                          & ((Object.alive == 1) | (Object.last_seen >= offset_min))
                          & (Object.color in accpt_colors)
-                         & (Object.alt.between(rec.alt-1000, rec.alt+1000))
-                         & (Object.lat.between(rec.lat-0.01, rec.lat+0.01))
-                         & (Object.long.between(rec.long-0.01, rec.long+0.01))
+                         & (Object.alt.between(rec.alt - 2000, rec.alt + 2000))
+                         & (Object.lat.between(rec.lat - 0.015, rec.lat + 0.015))
+                         & (Object.long.between(rec.long - 0.015, rec.long + 0.015))
                          & filter
                          ))
     init_matches = len(nearby_objs)
@@ -125,24 +126,26 @@ async def determine_contact(rec, type='parent'):
     for nearby in nearby_objs:
         near_pt = get_cartesian_coord(nearby.lat, nearby.long, nearby.alt)
         prox = compute_dist(current_point, near_pt)
-        LOG.debug("Distance to object %s is %s...", nearby.name, str(prox))
+        LOG.info("Distance to object %s is %s...", nearby.name, str(prox))
         if not parent or (prox < parent[1]):
             parent = [nearby.id, prox, nearby.name, nearby.pilot, nearby.type]
 
     if not parent:
-        LOG.warning("Zero possible %s matches found for %s %s, but there were %d at first...",
+        LOG.warning("Zero possible %s matches found for %s %s,"
+                    " but there were %d at first...",
                     type, rec.id, rec.type, init_matches)
         return None
 
-    if parent[1] > 100:
-        LOG.warning("Rejecting closest parent for %s-%s-%s: %s %sm...%d checked!",
+    if parent[1] > 250:
+        LOG.warning("Rejecting closest parent for %s-%s-%s: "
+                    "%s %sm...%d checked!",
                     rec.id, rec.name, rec.type, parent[4], str(parent[1]),
                     len(nearby_objs))
         return None
 
-    LOG.debug('%s of %s %s found: %s - %s at %sm...%d considered...',
-              type, rec.type, rec.id, parent[4], parent[0], parent[1],
-              len(nearby_objs))
+    LOG.info('%s of %s %s found: %s - %s at %sm...%d considered...',
+             type, rec.type, rec.id, parent[4], parent[0], parent[1],
+             len(nearby_objs))
     return parent
 
 
@@ -171,7 +174,6 @@ async def line_to_dict(line, ref):
         LOG.debug("Record %s is now dead...updating...", id)
         obj_dict['alive'] = 0
         obj_dict['id'] = line[0][1:].strip()
-        # server.delete(obj_dict['id'])
         return obj_dict
 
     obj_dict['id'] = line[0]
@@ -197,7 +199,7 @@ async def line_to_dict(line, ref):
 
     i = 0
     for key in COORD_KEYS:
-        if i > len(coord)-1:
+        if i > len(coord) - 1:
             break
         if coord[i] != '':
             obj_dict[key] = float(coord[i])
@@ -239,6 +241,7 @@ async def process_line(obj_dict, db):
         if any([t in rec.type.lower() for t in ['weapon', 'projectile',
                                                 'decoy', 'container',
                                                 'parachutist', 'shrapnel']]):
+            LOG.info("Looking up parent for record...")
             parent_info = await determine_contact(rec, type='parent')
             if parent_info:
                 rec.parent = parent_info[0]
@@ -246,13 +249,11 @@ async def process_line(obj_dict, db):
                 rec.save()
 
             if parent_info and 'shrapnel' in rec.type.lower():
-                parent = Object.get(id=parent_info[0])
                 impactor = await determine_contact(rec, type='impactor')
                 if impactor:
-                    parent.impactor = impactor[0]
-                    parent.impactor_dist = impactor[1]
-                    parent.save()
-
+                    rec.impactor = impactor[0]
+                    rec.impactor_dist = impactor[1]
+                    rec.save()
         if PUB_SUB:
             # Only send first update to PUB_SUB.
             PUB_SUB.writer.publish(PUB_SUB.objects, data=serialize_data(rec))
@@ -488,7 +489,7 @@ async def consumer(host=config.HOST, port=config.PORT, max_iters=None,
                     LOG.info("Running time: %s -- We are %.2f seconds ahead..."
                              "Lines/second: %.2f",
                              runtime, sock.ref.last_time - runtime,
-                             tasks_complete/(time.time() - init_time))
+                             tasks_complete / (time.time() - init_time))
                     last_log = runtime
 
                 ref = Session.select().limit(1)[0]
@@ -525,7 +526,7 @@ async def consumer(host=config.HOST, port=config.PORT, max_iters=None,
             await sock.close()
             LOG.info('Total iters : %s', str(tasks_complete))
             LOG.info('Total seconds running : %.2f', total_time)
-            LOG.info('Lines/second: %.4f', tasks_complete/total_time)
+            LOG.info('Lines/second: %.4f', tasks_complete / total_time)
             LOG.info('Exiting tacview-client!')
             break
 
@@ -549,6 +550,7 @@ def main(host, port, mode='local', debug=False, events=False, max_iters=None,
     import pandas as pd
     conn = sqlite3.connect("data/dcs.db",
                            detect_types=sqlite3.PARSE_DECLTYPES)
-    print(pd.read_sql("select count(*) from event", conn))
-    print(pd.read_sql("select count(*), count(parent), COUNT(impactor) from object", conn))
+    print(pd.read_sql("select count(*) events from event", conn))
+    print(pd.read_sql("select count(*) objects, count(parent), COUNT(impactor) \
+                      FROM object", conn))
     conn.close()

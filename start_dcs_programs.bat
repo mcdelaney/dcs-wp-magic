@@ -1,5 +1,7 @@
 @echo off
 
+copy C:\Users\mcdel\dcs-wp-magic\Plugin\WPManager.lua  "C:\Users\mcdel\Saved Games\DCS\Scripts\ooks\WPManager.lua"
+
 CD "C:\Program Files (x86)\DCS-SimpleRadio-Standalone\"
 tasklist /nh /fi "imagename eq SR-ClientRadio.exe" | find /i "SR-ClientRadio.exe" > nul || (start "" "SR-ClientRadio.exe")
 
