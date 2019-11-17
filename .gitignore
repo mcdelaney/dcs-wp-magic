@@ -16,3 +16,4 @@ env/*
 perf_test.py
 **/**/*.log
 jpoint-magic/log/*
+jpoint-magic/.idea/*
