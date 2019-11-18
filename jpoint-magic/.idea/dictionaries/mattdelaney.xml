@@ -4,6 +4,11 @@
       <w>bigquery</w>
       <w>coord</w>
       <w>impactor</w>
+      <w>impactors</w>
+      <w>iters</w>
+      <w>referencelatitude</w>
+      <w>referencelongitude</w>
+      <w>referencetime</w>
       <w>tacview</w>
     </words>
   </dictionary>

@@ -7,7 +7,7 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 class DCSRef extends DcsDict {
-    String session_id = UUID.randomUUID().toString();
+    String id = !System.getenv("ENV").equals("prod") ? "TEST_SESSION" : UUID.randomUUID().toString();
     String datasource;
     String author;
     String title;
@@ -19,7 +19,7 @@ class DCSRef extends DcsDict {
     int total_iters = 0;
     boolean has_refs = false;
 
-    public void update_ref_value(String[] obj_split) {
+    void update_ref_value(String[] obj_split) {
 
         String[] values = obj_split[1].split(Pattern.quote("="));
         if (values[0].equals("ReferenceLatitude")) {
@@ -47,10 +47,9 @@ class DCSRef extends DcsDict {
             this.author = values[1];
             LOGGER.info("Author: " + this.author);
         }
-
     }
 
-    public void update_time_offset(String obj) {
+    void update_time_offset(String obj) {
         Double new_offset = Double.valueOf(obj.substring(1));
         long diff = Math.round((new_offset - this.last_offset) * 1000);
         this.last_offset = new_offset;
