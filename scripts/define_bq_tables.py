@@ -1,8 +1,10 @@
+#!/usr/bin/env python3
 """Script to create bigquery tables for event stream."""
+import argparse
 from google.cloud import bigquery # pylint: disable=no-name-in-module
 
 
-def main():
+def main(dataset, replace=False):
     """Do the job."""
     client = bigquery.Client()
 
@@ -13,7 +15,7 @@ def main():
         bigquery.SchemaField("alive", "INTEGER", mode="NULLABLE"),
         bigquery.SchemaField("last_seen", "TIMESTAMP", mode="NULLABLE"),
         bigquery.SchemaField("lat", "FLOAT", mode="NULLABLE"),
-        bigquery.SchemaField("long", "FLOAT", mode="NULLABLE"),
+        bigquery.SchemaField("lon", "FLOAT", mode="NULLABLE"),
         bigquery.SchemaField("alt", "float", mode="NULLABLE"),
         bigquery.SchemaField("roll", "float", mode="NULLABLE"),
         bigquery.SchemaField("pitch", "float", mode="NULLABLE"),
@@ -27,8 +29,13 @@ def main():
         bigquery.SchemaField("update_num", "INTEGER", mode="NULLABLE")
     ]
     try:
-        events_tbl_id = "dcs-analytics-257714.tacview.events"
+        events_tbl_id = f"dcs-analytics-257714.{dataset}.events"
         table = bigquery.Table(events_tbl_id, schema=events_schema)
+
+        if replace:
+            print(f"Deleting table {events_tbl_id}")
+            client.delete_table(table, not_found_ok=True)
+
         table.time_partitioning = bigquery.TimePartitioning(
             type_=bigquery.TimePartitioningType.DAY,
             field="last_seen",  # name of column to use for partitioning
@@ -56,7 +63,7 @@ def main():
         bigquery.SchemaField("alive", "INTEGER", mode="NULLABLE"),
         bigquery.SchemaField("last_seen", "TIMESTAMP", mode="NULLABLE"),
         bigquery.SchemaField("lat", "FLOAT", mode="NULLABLE"),
-        bigquery.SchemaField("long", "FLOAT", mode="NULLABLE"),
+        bigquery.SchemaField("lon", "FLOAT", mode="NULLABLE"),
         bigquery.SchemaField("alt", "float", mode="NULLABLE"),
         bigquery.SchemaField("roll", "float", mode="NULLABLE"),
         bigquery.SchemaField("pitch", "float", mode="NULLABLE"),
@@ -70,19 +77,25 @@ def main():
         bigquery.SchemaField("updates", "INTEGER", mode="NULLABLE"),
         bigquery.SchemaField("parent", "STRING", mode="NULLABLE"),
         bigquery.SchemaField("parent_dist", "FLOAT", mode="NULLABLE"),
-        bigquery.SchemaField("impactor", "STRING", mode="NULLABLE"),
-        bigquery.SchemaField("impactor_dist", "FLOAT", mode="NULLABLE")
+        bigquery.SchemaField("impacts", "RECORD", mode="REPEATED",
+                             fields=[
+                                 bigquery.SchemaField("id", "String", mode="NULLABLE"),
+                                 bigquery.SchemaField("dist", "FLOAT", mode="NULLABLE"),
+                             ])
     ]
 
     try:
-        objects_tbl_id = "dcs-analytics-257714.tacview.objects"
+        objects_tbl_id = f"dcs-analytics-257714.{dataset}.objects"
         table = bigquery.Table(objects_tbl_id, schema=objects_schema)
+        if replace:
+            print(f"Deleting table {objects_tbl_id}")
+            client.delete_table(table, not_found_ok=True)
+
         table.time_partitioning = bigquery.TimePartitioning(
             type_=bigquery.TimePartitioningType.DAY,
             field="first_seen",  # name of column to use for partitioning
             expiration_ms=None,
         )
-
         table = client.create_table(table)
     except Exception as err:
         print(err)
@@ -95,13 +108,18 @@ def main():
         bigquery.SchemaField("author", "STRING", mode="REQUIRED"),
         bigquery.SchemaField("datasource", "STRING", mode="REQUIRED"),
         bigquery.SchemaField("start_time", "TIMESTAMP", mode="REQUIRED"),
-        bigquery.SchemaField("lat", "FLOAT", mode="REQUIRED"),
-        bigquery.SchemaField("long", "FLOAT", mode="REQUIRED"),
-
+        bigquery.SchemaField("referencelongitude", "FLOAT", mode="REQUIRED"),
+        bigquery.SchemaField("referencelatitude", "FLOAT", mode="REQUIRED"),
+        bigquery.SchemaField("referencetime", "TIMESTAMP", mode="REQUIRED"),
     ]
+
     try:
-        sessions_tbl_id = "dcs-analytics-257714.tacview.sessions"
+        sessions_tbl_id = f"dcs-analytics-257714.{dataset}.sessions"
         table = bigquery.Table(sessions_tbl_id, schema=sessions_schema)
+        if replace:
+            print(f"Deleting table {sessions_tbl_id}")
+            client.delete_table(table, not_found_ok=True)
+
         table = client.create_table(table)
     except Exception as err:
         print(err)
@@ -109,4 +127,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dataset", default="stg", type=str)
+    parser.add_argument("--replace", default=False, type=bool)
+    args = parser.parse_args()
+    main(args.dataset, args.replace)
