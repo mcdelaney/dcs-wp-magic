@@ -7,21 +7,32 @@ from flask import Flask, Response
 from dcs.coords.processor import construct_enemy_set
 from dcs.coords.wp_ctrl import lookup_coords, update_coord
 
+logFormatter = logging.Formatter(
+    "%(asctime)s [%(name)s] [%(levelname)-5.5s]  %(message)s")
+fileHandler = logging.FileHandler("log/app.log", 'w')
+fileHandler.setFormatter(logFormatter)
 
-app = Flask('coord_server')
-app.logger.setLevel(level=logging.INFO)
-JOB = None
-COORD_USER = "none"
+
+class CoordApp(Flask):
+    def __init__(self, app_name):
+        super().__init__(app_name)
+        self.user = "None"
+        self.logger.setLevel(level=logging.INFO)
+        self.logger.addHandler(fileHandler)
+        self.logger.propogate = False
+        self.job = None
+
+
+app = CoordApp('coord_server')
 
 
 @app.route("/stop")
 def stop_job():
-    global JOB
     try:
-        if JOB:
+        if app.job:
             app.logger.info("Terminating thread...")
-            JOB.terminate()
-            JOB = None
+            app.job.terminate()
+            app.job = None
         else:
             app.logger.info("No thread currently running...")
     except Exception as e:
@@ -31,12 +42,11 @@ def stop_job():
 
 @app.route('/enter_coords/<rack>/<coord_string>')
 def start_entry(rack, coord_string):
-    global JOB
     try:
         stop_job()
         coords = lookup_coords(coord_string)
-        JOB = Process(target=update_coord, args=(rack, coords,))
-        JOB.start()
+        app.job = Process(target=update_coord, args=(rack, coords,))
+        app.job.start()
         return Response(status=200)
     except Exception:
         return Response(status=500)
@@ -44,13 +54,8 @@ def start_entry(rack, coord_string):
 
 @app.route('/set_username/<username>')
 def username(username):
-    app.logger.info(username)
-    try:
-        global COORD_USER
-        COORD_USER = username
-    except Exception:
-        pass
-    app.logger.info("New username: %s...", COORD_USER)
+    app.user = username
+    app.logger.info("New username: %s...", app.user)
     return Response(status=200)
 
 
@@ -61,7 +66,6 @@ def as_strings_coords(coord_fmt, pilot=None):
         enemies = construct_enemy_set(COORD_USER, coord_fmt=coord_fmt)
         app.logger.info('Enemeies Collected...')
         return enemies
-
     except Exception as e:
         app.logger.error(e)
         resp = Response(500)
