@@ -3,8 +3,10 @@ package com.dcs;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.stream.IntStream;
 
@@ -12,9 +14,6 @@ import java.util.stream.IntStream;
 class DcsDict {
 
     static Logger LOGGER = LoggerFactory.getLogger("ObjDict");
-    String id;
-    String bigquery_table;
-    String topic;
 
     void put(String key, Object val) {
         try {
@@ -42,15 +41,12 @@ class DcsDict {
 
     HashMap<String, Object> toHashMap() {
         HashMap<String, Object> map = new HashMap<>();
-        Field[] fields = this.getClass().getDeclaredFields();
+        Field[] fields = this.getClass().getFields();
         Arrays.stream(fields)
-                .filter(field -> (!field.getName().equals("bigquery_table")))
-                .filter(field -> (!field.getName().equals("topic")))
                 .forEach(field -> {
                     try {
                         if (field.get(this) != null) {
-                            // Rename lon to long to match database.
-                            map.put(field.getName() == "lon" ? "long" : field.getName(), field.get(this).toString());
+                            map.put(field.getName(), field.get(this));
                         }
                     } catch (IllegalAccessException e) {
                         System.out.println("error");

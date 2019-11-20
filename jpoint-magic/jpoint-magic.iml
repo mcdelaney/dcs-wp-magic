@@ -56,7 +56,7 @@
     <orderEntry type="library" name="Maven: org.slf4j:slf4j-log4j12:1.7.25" level="project" />
     <orderEntry type="library" name="Maven: log4j:log4j:1.2.17" level="project" />
     <orderEntry type="library" name="Maven: org.jetbrains:annotations:18.0.0" level="project" />
-    <orderEntry type="library" name="Maven: com.google.cloud:google-cloud-pubsub:1.98.0" level="project" />
+    <orderEntry type="library" name="Maven: com.google.cloud:google-cloud-pubsub:1.101.0" level="project" />
     <orderEntry type="library" name="Maven: com.google.cloud:google-cloud-core-grpc:1.91.2" level="project" />
     <orderEntry type="library" name="Maven: com.google.api:gax-grpc:1.49.0" level="project" />
     <orderEntry type="library" name="Maven: io.grpc:grpc-auth:1.24.1" level="project" />

@@ -7,17 +7,17 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 class DCSRef extends DcsDict {
-    String id = !System.getenv("ENV").equals("prod") ? "TEST_SESSION" : UUID.randomUUID().toString();
-    String datasource;
-    String author;
-    String title;
-    Double referencelatitude;
-    Double referencelongitude;
-    Instant referencetime = Instant.now();
-    long start_time = new Date().getTime();
+    public String session_id = !System.getenv("ENV").equals("prod") ? "TEST_SESSION" : UUID.randomUUID().toString();
+    public String datasource;
+    public String author;
+    public String title;
+    public Double referencelatitude;
+    public Double referencelongitude;
+    public Instant referencetime = Instant.now();
+    public Instant start_time = Instant.now();;
     Double last_offset = 0.0;
-    int total_iters = 0;
     boolean has_refs = false;
+    boolean exported = false;
 
     void update_ref_value(String[] obj_split) {
 
@@ -54,8 +54,8 @@ class DCSRef extends DcsDict {
         long diff = Math.round((new_offset - this.last_offset) * 1000);
         this.last_offset = new_offset;
         this.referencetime = this.referencetime.plus(diff, ChronoUnit.MILLIS);
-        float time_diff = (int) ((new Date().getTime() - this.start_time));
-        float iter_per_sec = (this.total_iters / time_diff) * 1000;
-        LOGGER.debug("Updating ref time with offset: " + new_offset + "...Lines per sec: " + iter_per_sec);
+//        float time_diff = (int) ((new Date().getTime() - this.start_time));
+//        float iter_per_sec = (this.total_iters / time_diff) * 1000;
+//        LOGGER.debug("Updating ref time with offset: " + new_offset + "...Lines per sec: " + iter_per_sec);
     }
 }

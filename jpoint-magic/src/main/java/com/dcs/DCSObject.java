@@ -1,6 +1,7 @@
 package com.dcs;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.regex.Pattern;
 
 
@@ -10,11 +11,11 @@ class CoordKeys {
 }
 
 
+
 class DCSObject extends DcsDict {
-
-    public String bigquery_table = "objects";
-    public String topic = "tacview_objects";
-
+    Boolean exported = false;
+    String bigquery_table = "objects";
+    String topic = "tacview_objects";
     public String id;
     public Instant first_seen;
     public Instant last_seen;
@@ -38,17 +39,25 @@ class DCSObject extends DcsDict {
     public Double v_coord;
     public Double heading;
     public int updates = 1;
-
     public String parent;
     public Double parent_dist;
+    public ArrayList<Impactor> impacts = new ArrayList<>();
 
-    public String impactor;
-    public Double impactor_dist;
+
+    class Impactor{
+        String id;
+        Double dist;
+    }
+
+    void addImpact(DistanceComparison impact){
+        Impactor new_impact = new Impactor();
+        new_impact.id = impact.id;
+        new_impact.dist = impact.dist;
+        this.impacts.add(new_impact);
+    }
 
     void from_string(String[] obj_split, DCSRef ref) {
-
         CoordKeys coords = new CoordKeys();
-
         for (int i = 1; i < obj_split.length; i++) {
             String[] val = obj_split[i].split(Pattern.quote("="));
             if (val.length == 2) {
@@ -74,5 +83,4 @@ class DCSObject extends DcsDict {
             }
         }
     }
-
 }

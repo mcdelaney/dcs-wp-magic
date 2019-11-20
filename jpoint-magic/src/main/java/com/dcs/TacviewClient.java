@@ -1,11 +1,13 @@
 package com.dcs;
 
+import com.google.cloud.pubsub.v1.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.time.Duration;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.time.Instant;
@@ -30,13 +32,17 @@ public class TacviewClient {
     private String handshake = String.join("\n", handshake_params);
     private HashMap<String, DCSObject> tac_objects = new HashMap<>();
 
-    private PubSubWriter object_writer = new PubSubWriter("tacview_objects");
-    private PubSubWriter session_writer = new PubSubWriter("tacview_sessions");
-    private PubSubWriter event_writer = new PubSubWriter("tacview_events");
+//    setTopic("tacview_objects");
+//
+//    object_writer.createPublisher("tacview_objects")
+
+//    private PubSubWriter session_writer = new PubSubWriter("tacview_sessions");
+//    private PubSubWriter event_writer = new PubSubWriter("tacview_events");
 
     DCSRef ref = new DCSRef();
     private int total_parents = 0;
     private int total_impactors = 0;
+    private int total_iters = 0;
 
     public static void main(String[] args) {
         try {
@@ -69,7 +75,7 @@ public class TacviewClient {
         LOGGER.info("Connecting to host: " + host);
         LOGGER.info("Connecting on port: " + port);
         LOGGER.info("Maximum iterations to run: " + max_iter);
-
+        PubSub2 object_writer = new PubSub2();
         try {
             Socket socket = new Socket(host, port);
             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
@@ -78,41 +84,52 @@ public class TacviewClient {
             out.print(handshake + "\0"); // send to server
             out.flush();
             String obj;
-            while ((max_iter == 0 || ref.total_iters < max_iter) & ((obj = in.readLine()) != null)) {
-                ref.total_iters++;
+            while ((max_iter == 0 || total_iters < max_iter) & ((obj = in.readLine()) != null)) {
+                total_iters++;
                 if (ref.has_refs) {
                     if (obj.substring(0, 1).equals("#")) {
                         ref.update_time_offset(obj);
                     } else {
-                        DCSObject rec = parseMessageToMap(obj);
-                        if (rec != null && rec.updates == 1 && pubsub_send) {
-                            object_writer.toPubSub(rec);
-                        }
+                        DCSObject rec = parseMessageToMapOrUpdate(obj);
+//                        if (rec != null && rec.alive== 0  && pubsub_send) {
+//                            object_writer.toPubSub(rec);
+//                            rec.exported = true;
+//                        }
                     }
                 } else {
                     String[] obj_split = obj.split(Pattern.quote(","));
                     if (obj_split[0].equals("0")) {
                         ref.update_ref_value(obj_split);
+                        if (ref.has_refs && !ref.exported){
+//                            session_writer.toPubSub(ref);
+                            ref.exported = true;
+                        }
                     }
                 }
             }
-            object_writer.checkPublishedMessages();
-            session_writer.checkPublishedMessages();
-            event_writer.checkPublishedMessages();
 
-            object_writer.shutDownPublisher();
-            event_writer.shutDownPublisher();
-            session_writer.shutDownPublisher();
+            tac_objects.entrySet().
+                    stream().
+                    filter( rec -> (!rec.getValue().exported))
+                    .forEach(rec -> object_writer.write("tacview_objects", rec.getValue()));
+
+//            object_writer.checkPublishedMessages();
+//            object_writer.shutDownPublisher();
+//
+//            session_writer.checkPublishedMessages();
+//            session_writer.shutDownPublisher();
+//            event_writer.checkPublishedMessages();
+//            event_writer.shutDownPublisher();
 
             out.close();
             in.close();
             socket.close();
+            Instant end_time = Instant.now();
+            Duration time_diff = Duration.between(ref.start_time, end_time);
+            long seconds_diff = Math.max((long) 1, time_diff.getSeconds());
+            float iter_per_sec = (total_iters / seconds_diff);
 
-            long end_time = new Date().getTime();
-            float time_diff = (int) ((end_time - ref.start_time));
-            float iter_per_sec = (ref.total_iters / time_diff) * 1000;
-
-            LOGGER.info("Total lines read:: " + ref.total_iters);
+            LOGGER.info("Total lines read: " + total_iters);
             LOGGER.info("Time diff: " + time_diff);
             LOGGER.info("Lines per second: " + iter_per_sec);
             LOGGER.info("Total keys: " + tac_objects.size());
@@ -133,7 +150,7 @@ public class TacviewClient {
 
         DCSObject obj_dict = new DCSObject();
         obj_dict.id = key;
-        obj_dict.session_id = ref.id;
+        obj_dict.session_id = ref.session_id;
         obj_dict.last_seen = ref.referencetime;
         obj_dict.first_seen = ref.referencetime;
         tac_objects.put(key, obj_dict);
@@ -167,7 +184,7 @@ public class TacviewClient {
             accept_colors = (current_rec.color.equals("Blue")) ? new String[]{"Red"} : new String[]{"Blue"};
         }
 
-        Optional<DistanceComparison> possible_comps = tac_objects.entrySet()
+        @SuppressWarnings("ComparatorCombinators") Optional<DistanceComparison> possible_comps = tac_objects.entrySet()
                 .stream()
                 .parallel()
                 .map(Map.Entry::getValue)
@@ -185,25 +202,21 @@ public class TacviewClient {
                     compare_type, current_rec.type, current_rec.id, closest.id, closest.type, closest.dist);
             if (closest.dist < 100) {
                 return closest;
-            } else {
-                LOGGER.warn("Rejecting closest {} match for {}-{}: {} {}!",
-                        compare_type, current_rec.id, current_rec.type, closest.type, closest.dist);
             }
-        } else {
-            LOGGER.warn("Zero possible {} matches for {}-{}", compare_type, current_rec.id, current_rec.type);
+            LOGGER.debug("Rejecting closest {} match for {}-{}: {} {}!",
+                    compare_type, current_rec.id, current_rec.type, closest.type, closest.dist);
         }
-        LOGGER.warn("Zero possible {} matches for {}-{}", compare_type, current_rec.id, current_rec.type);
+        LOGGER.debug("Zero possible {} matches for {}-{}", compare_type, current_rec.id, current_rec.type);
         return null;
     }
 
-    private DCSObject parseMessageToMap(String obj) {
-        String[] obj_split = obj.split(",");
-
+    private DCSObject parseMessageToMapOrUpdate(String obj) {
+        String[] obj_split = obj.trim().split(Pattern.quote(","));
         if (obj_split[0].equals("0")) {
             return null;
         }
 
-        if (obj_split[0].substring(0, 1) == "-") {
+        if (obj_split[0].substring(0, 1).equals("-")) {
             DCSObject obj_dict = tac_objects.get(obj_split[0].substring(1));
             obj_dict.alive = 0;
             return null;
@@ -221,11 +234,10 @@ public class TacviewClient {
             obj_dict.parent_dist = distance.dist;
             parent = getOrCreateDCSObject(obj_dict.parent);
             if (obj_dict.type.equals("Misc+Shrapnel")) {
-                DistanceComparison impactor = checkForClosest(parent, "impactor");
-                if (impactor != null) {
+                DistanceComparison closest = checkForClosest(parent, "impactor");
+                if (closest!= null) {
                     total_impactors++;
-                    parent.impactor = impactor.id;
-                    parent.impactor_dist = impactor.dist;
+                    parent.addImpact(closest);
                 }
             }
         }
