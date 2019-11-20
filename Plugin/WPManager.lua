@@ -469,6 +469,7 @@ function LuaExportAfterNextFrame()
       cli:send("GET /set_username/" .. username .. " HTTP/1.1\r\nHost: 127.0.0.1:5000\r\n\r\n")
       cli:close()
     end
+    -- LoGetPayloadInfo
   end
 
 end
