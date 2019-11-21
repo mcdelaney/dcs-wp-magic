@@ -76,6 +76,9 @@ public class TacviewClient {
         LOGGER.info("Connecting on port: " + port);
         LOGGER.info("Maximum iterations to run: " + max_iter);
         PubSub2 object_writer = new PubSub2();
+        object_writer.ensureTopicExists("tacview_objects");
+        object_writer.createPublisher();
+
         try {
             Socket socket = new Socket(host, port);
             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
@@ -111,8 +114,9 @@ public class TacviewClient {
             tac_objects.entrySet().
                     stream().
                     filter( rec -> (!rec.getValue().exported))
-                    .forEach(rec -> object_writer.write("tacview_objects", rec.getValue()));
+                    .forEach(rec -> object_writer.write(rec.getValue()));
 
+            object_writer.shutdownPublisher();
 //            object_writer.checkPublishedMessages();
 //            object_writer.shutDownPublisher();
 //

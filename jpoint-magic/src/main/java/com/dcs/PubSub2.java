@@ -12,6 +12,7 @@ import com.google.common.util.concurrent.MoreExecutors;
 import com.google.gson.*;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.ProjectTopicName;
+import com.google.api.gax.batching.BatchingSettings;
 import com.google.pubsub.v1.PubsubMessage;
 import io.grpc.StatusRuntimeException;
 import org.slf4j.Logger;
@@ -24,6 +25,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+//import java.time.Duration;
+import org.threeten.bp.Duration;
+
 
 
 
@@ -41,37 +45,80 @@ class PubSub2 {
     private Gson gson = new GsonBuilder().registerTypeAdapter(Instant.class, new InstantSerializer()).create();
 
     private String ENV = !System.getenv("ENV").equals("prod") ? "stg" : "prod";
+    ProjectTopicName topicName;
+    Publisher publisher;
 
-    void write(String topic, DCSObject record) {
-        // Create a publisher instance with default settings bound to the topic
+
+//    List<ApiFuture<String>> futures = new ArrayList<>();
+
+    void ensureTopicExists(String topic){
         if (ENV.equals("stg")) {
             topic = topic + "_stg";
         }
-        ProjectTopicName topicName = ProjectTopicName.of(PROJECT_ID, topic);
-//        TopicAdminClient topicAdminClient = TopicAdminClient.create()
-        //            topicAdminClient.createTopic(topicName);
-        try {
-            List<ApiFuture<String>> futures = new ArrayList<>();
-            
-            Publisher publisher = Publisher.newBuilder(topicName).build();
-            String message = gson.toJson(record.toHashMap());
+        topicName = ProjectTopicName.of(PROJECT_ID, topic);
+    }
 
-            publisher.publishAllOutstanding();
+    void createPublisher(){
+        try
+        {
+            BatchingSettings DEFAULT_BATCHING_SETTINGS =
+                    BatchingSettings.newBuilder()
+                            .setDelayThreshold(Duration.ofSeconds(1))
+                            .setElementCountThreshold(50L)
+                            .build();
+
+            publisher = Publisher.newBuilder(topicName)
+                    .setBatchingSettings(DEFAULT_BATCHING_SETTINGS)
+                    .build();
+
+        } catch(IOException e){
+            LOGGER.error("IO Exception!");
+        }
+
+    }
+
+    void write(DCSObject record) {
+        // Create a publisher instance with default settings bound to the topic
+        try {
+
+            List<ApiFuture<String>> futures = new ArrayList<>();
+            String message = gson.toJson(record.toHashMap());
 
             ByteString data = ByteString.copyFromUtf8(message);
             PubsubMessage pubsubMessage = PubsubMessage.newBuilder()
                     .setData(data)
                     .build();
+
             ApiFuture<String> messageIdFuture = publisher.publish(pubsubMessage);
-            futures.add(messageIdFuture);
-            List<String> messageIds = ApiFutures.allAsList(futures).get();
-            for (String messageId : messageIds) {
-                LOGGER.info("Message published successfully: " + messageId);
+            String temp = messageIdFuture.get();
+            publisher.publishAllOutstanding();
+            if (!messageIdFuture.isDone()){
+                LOGGER.error("Message not done!");
+            }else{
+                LOGGER.info("Message IS done!");
+
             }
 
-            publisher.shutdown();
-        } catch (IOException | StatusRuntimeException | ApiException |InterruptedException | ExecutionException e) {
+//            LOGGER.info(messageIdFuture.get());
+//            futures.add(messageIdFuture);
+//
+//            List<String> messageIds = ApiFutures.allAsList(futures).get();
+//            List<String> found = new ArrayList<>();
+//
+//
+//
+//            for (String messageId : messageIds) {
+//                LOGGER.info("Message published successfully: " + messageId);
+//                found.add(messageId);
+//            }
+//
+//            futures.removeAll(found);
+
+        } catch (StatusRuntimeException | ApiException | ExecutionException | InterruptedException e) {
             LOGGER.error(e.toString());
         }
+    }
+    void shutdownPublisher(){
+        publisher.shutdown();
     }
 }
