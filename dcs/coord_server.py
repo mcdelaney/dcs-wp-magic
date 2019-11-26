@@ -16,7 +16,7 @@ fileHandler.setFormatter(logFormatter)
 class CoordApp(Flask):
     def __init__(self, app_name):
         super().__init__(app_name)
-        self.user = "None"
+        self.user = "someone_somewhere"
         self.logger.setLevel(level=logging.INFO)
         self.logger.addHandler(fileHandler)
         self.logger.propogate = False
@@ -62,8 +62,8 @@ def username(username):
 @app.route("/coords/<coord_fmt>")
 def as_strings_coords(coord_fmt, pilot=None):
     try:
-        app.logger.info("Settings coords from user: %s...", COORD_USER)
-        enemies = construct_enemy_set(COORD_USER, coord_fmt=coord_fmt)
+        app.logger.info("Settings coords from user: %s...", app.user)
+        enemies = construct_enemy_set(app.user, coord_fmt=coord_fmt)
         app.logger.info('Enemeies Collected...')
         return enemies
     except Exception as e:
