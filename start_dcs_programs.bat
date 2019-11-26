@@ -17,5 +17,5 @@ tasklist /nh /fi "imagename eq dcs_wp_manager.exe" | find /i "dcs_wp_manager.exe
 
 (tasklist /nh /fi "imagename eq SimShaker for Aviators beta.exe") | find /i "SimShaker" > nul || (start "" "C:\Users\mcdel\Desktop\SimShaker for Aviators beta.appref-ms")
 
-CD "C:\Users\mcdel\"\
+CD "C:\Users\mcdel\"
 (tasklist /nh /fi "imagename eq DCS.exe") | find /i "DCS.exe" > nul || (start "" "C:\Program Files (x86)\Steam\steamapps\common\DCSWorld\bin\DCS.exe")
