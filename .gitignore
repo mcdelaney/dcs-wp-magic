@@ -6,7 +6,6 @@ scratch.py
 data/**
 log/**
 .DS_Store
-*/.idea/libraries/*
 **/maven-status/**
 **/target/**/**
 *.dump
@@ -16,6 +15,5 @@ env/*
 perf_test.py
 **/**/*.log
 jpoint-magic/log/*
-jpoint-magic/.idea/*
 jpoint-magic/lib/*
 jpoint-magic/out/*
