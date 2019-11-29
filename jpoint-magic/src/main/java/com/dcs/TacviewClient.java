@@ -105,7 +105,9 @@ public class TacviewClient {
                         }
                     });
 
-            object_writer.checkAll();
+            if (pubsub_send) {
+                object_writer.checkAll();
+            }
 //            tac_objects.entrySet().
 //                    stream().
 //                    filter( rec -> (!rec.getValue().exported))
