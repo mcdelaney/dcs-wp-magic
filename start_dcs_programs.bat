@@ -1,11 +1,7 @@
 @echo off
 
 copy C:\Users\mcdel\dcs-wp-magic\Plugin\WPManager.lua  "C:\Users\mcdel\Saved Games\DCS\Scripts\Hooks\WPManager.lua"
-
-CD "C:\Program Files (x86)\DCS-SimpleRadio-Standalone\"
-tasklist /nh /fi "imagename eq SR-ClientRadio.exe" | find /i "SR-ClientRadio.exe" > nul || (start "" "SR-ClientRadio.exe")
-
-tasklist /nh /fi "imagename eq VoiceAttack.exe" | find /i "VoiceAttack.exe" > nul || (start "" "C:\Program Files (x86)\Steam\steamapps\common\VoiceAttack\VoiceAttack.exe")
+copy C:\Users\mcdel\dcs-wp-magic\Plugin\WPManager.dlg  "C:\Users\mcdel\Saved Games\DCS\Scripts\WPManager\WPManager.dlg"
 
 REM tasklist /nh /fi "imagename eq voicemeeterpro.exe" | find /i "voicemeeterpro.exe" > nul || (start "" "C:\Program Files (x86)\VB\Voicemeeter\voicemeeterpro.exe")
 
@@ -19,3 +15,8 @@ tasklist /nh /fi "imagename eq dcs_wp_manager.exe" | find /i "dcs_wp_manager.exe
 
 CD "C:\Users\mcdel\"
 (tasklist /nh /fi "imagename eq DCS.exe") | find /i "DCS.exe" > nul || (start "" "C:\Program Files (x86)\Steam\steamapps\common\DCSWorld\bin\DCS.exe")
+
+CD "C:\Program Files (x86)\DCS-SimpleRadio-Standalone\"
+tasklist /nh /fi "imagename eq SR-ClientRadio.exe" | find /i "SR-ClientRadio.exe" > nul || (start "" "SR-ClientRadio.exe")
+
+tasklist /nh /fi "imagename eq VoiceAttack.exe" | find /i "VoiceAttack.exe" > nul || (start "" "C:\Program Files (x86)\Steam\steamapps\common\VoiceAttack\VoiceAttack.exe")
