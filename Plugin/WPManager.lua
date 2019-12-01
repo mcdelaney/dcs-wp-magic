@@ -152,7 +152,7 @@ function wpmanager_load()
     end
 
     function wpmanager.createWindow()
-        window = DialogLoader.spawnDialogFromFile(lfs.writedir() .. "Scripts\\WP-Manager\\WPManager.dlg")
+        window = DialogLoader.spawnDialogFromFile(lfs.writedir() .. "Scripts\\WPManager\\WPManager.dlg")
         -- , cdata)
         windowDefaultSkin = window:getSkin()
         panel = window.Box
@@ -183,6 +183,11 @@ function wpmanager_load()
         table.insert(sections, panel.CoordSection13)
         table.insert(sections, panel.CoordSection14)
         table.insert(sections, panel.CoordSection15)
+        table.insert(sections, panel.CoordSection16)
+        table.insert(sections, panel.CoordSection17)
+        table.insert(sections, panel.CoordSection18)
+        table.insert(sections, panel.CoordSection19)
+        table.insert(sections, panel.CoordSection20)
 
         table.insert(targets, panel.CoordTarget1)
         table.insert(targets, panel.CoordTarget2)
@@ -456,25 +461,27 @@ end
 -- function LuaExportStop()
 --   cli:close()
 -- end
-
-
-function LuaExportAfterNextFrame()
-  username = LoGetPilotName()
-  socket = require("socket")
-  cli = socket.tcp()
-  cli:connect("127.0.0.1", 5000)
-  cli:send("GET /set_username/" .. username .. " HTTP/1.1\r\nHost: 127.0.0.1:5000\r\n\r\n")
-  cli:close()
-  -- username = LoGetPilotName()
-  -- if username ~= nil then
-  --   if username ~= LoGetPilotName() then
-  --     username = LoGetPilotName()
-  --     socket = require("socket")
-  --     cli = socket.tcp()
-  --     cli:connect("127.0.0.1", 5000)
-  --     cli:send("GET /set_username/" .. username .. " HTTP/1.1\r\nHost: 127.0.0.1:5000\r\n\r\n")
-  --     cli:close()
-  --   end
-  -- end
-
-end
+--
+--
+-- function LuaExportAfterNextFrame()
+--   username = LoGetPilotName()
+--     if username ~= nil then
+--     socket = require("socket")
+--     cli = socket.tcp()
+--     cli:connect("127.0.0.1", 5000)
+--     cli:send("GET /set_username/" .. username .. " HTTP/1.1\r\nHost: 127.0.0.1:5000\r\n\r\n")
+--     cli:close()
+--   end
+--   -- username = LoGetPilotName()
+--   -- if username ~= nil then
+--   --   if username ~= LoGetPilotName() then
+--   --     username = LoGetPilotName()
+--   --     socket = require("socket")
+--   --     cli = socket.tcp()
+--   --     cli:connect("127.0.0.1", 5000)
+--   --     cli:send("GET /set_username/" .. username .. " HTTP/1.1\r\nHost: 127.0.0.1:5000\r\n\r\n")
+--   --     cli:close()
+--   --   end
+--   -- end
+--
+-- end
