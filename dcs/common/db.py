@@ -3,7 +3,6 @@ from pathlib import Path
 
 import peewee as pw
 from playhouse.pool import PooledSqliteDatabase
-from playhouse.sqlite_udf import sqrt
 
 from dcs.common import config
 
@@ -39,7 +38,7 @@ class Object(BaseModel):
     last_seen = pw.DateTimeField()
     coalition = pw.CharField(null=True)
     lat = pw.FloatField()
-    long = pw.FloatField()
+    lon = pw.FloatField()
     alt = pw.FloatField(default=1)
     roll = pw.FloatField(null=True)
     pitch = pw.FloatField(null=True)
@@ -66,7 +65,7 @@ class Event(BaseModel):
     alive = pw.IntegerField(default=1)
     last_seen = pw.DateTimeField()
     lat = pw.FloatField(null=True)
-    long = pw.FloatField(null=True)
+    lon = pw.FloatField(null=True)
     alt = pw.FloatField(null=True)
 
     roll = pw.FloatField(null=True)
@@ -89,7 +88,7 @@ class Session(BaseModel):
     author = pw.CharField()
     title = pw.CharField()
     lat = pw.FloatField()
-    long = pw.FloatField()
+    lon = pw.FloatField()
     time = pw.DateTimeField()
 
 

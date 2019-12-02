@@ -36,7 +36,7 @@ HANDSHAKE = '\n'.join(["XtraLib.Stream.0",
 HANDSHAKE = HANDSHAKE.encode('utf-8')
 REF_TIME_FMT = '%Y-%m-%dT%H:%M:%SZ'
 
-COORD_KEYS = ['long', 'lat', 'alt', 'roll', 'pitch', 'yaw', 'u_coord',
+COORD_KEYS = ['lon', 'lat', 'alt', 'roll', 'pitch', 'yaw', 'u_coord',
               'v_coord', 'heading']
 
 
@@ -59,7 +59,7 @@ class ObjectRec:
 
     coalition: str = None
     lat: float = None
-    long: float = None
+    lon: float = None
     alt: float = None
     roll: float = None
     pitch: float = None
@@ -74,11 +74,11 @@ class ObjectRec:
     parent_dist: float = None
 
 
-def get_cartesian_coord(lat, long, alt):
+def get_cartesian_coord(lat, lon, alt):
     """Convert coords from geodesic to cartesian."""
-    x = alt * cos(lat) * sin(long)
+    x = alt * cos(lat) * sin(lon)
     y = alt * sin(lat)
-    z = alt * cos(lat) * cos(long)
+    z = alt * cos(lat) * cos(lon)
     return x, y, z
 
 
@@ -95,7 +95,7 @@ async def determine_contact(rec, type='parent'):
     LOG.info("Determing parent for object id: %s -- %s-%s...",
              rec.id, rec.name, rec.type)
     offset_min = rec.last_seen - timedelta(seconds=1)
-    current_point = get_cartesian_coord(rec.lat, rec.long, rec.alt)
+    current_point = get_cartesian_coord(rec.lat, rec.lon, rec.alt)
 
     if type == "parent":
         accpt_colors = [
@@ -110,7 +110,7 @@ async def determine_contact(rec, type='parent'):
                   (Object.type.startswith('Weapon')))
 
     nearby_objs = (Object.select(Object.id, Object.alt, Object.lat,
-                                 Object.long, Object.name, Object.pilot,
+                                 Object.lon, Object.name, Object.pilot,
                                  Object.type).
                    where((~Object.id == rec.id)
                          & (~Object.type == rec.type)
@@ -118,13 +118,13 @@ async def determine_contact(rec, type='parent'):
                          & (Object.color in accpt_colors)
                          & (Object.alt.between(rec.alt - 2000, rec.alt + 2000))
                          & (Object.lat.between(rec.lat - 0.015, rec.lat + 0.015))
-                         & (Object.long.between(rec.long - 0.015, rec.long + 0.015))
+                         & (Object.lon.between(rec.lon - 0.015, rec.lon + 0.015))
                          & filter
                          ))
     init_matches = len(nearby_objs)
     parent = []
     for nearby in nearby_objs:
-        near_pt = get_cartesian_coord(nearby.lat, nearby.long, nearby.alt)
+        near_pt = get_cartesian_coord(nearby.lat, nearby.lon, nearby.alt)
         prox = compute_dist(current_point, near_pt)
         LOG.info("Distance to object %s is %s...", nearby.name, str(prox))
         if not parent or (prox < parent[1]):
@@ -205,8 +205,8 @@ async def line_to_dict(line, ref):
     if 'lat' in obj_dict.keys():
         obj_dict['lat'] = obj_dict['lat'] + ref.lat
 
-    if 'long' in obj_dict.keys():
-        obj_dict['long'] = obj_dict['long'] + ref.long
+    if 'lon' in obj_dict.keys():
+        obj_dict['lon'] = obj_dict['lon'] + ref.lon
     return obj_dict
 
 
@@ -219,7 +219,7 @@ async def process_line(obj_dict, db):
     if rec:
         prev_ts = rec.last_seen
         rec.updates += 1
-        prev_coord = get_cartesian_coord(rec.lat, rec.long, rec.alt)
+        prev_coord = get_cartesian_coord(rec.lat, rec.lon, rec.alt)
         # Update existing record
 
         LOG.debug("Record %s found ...will updated...", obj_dict['id'])
@@ -264,7 +264,8 @@ async def process_line(obj_dict, db):
     velocity = None
     if prev_coord:
         secs_from_last = (rec.last_seen - prev_ts).total_seconds()
-        true_dist = compute_dist(get_cartesian_coord(rec.lat, rec.long, rec.alt),
+        true_dist = compute_dist(get_cartesian_coord(rec.lat, rec.lon,
+                                                     rec.alt),
                                  prev_coord)
         velocity = true_dist / secs_from_last if secs_from_last > 0 else None
 
@@ -273,7 +274,7 @@ async def process_line(obj_dict, db):
                          last_seen=rec.last_seen,
                          alt=rec.alt,
                          lat=rec.lat,
-                         long=rec.long,
+                         lon=rec.lon,
                          alive=rec.alive,
                          yaw=rec.yaw,
                          heading=rec.heading,
@@ -297,7 +298,7 @@ class Ref:  # pylint: disable=too-many-instance-attributes
 
     def __init__(self):
         self.lat = None
-        self.long = None
+        self.lon = None
         self.time = None
         self.title = None
         self.datasource = None
@@ -334,7 +335,7 @@ class Ref:  # pylint: disable=too-many-instance-attributes
 
             if val[0] == 'ReferenceLongitude':
                 LOG.debug('Ref longitude found...')
-                self.long = float(val[1])
+                self.lon = float(val[1])
 
             if val[0] == 'DataSource':
                 LOG.debug('Ref datasource found...')
@@ -353,7 +354,7 @@ class Ref:  # pylint: disable=too-many-instance-attributes
                 self.time = datetime.strptime(val[1], REF_TIME_FMT)
                 self.start_time = datetime.strptime(val[1], REF_TIME_FMT)
 
-            self.all_refs = self.lat and self.long and self.time
+            self.all_refs = self.lat and self.lon and self.time
             if self.all_refs and not self.written:
                 LOG.info("All Refs found...writing session data to db...")
                 sess_ser = self.ser()
@@ -372,7 +373,7 @@ class Ref:  # pylint: disable=too-many-instance-attributes
         """Serialize relevant Session fields for export."""
         return {'session_id': self.session_id,
                 'lat': self.lat,
-                'long': self.long,
+                'lon': self.lon,
                 'title': self.title,
                 'datasource': self.datasource,
                 'author': self.author,

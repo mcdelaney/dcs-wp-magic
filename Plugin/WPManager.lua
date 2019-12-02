@@ -30,6 +30,7 @@ function wpmanager_load()
     local textarea = nil
     local section_val = nil
     local target_val = nil
+    local target_status = "No Targets Selected"
     local coord_data = ""
     local target_data = ""
     local coord_request = ""
@@ -57,6 +58,13 @@ function wpmanager_load()
         wpmanager.log("loading page targets...")
         textarea:setText(target_data)
         window:setText("Targets")
+    end
+
+    local function viewTargetStatus()
+        current_page = "status"
+        wpmanager.log("loading target status...")
+        textarea:setText(target_status)
+        window:setText("Target Status")
     end
 
     function wpmanager.loadConfiguration()
@@ -107,6 +115,16 @@ function wpmanager_load()
             return "Error updating coordinates!"
         end
         coord_data = resp
+    end
+
+    local function getTargetStatus()
+
+        local resp, status, err = http.request("http://127.0.0.1:5000/target_status")
+        if status ~= 200 then
+            target_status = "Error Collecing Target Status"
+        else
+            target_status = resp
+        end
     end
 
     local function enterCoordinates()
@@ -166,6 +184,7 @@ function wpmanager_load()
         clearCoordsBtn = panel.WPManagerClearCoordsButton
         stopCoordsBtn = panel.WPManagerStopCoordsButton
         preciseCoordsBtn = panel.WPManagerPreciseCoordsButton
+        targetStatusBtn = panel.WPManagerTargetStatusButton
         -- keepAllBtn = panel.WPManagerKeepAllButton
 
         table.insert(sections, panel.CoordSection1)
@@ -231,6 +250,14 @@ function wpmanager_load()
         targetButton:addMouseDownCallback(
             function(self)
                 loadTargets()
+                coordButton:setState(false)
+            end
+        )
+
+        targetStatusBtn:addMouseDownCallback(
+            function(self)
+                getTargetStatus()
+                viewTargetStatus()
                 coordButton:setState(false)
             end
         )
@@ -367,6 +394,8 @@ function wpmanager_load()
         stopCoordsBtn:setBounds(offset, h - 120, 50, 20)
         local offset = offset+50+20
         preciseCoordsBtn:setBounds(offset, h - 120, 50, 20)
+        local offset = offset+50+20
+        targetStatusBtn:setBounds(offset, h - 120, 50, 20)
 
         -- local offset = offset+50+20
         -- keepAllBtn:setBounds(offset, h - 120, 50, 20)

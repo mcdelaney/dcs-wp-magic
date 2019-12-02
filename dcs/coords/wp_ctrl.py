@@ -132,7 +132,7 @@ def get_cached_coords(section, target, coord_data):
             alt = [f"{n}" for n in str(item['alt'])]
             log.info(f"Coord to enter: {''.join(lat)} {''.join(lon)} {alt}")
             alt.append('ENT')
-            return (lat, lon, alt)
+            return (lat, lon, alt), item["id"]
     log.error(f"Could not find target for {section} - {target}")
 
 
@@ -156,18 +156,20 @@ def lookup_coords(coord_string):
         coord_data = json.load(fp_)
 
     coords = []
+    target_ids = []
     for tar in targets:
         if len(coords) == 8:
             return coords
-
         if tar == '':
             continue
         log.info('Looking up target %s' % tar)
         section, target = tar.strip().split(',')
-        cache_coords = get_cached_coords(section, target, coord_data)
+        cache_coords, target_id = get_cached_coords(section, target,
+                                                    coord_data)
         if cache_coords:
             coords.append(cache_coords)
+            target_ids.append(target_id)
         else:
             log.error(f"Could not find coord {tar}")
             raise ValueError("Could not find coord!")
-    return coords
+    return coords, target_ids

@@ -1,6 +1,7 @@
 #!/bin/python3
 import logging
 from multiprocessing import Process
+import sqlite3
 
 from flask import Flask, Response
 
@@ -21,6 +22,45 @@ class CoordApp(Flask):
         self.logger.addHandler(fileHandler)
         self.logger.propogate = False
         self.job = None
+        self.targets = []
+
+    def add_targets(self, targets):
+        for tar in targets:
+            self.logger.info("Adding target: %s manifest...", tar)
+            self.targets.append(tar)
+
+    def kill_job(self):
+        if self.job:
+            self.logger.info("Terminating thread...")
+            self.job.terminate()
+            self.job = None
+        else:
+            app.logger.info("No thread currently running...")
+
+    def start_job(self, rack, coords):
+        self.kill_job()
+        self.job = Process(target=update_coord, args=(rack, coords,))
+        self.job.start()
+
+    def get_targets(self):
+        try:
+            conn = self.connect_to_db()
+        except sqlite3.Error:
+            return "Could Not Connect To Database!"
+
+        resp = ""
+        for tar in self.targets:
+            req = conn.execute("""SELECT alive, name
+                               FROM object WHERE id = ?""", [tar])
+            val = req.fetchone()
+            status = "alive" if val[0] == 1 else "dead"
+            resp += f"{tar}-{val[1]}: {status}\r\n"
+        if resp == "":
+            return "No Targets Designated!"
+        return resp
+
+    def connect_to_db(self):
+        return sqlite3.connect("data/dcs.db")
 
 
 app = CoordApp('coord_server')
@@ -29,12 +69,7 @@ app = CoordApp('coord_server')
 @app.route("/stop")
 def stop_job():
     try:
-        if app.job:
-            app.logger.info("Terminating thread...")
-            app.job.terminate()
-            app.job = None
-        else:
-            app.logger.info("No thread currently running...")
+        app.kill_job()
     except Exception as e:
         app.logger.error(e)
     return Response(status=200)
@@ -43,10 +78,9 @@ def stop_job():
 @app.route('/enter_coords/<rack>/<coord_string>')
 def start_entry(rack, coord_string):
     try:
-        stop_job()
-        coords = lookup_coords(coord_string)
-        app.job = Process(target=update_coord, args=(rack, coords,))
-        app.job.start()
+        coords, target_ids = lookup_coords(coord_string)
+        app.add_targets(target_ids)
+        app.start_job(rack, coords)
         return Response(status=200)
     except Exception:
         return Response(status=500)
@@ -55,8 +89,12 @@ def start_entry(rack, coord_string):
 @app.route('/set_username/<username>')
 def username(username):
     app.user = username
-    app.logger.info("New username: %s...", app.user)
     return Response(status=200)
+
+
+@app.route('/target_status')
+def target_status():
+    return app.get_targets()
 
 
 @app.route("/coords/<coord_fmt>")

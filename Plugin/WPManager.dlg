@@ -226,6 +226,30 @@ dialog = {
                     },
                     ["type"] = "ToggleButton"
                 },
+
+                ["WPManagerTargetStatusButton"] = {
+                    ["params"] = {
+                        ["bounds"] = {
+                            ["h"] = 20,
+                            ["w"] = 120,
+                            ["x"] = 80,
+                            ["y"] = 180
+                        },
+                        ["enabled"] = true,
+                        ["tabOrder"] = 0,
+                        ["text"] = "Status",
+                        ["tooltip"] = "View Target Status",
+                        ["visible"] = true,
+                        ["zindex"] = 1
+                    },
+                    ["skin"] = {
+                        ["params"] = {
+                            ["name"] = "toggleButtonSkinAwacs"
+                        }
+                    },
+                    ["type"] = "ToggleButton"
+                },
+
                 ["CoordSection1"] = {
                     ["params"] = {
                         ["bounds"] = {

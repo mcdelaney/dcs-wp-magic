@@ -45,11 +45,11 @@ def dd2dms(deg):
     return [f'{d:02}', f'{m:02}', f'{sd:05.2f}']
 
 
-class Enemy: # pylint: disable=too-many-instance-attributes
+class Enemy:  # pylint: disable=too-many-instance-attributes
     """A single enemy unit with specific attributes."""
 
-    def __init__(self, item, start_coords=None, coord_fmt='dms'): # pylint:disable=too-many-statements
-        self.id = item["id"] # pylint: disable=invalid-name
+    def __init__(self, item, start_coords=None, coord_fmt='dms'):
+        self.id = item["id"]  # pylint: disable=invalid-name
         self.name = item["name"]
         self.pilot = item["pilot"]
         self.platform = item["platform"]
@@ -73,7 +73,7 @@ class Enemy: # pylint: disable=too-many-instance-attributes
             self.alt = 1.0
 
         self.lat_raw = item["lat"]
-        self.lon_raw = item["long"]
+        self.lon_raw = item["lon"]
 
         try:
             self.cat = config.CAT_LOOKUP[self.name]
@@ -108,7 +108,8 @@ class Enemy: # pylint: disable=too-many-instance-attributes
 
         if start_coords:
             try:
-                self.dist = geodesic((start_coords['lat'], start_coords['long']),
+                self.dist = geodesic((start_coords['lat'],
+                                      start_coords['lon']),
                                      (self.lat_raw, self.lon_raw)).nm
             except ValueError:
                 LOG.error("Coordinates are incorrect: %f %f",
@@ -191,7 +192,7 @@ def create_enemy_groups(enemy_state, start_coord, coord_fmt='dms'):
     for item in enemy_state:
         if (item['type'] in config.EXCLUDED_TYPES or
                 item['coalition'] == config.COALITION):
-            LOG.debug("Skipping enemy item %s %s %s as is in excluded types...",
+            LOG.debug("Skipping item %s %s %s as is in excluded types...",
                       item['type'], item['pilot'], item['coalition'])
             continue
         try:
@@ -204,8 +205,8 @@ def create_enemy_groups(enemy_state, start_coord, coord_fmt='dms'):
     return enemy_groups
 
 
-def construct_enemy_set(start_unit=None, result_as_string=True, coord_fmt='dms',
-                        pilot=None):
+def construct_enemy_set(start_unit=None, result_as_string=True,
+                        coord_fmt='dms', pilot=None):
     """Constuct a EnemyGroup of Enemies, returning a formatted string."""
 
     enemy_state, start_coord = read_coords(start_unit)
@@ -237,7 +238,7 @@ def construct_enemy_set(start_unit=None, result_as_string=True, coord_fmt='dms',
     results = [f"{i+1}) {r}" for i, r in enumerate(results)]
     results = '\r\n\r\n'.join(results)
     results = f"Start Ref: {start_coord['pilot']} "\
-              f"{(round(start_coord['lat'], 3), round(start_coord['long'], 3))} "\
+              f"{(round(start_coord['lat'], 3), round(start_coord['lon'], 3))} "\
               f"{start_coord['last_seen']}" \
               f"\r\n\r\n{results}"
     return results.encode('UTF-8')
@@ -257,7 +258,7 @@ def read_coords(start_units=config.START_UNITS, coalition='Enemies'):
     for unit in [start_units]:
         LOG.info('Querying for start unit %s...', unit)
         cur = conn.cursor()
-        cur.execute("SELECT lat, long, alt, name, pilot, last_seen \
+        cur.execute("SELECT lat, lon, alt, name, pilot, last_seen \
                      FROM object \
                      WHERE coalition = '%s' AND \
                        alive = 1 AND pilot = '%s'" % (coalition, unit))
