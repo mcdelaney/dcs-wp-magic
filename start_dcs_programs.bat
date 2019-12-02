@@ -16,7 +16,7 @@ tasklist /nh /fi "imagename eq dcs_wp_manager.exe" | find /i "dcs_wp_manager.exe
 CD "C:\Users\mcdel\"
 (tasklist /nh /fi "imagename eq DCS.exe") | find /i "DCS.exe" > nul || (start "" "C:\Program Files (x86)\Steam\steamapps\common\DCSWorld\bin\DCS.exe")
 
-CD "C:\Program Files (x86)\DCS-SimpleRadio-Standalone\"
-tasklist /nh /fi "imagename eq SR-ClientRadio.exe" | find /i "SR-ClientRadio.exe" > nul || (start "" "SR-ClientRadio.exe")
+REM CD "C:\Program Files (x86)\DCS-SimpleRadio-Standalone\"
+REM tasklist /nh /fi "imagename eq SR-ClientRadio.exe" | find /i "SR-ClientRadio.exe" > nul || (start "" "SR-ClientRadio.exe")
 
 tasklist /nh /fi "imagename eq VoiceAttack.exe" | find /i "VoiceAttack.exe" > nul || (start "" "C:\Program Files (x86)\Steam\steamapps\common\VoiceAttack\VoiceAttack.exe")
