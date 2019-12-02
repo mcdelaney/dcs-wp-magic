@@ -142,9 +142,15 @@ def update_coord(rack, coords, *args):
     return "ok"
 
 
+def remove_dupes_with_ordering(vals):
+    seen = set()
+    seen_add = seen.add
+    return [x for x in vals if not (x in seen or seen_add(x))]
+
+
 def lookup_coords(coord_string):
     log.info('Reading selected coords from file...')
-    targets = list(set(coord_string.strip().split('|')))
+    targets = remove_dupes_with_ordering(coord_string.strip().split('|'))
     if targets[-1] == '|':
         targets.pop(-1)
     if targets[0] == '':
