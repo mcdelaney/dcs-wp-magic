@@ -368,8 +368,6 @@ function wpmanager_load()
         for k,v in ipairs(lines) do
            wpmanager.log(v)
         end
-
-
     end
 
     function wpmanager.setVisible(b)
