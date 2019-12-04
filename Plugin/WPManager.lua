@@ -477,38 +477,27 @@ if not status then
 end
 
 
+local username = "someone_somewhere3"
 
--- function LuaExportStart()
---   socket = require("socket")
---   cli = socket.tcp()
---   cli:connect("127.0.0.1", 5000)
--- end
---
---
--- function LuaExportStop()
---   cli:close()
--- end
---
---
--- function LuaExportAfterNextFrame()
---   username = LoGetPilotName()
---     if username ~= nil then
---     socket = require("socket")
---     cli = socket.tcp()
---     cli:connect("127.0.0.1", 5000)
---     cli:send("GET /set_username/" .. username .. " HTTP/1.1\r\nHost: 127.0.0.1:5000\r\n\r\n")
---     cli:close()
---   end
---   -- username = LoGetPilotName()
---   -- if username ~= nil then
---   --   if username ~= LoGetPilotName() then
---   --     username = LoGetPilotName()
---   --     socket = require("socket")
---   --     cli = socket.tcp()
---   --     cli:connect("127.0.0.1", 5000)
---   --     cli:send("GET /set_username/" .. username .. " HTTP/1.1\r\nHost: 127.0.0.1:5000\r\n\r\n")
---   --     cli:close()
---   --   end
---   -- end
---
--- end
+function LuaExportAfterNextFrame()
+  user = LoGetPilotName()
+  if user ~= nil and user ~= username then
+      username = user
+      socket = require("socket")
+      cli = socket.tcp()
+      cli:connect("127.0.0.1", 5000)
+      cli:send("GET /set_username/" .. username .. " HTTP/1.1\r\nHost: 127.0.0.1:5000\r\n\r\n")
+      cli:close()
+  end
+  -- username = LoGetPilotName()
+  -- if username ~= nil then
+  --   if username ~= LoGetPilotName() then
+  --     username = LoGetPilotName()
+  --     socket = require("socket")
+  --     cli = socket.tcp()
+  --     cli:connect("127.0.0.1", 5000)
+  --     cli:send("GET /set_username/" .. username .. " HTTP/1.1\r\nHost: 127.0.0.1:5000\r\n\r\n")
+  --     cli:close()
+  --   end
+  -- end
+end

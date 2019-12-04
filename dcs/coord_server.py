@@ -37,6 +37,9 @@ class CoordApp(Flask):
         else:
             app.logger.info("No thread currently running...")
 
+    def set_user(self, username):
+        self.user = username
+
     def start_job(self, rack, coords):
         self.kill_job()
         self.job = Process(target=update_coord, args=(rack, coords,))
@@ -82,13 +85,14 @@ def start_entry(rack, coord_string):
         app.add_targets(target_ids)
         app.start_job(rack, coords)
         return Response(status=200)
-    except Exception:
+    except Exception as e:
+        app.logger.error(e)
         return Response(status=500)
 
 
 @app.route('/set_username/<username>')
 def username(username):
-    app.user = username
+    app.set_user(username)
     return Response(status=200)
 
 
