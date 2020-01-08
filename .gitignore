@@ -18,3 +18,5 @@ perf_test.py
 jpoint-magic/log/*
 jpoint-magic/.idea/*
 tests/data/raw_sink.txt
+.ipynb_checkpoints
+Untitled.ipynb

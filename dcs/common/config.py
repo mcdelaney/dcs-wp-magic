@@ -6,7 +6,11 @@ DB_LOC = "data/dcs.db"
 CLIENT = 'someone_somewhere'
 PASSWORD = '0'
 # HOST = '127.0.0.1'
-HOST = '147.135.9.159'  # PGAW
+presets = {'PGAW': '147.135.9.159:42674',  # PGAW,
+           'GAW': '147.135.8.169:42674',  # Hoggit Gaw
+           'LOCALHOST': '127.0.0.1:42674'  # Hoggit Gaw
+           }
+
 HOST = '147.135.8.169'  # Hoggit Gaw
 PORT = 42674
 START_UNITS = [CLIENT, "CVN-74", "Stennis"]

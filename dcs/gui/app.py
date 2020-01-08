@@ -1,7 +1,7 @@
 import logging
-from os import path
 from multiprocessing import Process
-from tkinter import Tk, Label, Button, Entry
+from tkinter import Tk, Label, Button
+from tkinter.ttk import Combobox
 
 from dcs.common import get_logger, config
 from dcs import tacview
@@ -22,28 +22,22 @@ class DCSWPControllerApp(Tk):
 
         self.host_label = Label(self, text='Host:')
         self.host_label.grid(column=0, row=1)
-        self.host = Entry()
-        self.host.insert(50, config.HOST)
+        self.host = Combobox(values=["GAW", "PGAW", "LOCALHOST"])
+        self.host.insert(50, "GAW")
         self.host.grid(column=1, row=1)
-
-        self.port_label = Label(self, text='Port:')
-        self.port_label.grid(column=0, row=2)
-        self.port = Entry()
-        self.port.insert(10, config.PORT)
-        self.port.grid(column=1, row=2)
 
         self.start = Button(self, text="Start", state="normal",
                             command=self.switch_status)
-        self.start.grid(column=0, row=4)
+        self.start.grid(column=0, row=2)
 
         self.stop = Button(self, text="Stop", state='disabled',
                            command=self.switch_status)
-        self.stop.grid(column=1, row=4)
+        self.stop.grid(column=1, row=2)
 
         self.label = Label(self, text='Status:')
-        self.label.grid(column=0, row=5)
+        self.label.grid(column=0, row=4)
         self.status_value = Label(self, text="Stopped")
-        self.status_value.grid(column=1, row=5)
+        self.status_value.grid(column=1, row=4)
 
         self.tac_proc = None
         self.coord_proc = None
@@ -70,9 +64,8 @@ class DCSWPControllerApp(Tk):
         if self.tac_proc:
             raise ValueError("Tacview client process already exists!")
         LOG.info('Starting tacview client process...')
-        self.tac_proc = Process(target=tacview.main, args=(self.host.get(),
-                                                           self.port.get(),
-                                                           ))
+        host = config.presets[self.host.get()].split(":")
+        self.tac_proc = Process(target=tacview.main, args=(host[0], host[1],))
         self.tac_proc.start()
         LOG.info("Tacview client process started successfully...")
 

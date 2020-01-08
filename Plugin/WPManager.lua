@@ -5,7 +5,6 @@ package.path = package.path .. ";.\\Scripts\\?.lua;.\\Scripts\\UI\\?.lua;"
 
 local io = require("io")
 
-
 function wpmanager_load()
     local io = require("io")
     -- local http = require("socket.http")
@@ -477,27 +476,50 @@ if not status then
 end
 
 
-local username = "someone_somewhere3"
+function InitFpsLog()
+  fps_log = io.open(lfs.writedir().."/Logs/fps_tracklog", "w")
+end
+
+function CloseFpsLog()
+  if fps_log_file then
+     fps_log_file:close()
+     fps_log_file = nil
+  end
+end
+
+function LuaExportStart()
+  socket = require("socket")
+  cli = nil
+  -- InitFpsLog()
+  username = "someone_somewhere3"
+  cli = socket.tcp()
+  cli:connect("127.0.0.1", 5000)
+end
+
+
+function LuaExportStop()
+  -- CloseFpsLog()
+  if cli then
+    cli:close()
+  end
+end
+
+
+function WriteFpsLog()
+    local start_ts = socket.gettime()
+    fps_log:write(start_ts.."\r\n")
+end
+
+function ExportPilotName()
+  local user = LoGetPilotName()
+  if user ~= nil and user ~= username and cli ~= nil then
+      username = user
+      cli:send("GET /set_username/" .. username .. " HTTP/1.1\r\nHost: 127.0.0.1:5000\r\n\r\n")
+  end
+end
+
 
 function LuaExportAfterNextFrame()
-  user = LoGetPilotName()
-  if user ~= nil and user ~= username then
-      username = user
-      socket = require("socket")
-      cli = socket.tcp()
-      cli:connect("127.0.0.1", 5000)
-      cli:send("GET /set_username/" .. username .. " HTTP/1.1\r\nHost: 127.0.0.1:5000\r\n\r\n")
-      cli:close()
-  end
-  -- username = LoGetPilotName()
-  -- if username ~= nil then
-  --   if username ~= LoGetPilotName() then
-  --     username = LoGetPilotName()
-  --     socket = require("socket")
-  --     cli = socket.tcp()
-  --     cli:connect("127.0.0.1", 5000)
-  --     cli:send("GET /set_username/" .. username .. " HTTP/1.1\r\nHost: 127.0.0.1:5000\r\n\r\n")
-  --     cli:close()
-  --   end
-  -- end
+  -- WriteFpsLog()
+  pcall(ExportPilotName)
 end
