@@ -6,7 +6,7 @@ package.path = package.path .. ";.\\Scripts\\?.lua;.\\Scripts\\UI\\?.lua;"
 function LuaExportStart()
   socket = require("socket")
   fps_log_file = nil
-  fps_log = io.open(lfs.writedir().."/Logs/fps_tracklog"..socket.gettime()..".log", "w")
+  fps_log = io.open(lfs.writedir().."FrameTimeExport/fps_tracklog"..socket.gettime()..".log", "w")
 end
 
 
