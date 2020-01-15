@@ -487,39 +487,39 @@ function CloseFpsLog()
   end
 end
 
-function LuaExportStart()
-  socket = require("socket")
-  cli = nil
-  -- InitFpsLog()
-  username = "someone_somewhere3"
-  cli = socket.tcp()
-  cli:connect("127.0.0.1", 5000)
-end
-
-
-function LuaExportStop()
-  -- CloseFpsLog()
-  if cli then
-    cli:close()
-  end
-end
-
-
 function WriteFpsLog()
     local start_ts = socket.gettime()
     fps_log:write(start_ts.."\r\n")
 end
 
-function ExportPilotName()
-  local user = LoGetPilotName()
-  if user ~= nil and user ~= username and cli ~= nil then
-      username = user
-      cli:send("GET /set_username/" .. username .. " HTTP/1.1\r\nHost: 127.0.0.1:5000\r\n\r\n")
-  end
-end
 
+-- function ExportPilotName()
+--   local user = LoGetPilotName()
+--   if user ~= nil and user ~= username and cli ~= nil then
+--       username = user
+--       cli:send("GET /set_username/" .. username .. " HTTP/1.1\r\nHost: 127.0.0.1:5000\r\n\r\n")
+--   end
+-- end
 
-function LuaExportAfterNextFrame()
-  -- WriteFpsLog()
-  pcall(ExportPilotName)
-end
+-- function LuaExportStart()
+--   socket = require("socket")
+--   cli = nil
+--   -- InitFpsLog()
+--   username = "someone_somewhere3"
+--   cli = socket.tcp()
+--   cli:connect("127.0.0.1", 5000)
+-- end
+--
+--
+-- function LuaExportStop()
+--   -- CloseFpsLog()
+--   if cli then
+--     cli:close()
+--   end
+-- end
+--
+--
+-- function LuaExportAfterNextFrame()
+--   -- WriteFpsLog()
+--   pcall(ExportPilotName)
+-- end

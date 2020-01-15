@@ -3,6 +3,9 @@
 copy C:\Users\mcdel\dcs-wp-magic\Plugin\WPManager.lua  "C:\Users\mcdel\Saved Games\DCS\Scripts\Hooks\WPManager.lua"
 copy C:\Users\mcdel\dcs-wp-magic\Plugin\WPManager.dlg  "C:\Users\mcdel\Saved Games\DCS\Scripts\WPManager\WPManager.dlg"
 
+copy C:\Users\mcdel\dcs-wp-magic\Plugin\mist.lua  "C:\Users\mcdel\Saved Games\DCS\Scripts\mist.lua"
+copy C:\Users\mcdel\dcs-wp-magic\Plugin\CTLD.lua  "C:\Users\mcdel\Saved Games\DCS\Scripts\CTLD.lua"
+
 CD "C:\Program Files (x86)\H2ik\Joystick Gremlin\"
 tasklist /nh /fi "imagename eq joystick_gremlin.exe" | find /i "joystick_gremlin.exe" > nul || (start "" "C:\Program Files (x86)\H2ik\Joystick Gremlin\joystick_gremlin.exe")
 

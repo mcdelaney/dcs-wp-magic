@@ -22,7 +22,7 @@ class DCSWPControllerApp(Tk):
 
         self.host_label = Label(self, text='Host:')
         self.host_label.grid(column=0, row=1)
-        self.host = Combobox(values=["GAW", "PGAW", "LOCALHOST"])
+        self.host = Combobox(values=["GAW", "PGAW", "LOCALHOST", "MyServer"])
         self.host.insert(50, "GAW")
         self.host.grid(column=1, row=1)
 
