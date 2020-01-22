@@ -9,7 +9,7 @@ PASSWORD = '0'
 presets = {'PGAW': '147.135.9.159:42674',  # PGAW,
            'GAW': '147.135.8.169:42674',  # Hoggit Gaw
            'LOCALHOST': '127.0.0.1:42674',  # Hoggit Gaw
-           'MyServer': '68.194.86.85:42674'
+           'A-Horrible-Server': '68.194.86.85:42674'
            }
 
 HOST = '147.135.8.169'  # Hoggit Gaw
@@ -20,7 +20,6 @@ EXCLUDED_TYPES = ['Air+FixedWing',
                   '',
                   'Ground+Light+Human+Air+Parachutist',
                   "Air+Rotorcraft",
-                  # "Ground+Static+Building",
                   "Ground+Static+Aerodrome",
                   'Navaid+Static+Bullseye',
                   "Misc+Shrapnel",

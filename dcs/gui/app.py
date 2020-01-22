@@ -1,7 +1,8 @@
 import logging
+import requests as r
 from multiprocessing import Process
 from tkinter import Tk, Label, Button
-from tkinter.ttk import Combobox
+from tkinter.ttk import Combobox, Entry
 
 from dcs.common import get_logger, config
 from dcs import tacview
@@ -22,22 +23,30 @@ class DCSWPControllerApp(Tk):
 
         self.host_label = Label(self, text='Host:')
         self.host_label.grid(column=0, row=1)
-        self.host = Combobox(values=["GAW", "PGAW", "LOCALHOST", "MyServer"])
-        self.host.insert(50, "GAW")
+        self.host = Combobox(values=["GAW", "PGAW", "LOCALHOST",
+                                     "A-Horrible-Server"])
+        self.host.insert(50, "A-Horrible-Server")
         self.host.grid(column=1, row=1)
+
+        self.user_label = Label(self, text='Username:')
+        self.user_label.grid(column=0, row=2)
+        self.user = Entry()
+        self.user.insert(50, "someone_somewhere")
+
+        self.user.grid(column=1, row=2)
 
         self.start = Button(self, text="Start", state="normal",
                             command=self.switch_status)
-        self.start.grid(column=0, row=2)
+        self.start.grid(column=0, row=3)
 
         self.stop = Button(self, text="Stop", state='disabled',
                            command=self.switch_status)
-        self.stop.grid(column=1, row=2)
+        self.stop.grid(column=1, row=3)
 
         self.label = Label(self, text='Status:')
-        self.label.grid(column=0, row=4)
+        self.label.grid(column=0, row=5)
         self.status_value = Label(self, text="Stopped")
-        self.status_value.grid(column=1, row=4)
+        self.status_value.grid(column=1, row=5)
 
         self.tac_proc = None
         self.coord_proc = None
@@ -50,6 +59,7 @@ class DCSWPControllerApp(Tk):
             self.stop.configure(state="normal")
             self.start.configure(state="disabled")
             self.status_value.configure(text="Running")
+            r.get("http://127.0.0.1:5000/set_username/" + self.user.get())
             LOG.info('Status values updated correctly...')
         else:
             self.stop_process()
@@ -76,6 +86,7 @@ class DCSWPControllerApp(Tk):
         LOG.info('Starting coord server process...')
         self.coord_proc = Process(target=coord_server.main)
         self.coord_proc.start()
+
         LOG.info("Coord server process started successfully...")
 
     def stop_process(self):

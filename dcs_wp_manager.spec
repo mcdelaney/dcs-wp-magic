@@ -4,10 +4,10 @@ block_cipher = None
 specpath = os.path.dirname(os.path.abspath(SPEC))
 
 a = Analysis(['dcs_wp_manager.py'],
-             pathex=['C:\\Users\\mcdel\\dcs-wb-magic'],
+             pathex=['C:\\Users\\mcdel\\dcs-wp-magic'],
              binaries=[],
              datas=[("icon.ico", ".")],
-             hiddenimports=['dcs'],
+             hiddenimports=["flask"],
              hookspath=[],
              runtime_hooks=[],
              excludes=[],
@@ -26,8 +26,8 @@ exe = EXE(pyz,
           debug=False,
           bootloader_ignore_signals=False,
           strip=False,
-          upx=True,
-          console=False , icon=os.path.join(specpath, 'icon.ico'))
+          upx=False,
+          console=False, icon=os.path.join(specpath, 'icon.ico'))
 coll = COLLECT(exe,
                a.binaries,
                a.zipfiles,

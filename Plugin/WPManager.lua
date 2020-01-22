@@ -108,7 +108,6 @@ function wpmanager_load()
     end
 
     local function updateCoordinates()
-
         local resp, status, err = http.request("http://127.0.0.1:5000/coords/" .. fmt)
         if status ~= 200 then
             return "Error updating coordinates!"
