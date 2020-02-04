@@ -2,14 +2,15 @@
 import datetime as dt
 import pytest
 from dcs import tacview
-# from dcs.common import db as dbtools
+from dcs.common.db import Object
 
 
 @pytest.fixture
 def conn():
     """Fixture to generate a database."""
     from dcs.common import db as dbtools
-    return dbtools.init_db()
+    conn = dbtools.init_db()
+    return conn
 
 
 @pytest.fixture
@@ -17,7 +18,7 @@ def ref_obj():
     """Ref object for offsets."""
     ref = tacview.Ref()
     ref.lat = 1.0
-    ref.long = 1.0
+    ref.lon = 1.0
     ref.time = dt.datetime.now()
     return ref
 
@@ -27,10 +28,11 @@ def test_update_string(ref_obj):
     update_string = "1b,T=123.45|678.09|234.2"
     correct_resp = {'id': '1b',
                     'lat': 679.09,
-                    'long': 124.45,
+                    'lon': 124.45,
                     'alt': 234.2}
     parsed = tacview.line_to_dict(line=update_string, ref=ref_obj)
-    assert parsed == correct_resp
+    for key, value in correct_resp.items():
+        assert value == parsed[key]
 
 
 def test_update_partial_loc(ref_obj):
@@ -38,10 +40,9 @@ def test_update_partial_loc(ref_obj):
     update_string = "3008d0a,T=||1019.73"
     parsed = tacview.line_to_dict(line=update_string, ref=ref_obj)
     correct_resp = {'id': '3008d0a',
-                    'lat': '',
-                    'long': '',
                     'alt': 1019.73}
-    assert parsed == correct_resp
+    for key, value in correct_resp.items():
+        assert value == parsed[key]
 
 
 def test_new_entry(ref_obj):
@@ -53,14 +54,21 @@ def test_new_entry(ref_obj):
     assert True
 
 
-def test_new_entry_insert(ref_obj, conn):
+@pytest.mark.asyncio
+async def test_new_entry_insert(ref_obj, conn):
     """Test that new records are inserted correctly"""
     new_string = "4001,T=4.6361975|6.5404775|1487.59|||357.8|-347259.72|380887.44|,"\
     "Type=Ground+Heavy+Armor+Vehicle+Tank,Name=BTR-80,"\
     "Group=New Vehicle Group #041,Color=Red,Coalition=Enemies,Country=ru"
     parsed = tacview.line_to_dict(line=new_string, ref=ref_obj)
-    tacview.process_line(parsed)
-    result = conn.execute(f"SELECT * FROM enemies where id = {parsed['id']}")
-    db_result = dict(result.fetchone())
+    await tacview.process_line(parsed, conn)
+    db_result = Object.select().where(Object.id == parsed['id']).dicts().get()
+    print(db_result)
+    # db_result = dict(result.fetchone())
     for key, val in db_result.items():
+        try:
+            parsed_val = parsed[key]
+        except KeyError as err:
+            if val is None:
+                continue
         assert val == parsed[key]

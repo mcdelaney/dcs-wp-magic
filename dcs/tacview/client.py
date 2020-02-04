@@ -28,12 +28,11 @@ EVENTS = True
 LOG = get_logger(logging.getLogger('tacview_client'), False)
 LOG.setLevel(logging.DEBUG if DEBUG else logging.INFO)
 
-HANDSHAKE = '\n'.join(["XtraLib.Stream.0",
+HANDSHAKE = ('\n'.join(["XtraLib.Stream.0",
                        'Tacview.RealTimeTelemetry.0',
                        "tacview_reader",
                        config.PASSWORD,
-                       ]) + "\0"
-HANDSHAKE = HANDSHAKE.encode('utf-8')
+                       ]) + "\0").encode('utf-8')
 REF_TIME_FMT = '%Y-%m-%dT%H:%M:%SZ'
 
 COORD_KEYS = ['lon', 'lat', 'alt', 'roll', 'pitch', 'yaw', 'u_coord',
@@ -47,31 +46,32 @@ class ObjectRec:
     alive: int
     session_id: str
     last_seen: datetime
+
+    name: str
+    color: str
+    country: str
+    grp: str
+    pilot: str
+    platform: str
+    type: str
+
+    coalition: str
+    lat: float
+    lon: float
+    alt: float
+    roll: float
+    pitch: float
+    yaw: float
+    u_coord: float
+    v_coord: float
+    heading: float
+
+    impactor: str
+    impactor_dist: float
+    parent: str
+    parent_dist: float
+
     updates: int = 1
-
-    name: str = None
-    color: str = None
-    country: str = None
-    grp: str = None
-    pilot: str = None
-    platform: str = None
-    type: str = None
-
-    coalition: str = None
-    lat: float = None
-    lon: float = None
-    alt: float = None
-    roll: float = None
-    pitch: float = None
-    yaw: float = None
-    u_coord: float = None
-    v_coord: float = None
-    heading: float = None
-
-    impactor: str = None
-    impactor_dist: float = None
-    parent: str = None
-    parent_dist: float = None
 
 
 def get_cartesian_coord(lat, lon, alt):
@@ -163,11 +163,12 @@ def json_serial(obj):
     raise TypeError("Type %s not serializable" % type(obj))
 
 
-async def line_to_dict(line, ref):
+def line_to_dict(line, ref):
     """Process a line into a dictionary."""
     line = line.split(',')
     if line[0] == "0":
         return
+
     obj_dict = {'last_seen': ref.time, 'session_id': ref.session_id}
 
     if line[0][0] == '-':
@@ -177,6 +178,9 @@ async def line_to_dict(line, ref):
         return obj_dict
 
     obj_dict['id'] = line[0]
+    obj_dict['alive'] = 1
+    obj_dict['updates'] = 1
+    obj_dict['first_seen'] = ref.time
 
     for chunk in line[1:]:
         key, val = chunk.split('=', 1)
@@ -233,7 +237,7 @@ async def process_line(obj_dict, db):
     else:
         # Create new record
         LOG.debug("Record not found...creating....")
-        rec = Object.create(**obj_dict, first_seen=obj_dict['last_seen'])
+        rec = Object.create(**obj_dict)
 
         if any([t in rec.type.lower() for t in ['weapon', 'projectile',
                                                 'decoy', 'container',
@@ -251,12 +255,9 @@ async def process_line(obj_dict, db):
                     rec.impactor = impactor[0]
                     rec.impactor_dist = impactor[1]
                     rec.save()
-        if PUB_SUB:
-            # Only send first update to PUB_SUB.
-            PUB_SUB.writer.publish(PUB_SUB.objects, data=serialize_data(rec))
 
     if not EVENTS:
-        return
+        return rec
 
     true_dist = None
     secs_from_last = None
@@ -288,8 +289,6 @@ async def process_line(obj_dict, db):
                          secs_from_last=secs_from_last,
                          update_num=rec.updates)
 
-    if PUB_SUB:
-        PUB_SUB.writer.publish(PUB_SUB.events, data=serialize_data(event))
     LOG.debug("Event row created successfully...")
 
 
@@ -454,7 +453,7 @@ class SocketReader:
 
 async def handle_line(obj, ref, db):
     """Wrapper for line processing methods called in thread."""
-    obj = await line_to_dict(obj, ref)
+    obj = line_to_dict(obj, ref)
     if obj:
         await process_line(obj, db)
 
