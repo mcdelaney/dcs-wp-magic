@@ -12,11 +12,12 @@ from google.cloud import storage
 logging.basicConfig(level=logging.INFO)
 LOG = logging.getLogger('test_server')
 LOG.setLevel(logging.INFO)
-
+FILE_NAME = "Tacview-20200121-165627-DCS-Operation Snowfox v122.txt.acmi"
 
 def get_test_file() -> None:
     """Download test tacview file from GCS."""
-    local_path = Path("tests/data/tacview-test.txt")
+
+    local_path = Path(f"tests/data/{FILE_NAME}")
     if local_path.exists():
         LOG.info("Cached file found...not downloading...")
         return
@@ -24,7 +25,7 @@ def get_test_file() -> None:
     LOG.info("Downloading tacview test file...")
     client = storage.Client()
     bucket = client.get_bucket('horrible-server')
-    blob = bucket.get_blob("tacview/Tacview-20200125-120912-DCS-Operation Snowfox v123.txt.acmi")
+    blob = bucket.get_blob(f"tacview/{local_path.name}")
     blob.download_to_filename(local_path)
     LOG.info("Tacview test file downloaded successfully...")
 
@@ -32,9 +33,9 @@ def get_test_file() -> None:
 async def handle_req(reader, writer):
     """Send data."""
     try:
-        with open('tests/data/raw_sink.txt', 'r') as fp_:
+        with open(f'tests/data/{FILE_NAME}', 'r') as fp_:
             lines = fp_.readlines()
-
+        LOG.info(f"Starting service...total lines: {len(lines)}...")
         handshake = await reader.read(4026)
         LOG.info(handshake.decode())
         LOG.info("Handshake complete...serving data...")
