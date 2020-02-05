@@ -2,6 +2,7 @@
 import datetime as dt
 import pytest
 from dcs import tacview
+import time
 from dcs.common.db import Object
 
 
@@ -10,6 +11,7 @@ def conn():
     """Fixture to generate a database."""
     from dcs.common import db as dbtools
     conn = dbtools.init_db()
+    time.sleep(0.05)
     return conn
 
 
