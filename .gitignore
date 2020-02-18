@@ -21,7 +21,7 @@ tests/data/raw_sink.txt
 .ipynb_checkpoints
 Untitled.ipynb
 beam-temp**/**
-.mypy_cache/**/**
+**/.mypy_cache/**/**
 tests/data/**/**
 .pytest_cache/**/**
 beam-output**/**/**

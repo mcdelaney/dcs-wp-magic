@@ -12,7 +12,7 @@ from google.cloud import storage
 logging.basicConfig(level=logging.INFO)
 LOG = logging.getLogger('test_server')
 LOG.setLevel(logging.INFO)
-FILE_NAME = "Tacview-20200121-165627-DCS-Operation Snowfox v122.txt.acmi"
+FILE_NAME = "Tacview-test2.txt"
 
 def get_test_file() -> None:
     """Download test tacview file from GCS."""
@@ -53,7 +53,7 @@ async def handle_req(reader, writer):
 
 async def serve_test_data():
     """Read from Tacview socket."""
-    LOG.info('Attempting connection at 127.0.0.1:5555...')
+    LOG.info('Serving tests data at 127.0.0.1:5555...')
     server = await asyncio.start_server(handle_req, "127.0.0.1", "5555")
     async with server:
         await server.serve_forever()

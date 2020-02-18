@@ -2,7 +2,7 @@
 """Start the tacview reader."""
 import argparse
 
-from dcs import tacview
+from dcs.tacview import client
 
 
 def str2bool(val):
@@ -19,24 +19,36 @@ def str2bool(val):
 if __name__ == '__main__':
     # pylint: disable=too-many-function-args,invalid-name
     parser = argparse.ArgumentParser()
-    parser.add_argument("--host", default="147.135.8.169", type=str,
+    parser.add_argument("--host",
+                        default="147.135.8.169",
+                        type=str,
                         help="Name of the host to connect to.")
-    parser.add_argument("--port", default=42674, type=int,
+    parser.add_argument("--port",
+                        default=42674,
+                        type=int,
                         help="Name of the host to connect to.")
-    parser.add_argument("--mode", default="local", type=str,
+    parser.add_argument("--debug",
+                        default=False,
+                        type=str2bool,
                         help="If local, records only written to sqlite."
                         "If remote, they are written to pubsub also.")
-    parser.add_argument("--debug", default=False, type=str2bool,
-                        help="If local, records only written to sqlite."
-                        "If remote, they are written to pubsub also.")
-    parser.add_argument("--events", default=True, type=str2bool,
+    parser.add_argument("--events",
+                        default=True,
+                        type=str2bool,
                         help="If true, events will be saved to the database.")
-    parser.add_argument("--max_iters", default=None, type=int,
+    parser.add_argument("--max_iters",
+                        default=None,
+                        type=int,
                         help="Sets the maximum number of iterations.")
-    parser.add_argument("--only_proc", default=False, type=str2bool,
+    parser.add_argument("--only_proc",
+                        default=False,
+                        type=str2bool,
                         help="If true, only convert line to dict.")
     args = parser.parse_args()
 
-    tacview.client.main(host=args.host, port=args.port, mode=args.mode,
-                        debug=args.debug, events=args.events,
-                        max_iters=args.max_iters, only_proc=args.only_proc)
+    client.main(host=args.host,
+                port=args.port,
+                debug=args.debug,
+                events=args.events,
+                max_iters=args.max_iters,
+                only_proc=args.only_proc)

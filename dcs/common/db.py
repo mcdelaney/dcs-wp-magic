@@ -2,21 +2,30 @@
 from pathlib import Path
 
 import peewee as pw
-from playhouse.pool import PooledSqliteDatabase
 
 from dcs.common import config
 
+# DB = PooledSqliteDatabase(None,
+#                           check_same_thread=False,
+#                           max_connections=10,
+#                           pragmas={
+#                               'journal_mode': 'wal',
+#                               'synchronous': 'OFF',
+#                               'cache_size': -1024 * 1000
+#                           })
 
-DB = PooledSqliteDatabase(None,
-                          max_connections=300,
-                          pragmas={'journal_mode': 'wal',
-                                   'synchronous': 'OFF',
-                                   'cache_size': -1024 * 1000})
+DB = pw.SqliteDatabase(None,
+                         pragmas={
+                            #  'locking_mode': 'EXCLUSIVE',
+                             'journal_mode': 'off',
+                            #  'journal_mode': 'wal',
+                             'synchronous': 'OFF',
+                             'cache_size': -1024 * 4000
+                         })
 
 
 class BaseModel(pw.Model):
     """Base model with DB defined from which all others inherit."""
-
     class Meta:  # pylint: disable=too-few-public-methods
         """Set global database."""
         database = DB
@@ -24,8 +33,8 @@ class BaseModel(pw.Model):
 
 class Object(BaseModel):
     """DCS Object."""
-    id = pw.CharField(primary_key=True)
-    session_id = pw.CharField()
+    id = pw.IntegerField(primary_key=True)
+    session_id = pw.IntegerField()
     name = pw.CharField(null=True)
     color = pw.CharField(null=True, index=True)
     country = pw.CharField(null=True)
@@ -35,7 +44,8 @@ class Object(BaseModel):
     type = pw.CharField(null=True)
     alive = pw.IntegerField(default=1, index=True)
     first_seen = pw.DateTimeField()
-    last_seen = pw.DateTimeField()
+    last_seen = pw.DateTimeField(index=True)
+    time_offset = pw.FloatField()
     coalition = pw.CharField(null=True)
     lat = pw.FloatField()
     lon = pw.FloatField()
@@ -47,6 +57,7 @@ class Object(BaseModel):
     v_coord = pw.FloatField(null=True)
     heading = pw.FloatField(null=True)
     updates = pw.IntegerField(default=1)
+    velocity_kts = pw.FloatField(null=True)
 
     impactor = pw.CharField(null=True)
     impactor_dist = pw.FloatField(null=True)
@@ -59,11 +70,11 @@ class Object(BaseModel):
 
 class Event(BaseModel):
     """Event History."""
-    id = pw.AutoField()
-    session_id = pw.CharField()
-    object = pw.CharField()
-    alive = pw.IntegerField(default=1)
+    id = pw.IntegerField()
+    session_id = pw.IntegerField()
     last_seen = pw.DateTimeField()
+    time_offset = pw.FloatField()
+    alive = pw.IntegerField(default=1)
     lat = pw.FloatField(null=True)
     lon = pw.FloatField(null=True)
     alt = pw.FloatField(null=True)
@@ -74,55 +85,40 @@ class Event(BaseModel):
     u_coord = pw.FloatField(null=True)
     v_coord = pw.FloatField(null=True)
     heading = pw.FloatField(null=True)
-    dist_m = pw.FloatField(null=True)
-    velocity_ms = pw.FloatField(null=True)
+    # dist_m = pw.FloatField(null=True)
+    velocity_kts = pw.FloatField(null=True)
     secs_from_last = pw.FloatField(null=True)
-    update_num = pw.IntegerField(null=False)
+    updates = pw.IntegerField(null=False)
 
 
 class Session(BaseModel):
     """Session Reference Data."""
-    session_id = pw.CharField()
+    session_id = pw.AutoField()
+    session_uuid = pw.CharField()
     start_time = pw.DateTimeField()
-    datasource = pw.CharField()
-    author = pw.CharField()
-    title = pw.CharField()
+    datasource = pw.CharField(default=None)
+    author = pw.CharField(default=None)
+    title = pw.CharField(default=None)
     lat = pw.FloatField()
     lon = pw.FloatField()
     time = pw.DateTimeField()
+    time_offset = pw.FloatField()
 
 
 class TestTable(BaseModel):
     debug = pw.CharField()
 
 
-def init_db(drop=True, memory=False):
+def init_db(drop=True):
     """Initialize the database and execute create table statements."""
-    if memory:
-        DB.init(":memory:")
-    else:
-        db_path = Path(config.DB_LOC)
-        if not db_path.parent.exists():
-            db_path.parent.mkdir()
-        DB.init(config.DB_LOC)
+    db_path = Path(config.DB_LOC)
+    if db_path.exists():
+        db_path.unlink()
+    elif not db_path.parent.exists():
+        db_path.parent.mkdir()
+    DB.init(config.DB_LOC)
 
     DB.connect()
     if drop:
         DB.drop_tables([Object, Event, Session, TestTable])
     DB.create_tables([Object, Event, Session, TestTable])
-    return DB
-
-
-class Publisher:  # pylint: disable=too-few-public-methods
-    """Pubsub writer."""
-
-    def __init__(self):
-        from google.cloud import pubsub_v1
-        # pylint: disable=no-member
-        self.writer = pubsub_v1.PublisherClient()
-        self.objects = self.writer.topic_path(
-            config.PROJECT_ID, 'tacview_objects')
-        self.events = self.writer.topic_path(
-            config.PROJECT_ID, 'tacview_events')
-        self.sessions = self.writer.topic_path(
-            config.PROJECT_ID, 'tacview_sessions')
