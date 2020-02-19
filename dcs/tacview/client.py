@@ -7,21 +7,18 @@ database.
 import asyncio
 from asyncio.log import logging
 from functools import partial
-
 import concurrent.futures
 from dataclasses import dataclass, asdict
 from datetime import datetime, timedelta, date
 import json
 from math import cos, sin, sqrt
+import numpy as np
 import threading
+
 from uuid import uuid1
 from queue import Queue
 import sqlite3
-import time
 from typing import Optional, Any, Dict, Set, List
-
-import peewee as pw
-from playhouse.shortcuts import model_to_dict
 
 from dcs.common.db import init_db, Object, Session, DB, Event
 from dcs.common import get_logger
@@ -29,10 +26,9 @@ from dcs.common import config
 
 
 DEBUG = False
-CONN = sqlite3.connect("data/dcs.db")
 LOG = get_logger(logging.getLogger('tacview_client'), False)
 LOG.setLevel(logging.DEBUG if DEBUG else logging.INFO)
-
+TIME_SPLITTING_TIME = 0.0
 
 class Ref:  # pylint: disable=too-many-instance-attributes
     """Hold and extract Reference values used as offsets."""
@@ -62,11 +58,11 @@ class Ref:  # pylint: disable=too-many-instance-attributes
         """Update the refence time attribute with a new offset."""
         offset = float(offset[1:].strip())
         LOG.debug("New time offset: %s...", offset)
-        self.diff_from_last = offset - self.last_time
-        self.time_since_last += self.diff_from_last
-        self.time_since_last_events += self.diff_from_last
-        LOG.debug("Incrementing time offset by %s...", self.diff_from_last)
-        self.time = self.time + timedelta(seconds=self.diff_from_last)
+        self.diff_since_last = offset - self.last_time
+        self.time_since_last += self.diff_since_last
+        self.time_since_last_events += self.diff_since_last
+        LOG.debug("Incrementing time offset by %s...", self.diff_since_last)
+        self.time = self.time + timedelta(seconds=self.diff_since_last)
         self.time_offset = offset
         self.last_time = offset
 
@@ -152,7 +148,7 @@ class ObjectRec:
     coalition: Optional[str] = None
     lat: Optional[float] = None
     lon: Optional[float] = None
-    alt: Optional[float] = 1.0
+    alt: Optional[float] = 1
     roll: Optional[float] = None
     pitch: Optional[float] = None
     yaw: Optional[float] = None
@@ -163,12 +159,13 @@ class ObjectRec:
     impactor_dist: Optional[float] = None
     parent: Optional[str] = None
     parent_dist: Optional[float] = None
-    time_offset: Optional[float] = None
-    secs_since_last_seen: Optional[float] = None
     updates: int = 1
-    updated_vals: Optional[Set[str]]= None
     velocity_kts: Optional[float] = None
+
+    time_offset: Optional[float] = None
     prev_coords: Optional[List] = None
+    secs_since_last_seen: Optional[float] = None
+    updated_vals: Optional[Set[str]] = None
 
     def update_val(self, key: str, value: Any) -> None:
         if key == "group":
@@ -179,40 +176,40 @@ class ObjectRec:
         setattr(self, key, value)
         if not self.updated_vals:
             self.updated_vals = set()
-
         self.updated_vals.add(key)
 
     def reset_update_fields(self) -> None:
         self.updated_vals = set()
 
     def to_dict(self) -> Dict:
-        out = asdict(self)
-        out.pop("updated_vals")
-        return out
+        return dict((key, value)
+                    for (key, value) in self.__dict__.items()
+                    if key not in ['updated_vals', 'prev_coords'])
 
     def compute_velocity(self, time_since_last_frame: float) -> None:
         """Calculate velocity given the distance from the last point."""
         cart_coords = get_cartesian_coord(self.lat, self.lon, self.alt)
-        if self.prev_coords:
+        if self.prev_coords is not None and time_since_last_frame > 0:
             true_dist = compute_dist(cart_coords, self.prev_coords)
             self.velocity_kts = round((true_dist / time_since_last_frame)/1.94384, 4)
             self.updated_vals.add('velocity_kts')
-            # if self.secs_since_last_seen > 0 else None
+
         self.prev_coords = cart_coords
 
 
 def get_cartesian_coord(lat, lon, alt):
     """Convert coords from geodesic to cartesian."""
-    x = alt * cos(lat) * sin(lon)
+    cos_lat = cos(lat)
+    x = alt * cos_lat * sin(lon)
     y = alt * sin(lat)
-    z = alt * cos(lat) * cos(lon)
-    return x, y, z
+    z = alt * cos_lat * cos(lon)
+    resp = np.array([x, y, z])
+    return resp
 
 
 def compute_dist(p_1, p_2):
     """Compute cartesian distance between points."""
-    return sqrt((p_2[0] - p_1[0])**2 + (p_2[1] - p_1[1])**2 +
-                (p_2[2] - p_1[2])**2)
+    return np.sqrt(np.sum(np.square((p_1 - p_2))))
 
 
 def determine_contact(rec, type='parent'):
@@ -276,47 +273,37 @@ def determine_contact(rec, type='parent'):
     return parent
 
 
-def json_serial(obj):
-    """JSON serializer for objects not serializable by default json code"""
-    if isinstance(obj, (datetime, date)):
-        return obj.isoformat()
-    raise TypeError("Type %s not serializable" % type(obj))
-
-
 def line_to_obj(raw_line: str, ref: Ref) -> Optional[ObjectRec]:
     """Parse a textline from tacview into an ObjectRec."""
     if raw_line[0] == "0":
         return None
-
+    # global TIME_SPLITTING_TIME
     line = raw_line.split(',')
 
     if line[0][0] == '-':
         rec = ref.obj_store[int(line[0][1:].strip(), 16)]
-        LOG.debug("Record %s is now dead...updating...", rec.id)
         rec.update_val('alive', 0)
-        rec.update_val('updates', rec.updates+1)
-        rec.update_val('last_seen', ref.time)
-        rec.update_val('time_offset', ref.time_offset)
         return rec
 
-    rec_id = int(line[0], 16)
+    # t1 = datetime.now()
+    rec_id = int(line.pop(0), 16)
     try:
         rec = ref.obj_store[rec_id]
         rec.update_val('updates', rec.updates+1)
+        rec.update_val('last_seen', ref.time)
+        rec.update_val('time_offset', ref.time_offset)
     except KeyError:
         # Object not yet seen...create new record...
         rec = ObjectRec(id=rec_id,
                         alive=1,
                         session_id=ref.session_id,
-                        updates=1,
                         first_seen=ref.time,
-                        last_seen=ref.time)
+                        last_seen=ref.time,
+                        time_offset=ref.time_offset)
         ref.obj_store[rec_id] = rec
 
-    rec.update_val('last_seen', ref.time)
-    rec.update_val('time_offset', ref.time_offset)
 
-    for chunk in line[1:]:
+    for chunk in line:
         key, val = chunk.split('=', 1)
         if key == "T":
             coord = val.split('|')
@@ -334,38 +321,9 @@ def line_to_obj(raw_line: str, ref: Ref) -> Optional[ObjectRec]:
                 i += 1
         else:
             rec.update_val(key.lower(), val)
-
     rec.compute_velocity(ref.time_since_last)
-
+    # TIME_SPLITTING_TIME += (datetime.now() - t1).total_seconds()
     return rec
-
-
-def update_records(que: Queue) -> None:
-    """
-    Given a list of ObjectRecords, execute create or update operations to
-    sync with db.
-    """
-    with DB.atomic():
-        while not que.empty():
-            obj = que.get_nowait()
-            if obj == -1:
-                break
-            try:
-                if obj.updates == 1:
-                    rec = Object.create(**obj.to_dict())
-                else:
-                    update_keys = {}
-                    if obj.updated_vals:
-                        for key in obj.updated_vals:
-                            update_keys[key] = getattr(obj, key)
-                        (Object.update(update_keys)
-                        .where(Object.id==obj.id).execute())
-                obj.reset_update_fields()
-                Event.create(**obj.to_dict())
-            except Exception as err:
-                LOG.error(f"Error on rec: {obj.to_dict()}...\n"
-                          f"New fields: {obj.updated_vals}...")
-                raise err
 
 
 def search_for_parent_and_impactor(rec):
@@ -394,6 +352,77 @@ def search_for_parent_and_impactor(rec):
             rec.save()
 
 
+def update_records(que: Queue, counter: float = None) -> Optional[float]:
+    """
+    Given a list of ObjectRecords, execute create or update operations to
+    sync with db.
+    """
+    if que.empty():
+        return counter
+    t1 = datetime.now()
+    cur = DB.cursor()
+    with DB.atomic():
+        while not que.empty():
+            obj = que.get_nowait()
+            if obj == -1:
+                break
+            try:
+                if obj.updated_vals:
+                    vals = [None] * len(obj.updated_vals)
+                    params = vals.copy()
+                    for i, key in enumerate(obj.updated_vals):
+                        params[i] = f"{key} = ?"
+                        vals[i] = obj.__dict__[key]
+
+                    query = "UPDATE object SET " + " , ".join(params) + f" WHERE id = {obj.id}"
+                    cur.execute(query,vals)
+                    obj.reset_update_fields()
+            except Exception as err:
+                LOG.error(query)
+                LOG.error(f"Error on rec: {obj.to_dict()}...\n"
+                            f"New fields: {obj.updated_vals}...")
+                raise err
+
+    counter += (datetime.now()-t1).total_seconds()
+    return counter
+
+
+def insert_records(que: Queue, table, counter: float = None) -> Optional[float]:
+    """
+    Given a list of Event dicts, execute insert rows.
+    """
+    if que.empty():
+        return counter
+    t1 = datetime.now()
+    inserts = [None] * que.qsize()
+    i = 0
+    fields = table._meta.fields.keys()
+    qs = ','.join(["?" for _ in range(len(fields))])
+    while not que.empty():
+        obj = que.get_nowait()
+        if obj == -1:
+            inserts.pop(-1) # since the last element in inserts is None
+            break
+        try:
+            inserts[i] = tuple(obj[field] for field in fields)
+            i += 1
+        except Exception as err:
+            LOG.error(f"Error on rec: {obj}...")
+            raise err
+
+    if inserts:
+        try:
+            curr = DB.cursor()
+            curr.executemany(f"INSERT INTO {table._meta.name} VALUES ({qs})", inserts)
+        except (ValueError, sqlite3.OperationalError) as err:
+            LOG.error(inserts)
+            LOG.error(f"Error writing {len(inserts)} to {table}!")
+            raise err
+
+    counter += (datetime.now()-t1).total_seconds()
+    return counter
+
+
 class ServerExitException(Exception):
     """Throw this exception when there is a socket read timeout."""
 
@@ -404,14 +433,15 @@ class MaxIterationsException(Exception):
 
 class SocketReader:
     """Read from Tacview socket."""
-    def __init__(self, host, port):
+    def __init__(self, host, port, debug=False):
         self.host = host
         self.port = port
         self.reader = None
         self.ref = Ref()
         self.writer = None
         self.sink = "log/raw_sink.txt"
-        if DEBUG:
+        self.debug = debug
+        if self.debug:
             open(self.sink, 'w').close()
 
     async def open_connection(self):
@@ -421,11 +451,10 @@ class SocketReader:
         """
         while True:
             try:
-                LOG.info('Attempting connection at %s:%s...', self.host,
-                         self.port)
+                LOG.info(f'Opening connection to {self.host}:{self.port}...')
                 self.reader, self.writer = await asyncio.open_connection(
                     self.host, self.port)
-                LOG.info('Socket connection opened...sending handshake...')
+                LOG.info('Connection opened...sending handshake...')
                 self.writer.write(config.HANDSHAKE)
                 await self.reader.readline()
 
@@ -449,7 +478,7 @@ class SocketReader:
         if not data:
             raise ServerExitException("No data in message!")
         msg = data.decode()
-        if DEBUG:
+        if self.debug:
             with open(self.sink, 'a+') as fp_:
                 fp_.write(msg)
         return msg.strip()
@@ -463,10 +492,22 @@ class SocketReader:
         self.ref = Ref()
 
 
+def cleanup_obj_queues(update_queue, event_queue, create_queue,
+                       db_update_time, db_event_time, db_create_time):
+    update_queue.put(-1)
+    create_queue.put(-1)
+    event_queue.put(-1)
+    db_create_time = insert_records(create_queue, Object, db_create_time)
+    db_update_time = update_records(update_queue, db_update_time)
+    db_event_time = insert_records(event_queue, Event, db_event_time)
+    return db_update_time, db_event_time, db_create_time
+
+
 async def consumer(host=config.HOST,
                    port=config.PORT,
                    max_iters=None,
-                   only_proc=False):
+                   only_proc=False,
+                   loop=None) -> None:
     """Main method to consume stream."""
     LOG.info(
         "Starting consumer with settings: "
@@ -474,71 +515,76 @@ async def consumer(host=config.HOST,
     tasks_complete = 1  # I know this is wrong.  It just makes division easier.
     init_db()
     sock = SocketReader(host, port)
-    loop = asyncio.get_event_loop()
     await sock.open_connection()
-    init_time = time.time()
+    init_time = datetime.now()
     last_log = 0
-    pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
     update_queue = Queue(maxsize=-1)
-    secs_to_update = -1
-    db_write_time = 0
+    event_queue = Queue(maxsize=-1)
+    create_queue = Queue(maxsize=-1)
+    db_update_time = 0.0
+    db_event_time = 0.0
+    db_create_time = 0.0
+    line_proc_time = 0.0
 
     while True:
         try:
             obj = await sock.read_stream()
             if obj[0] == "#":
-                if sock.ref.time_since_last >= secs_to_update and not update_queue.empty():
-                    sock.ref.update_db()
-                    t1 = datetime.now()
-                    update_records(update_queue)
-                    db_write_time += (datetime.now()-t1).total_seconds()
-
                 sock.ref.update_time(obj)
-                runtime = round(time.time() - init_time, 2)
+                db_create_time = insert_records(create_queue, Object, db_create_time)
+                db_update_time = update_records(update_queue, db_update_time)
+                db_event_time = insert_records(event_queue, Event, db_event_time)
+
+                runtime = ((datetime.now() - init_time).total_seconds())
                 log_check = runtime - last_log
                 if log_check > 5 or obj=="#0":
-                    secs_ahead = sock.ref.last_time - runtime
-                    ln_sec = tasks_complete / (time.time() - init_time)
-                    LOG.info(
-                        f"Running time: {runtime} - Sec ahead: {secs_ahead}..."
-                        f"Lines/sec: {ln_sec} - Total Lines: {tasks_complete}")
+                    secs_ahead = sock.ref.time_offset - ((datetime.now() - init_time).total_seconds())
+                    ln_sec = tasks_complete / runtime
+                    LOG.info(f"Runtime: {round(runtime, 2)} - Sec ahead: {round(secs_ahead, 2)}..."
+                             f"Lines/sec: {round(ln_sec, 2)} - Total: {tasks_complete}")
                     last_log = runtime
             else:
+                t1 = datetime.now()
                 obj = line_to_obj(obj, sock.ref)
-                if obj and not only_proc:
-                    update_queue.put_nowait(obj)
+                if obj:
+                    obj_dict = obj.to_dict()
+                    line_proc_time += (datetime.now()-t1).total_seconds()
+                    if obj.updates == 1:
+                        create_queue.put_nowait(obj_dict)
+                    else:
+                        update_queue.put_nowait(obj)
+                    event_queue.put_nowait(obj_dict)
+                # line_proc_time += (datetime.now()-t1).total_seconds()
                 tasks_complete += 1
 
             if max_iters and max_iters <= tasks_complete:
                 LOG.info(f"Max iters reached: {max_iters}...returning...")
                 raise MaxIterationsException
 
-        except (asyncio.TimeoutError, ConnectionError, ConnectionResetError,
-                ServerExitException) as err:
-            LOG.exception(err)
-            update_queue.put(-1)
-
-            await loop.run_in_executor(pool, partial(update_records, update_queue, ))
-            await sock.close()
-            break
-
         except (KeyboardInterrupt, MaxIterationsException):
-            update_queue.put(-1)
-            await loop.run_in_executor(pool, partial(update_records, update_queue, ))
-            total_time = time.time() - init_time
+            db_update_time, db_event_time, db_create_time  = cleanup_obj_queues(
+                update_queue, event_queue, create_queue,
+                db_update_time, db_event_time, db_create_time)
+            total_time = ((datetime.now() - init_time).total_seconds())
             await sock.close()
             LOG.info('Total iters : %s', str(tasks_complete))
             LOG.info('Total seconds running : %.2f', total_time)
-            LOG.info('Pct Write Time: %.2f', db_write_time/total_time)
+            LOG.info('Pct Create Write Time: %.2f', db_create_time / total_time)
+            LOG.info('Pct Event Write Time: %.2f', db_event_time / total_time)
+            LOG.info('Pct Update Write Time: %.2f', db_update_time / total_time)
+            LOG.info('Pct Line Proc Time: %.2f', line_proc_time / total_time)
+            LOG.info('Pct Splitting Time: %.2f', TIME_SPLITTING_TIME / total_time)
+
             LOG.info('Lines/second: %.4f', tasks_complete / total_time)
             LOG.info('Exiting tacview-client!')
-            break
+            return
 
         except Exception as err:
             LOG.error("Unhandled Exception!"
                       "Writing remaining updates to db and exiting!")
-            update_queue.put(-1)
-            await loop.run_in_executor(pool, partial(update_records, update_queue,))
+            cleanup_obj_queues(update_queue, event_queue, create_queue,
+                               db_update_time, db_event_time,
+                               db_create_time)
             raise err
 
 
@@ -548,13 +594,12 @@ def main(host,
          max_iters=None,
          only_proc=False):
     """Start event loop to consume stream."""
-    asyncio.run(consumer(host, port, max_iters, only_proc))
-    import sqlite3
+    loop = asyncio.get_event_loop()
+    asyncio.run(consumer(host, port, max_iters, only_proc, loop))
     import pandas as pd
     conn = sqlite3.connect("data/dcs.db", detect_types=sqlite3.PARSE_DECLTYPES)
-    print(pd.read_sql("select count(*) events from event", conn))
-    print(
-        pd.read_sql(
-            "select count(*) objects, count(parent), COUNT(impactor), MAX(updates) \
-                      FROM object", conn))
+    print(pd.read_sql("SELECT COUNT(*) events FROM event", conn))
+    print(pd.read_sql("""SELECT COUNT(*) objects, COUNT(parent), COUNT(impactor),
+                            MAX(updates)
+                         FROM object""", conn))
     conn.close()

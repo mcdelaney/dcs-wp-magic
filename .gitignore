@@ -26,3 +26,4 @@ tests/data/**/**
 .pytest_cache/**/**
 beam-output**/**/**
 beam-input**/**/**
+*.prof

@@ -17,7 +17,7 @@ from dcs.common import config
 DB = pw.SqliteDatabase(None,
                          pragmas={
                             #  'locking_mode': 'EXCLUSIVE',
-                             'journal_mode': 'off',
+                             'journal_mode': 'wal',
                             #  'journal_mode': 'wal',
                              'synchronous': 'OFF',
                              'cache_size': -1024 * 4000
@@ -65,7 +65,6 @@ class Object(BaseModel):
     parent = pw.CharField(null=True)
     parent_dist = pw.FloatField(null=True)
 
-    debug = pw.CharField(null=True)
 
 
 class Event(BaseModel):
@@ -87,7 +86,7 @@ class Event(BaseModel):
     heading = pw.FloatField(null=True)
     # dist_m = pw.FloatField(null=True)
     velocity_kts = pw.FloatField(null=True)
-    secs_from_last = pw.FloatField(null=True)
+    secs_since_last_seen = pw.FloatField(null=True)
     updates = pw.IntegerField(null=False)
 
 
