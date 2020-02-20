@@ -5,7 +5,7 @@ from tkinter import Tk, Label, Button
 from tkinter.ttk import Combobox, Entry
 
 from dcs.common import get_logger, config
-from dcs import tacview
+from dcs.tacview import client
 from dcs import coord_server
 
 logging.basicConfig(level=logging.INFO)
@@ -75,7 +75,7 @@ class DCSWPControllerApp(Tk):
             raise ValueError("Tacview client process already exists!")
         LOG.info('Starting tacview client process...')
         host = config.presets[self.host.get()].split(":")
-        self.tac_proc = Process(target=tacview.main, args=(host[0], host[1],))
+        self.tac_proc = Process(target=client.main, args=(host[0], host[1],))
         self.tac_proc.start()
         LOG.info("Tacview client process started successfully...")
 

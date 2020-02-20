@@ -15,13 +15,11 @@ from dcs.common import config
 #                           })
 
 DB = pw.SqliteDatabase(None,
-                         pragmas={
-                            #  'locking_mode': 'EXCLUSIVE',
-                             'journal_mode': 'wal',
-                            #  'journal_mode': 'wal',
-                             'synchronous': 'OFF',
-                             'cache_size': -1024 * 4000
-                         })
+                       pragmas={
+                           'journal_mode': 'wal',
+                           'synchronous': 'OFF',
+                           'cache_size': -1024 * 4000
+                       })
 
 
 class BaseModel(pw.Model):
@@ -31,10 +29,24 @@ class BaseModel(pw.Model):
         database = DB
 
 
+class Session(BaseModel):
+    """Session Reference Data."""
+    session_id = pw.AutoField()
+    session_uuid = pw.CharField()
+    start_time = pw.DateTimeField()
+    datasource = pw.CharField(default=None)
+    author = pw.CharField(default=None)
+    title = pw.CharField(default=None)
+    lat = pw.FloatField()
+    lon = pw.FloatField()
+    time = pw.DateTimeField()
+    time_offset = pw.FloatField()
+
+
 class Object(BaseModel):
     """DCS Object."""
     id = pw.IntegerField(primary_key=True)
-    session_id = pw.IntegerField()
+    session_id = pw.ForeignKeyField(Session)
     name = pw.CharField(null=True)
     color = pw.CharField(null=True, index=True)
     country = pw.CharField(null=True)
@@ -66,11 +78,10 @@ class Object(BaseModel):
     parent_dist = pw.FloatField(null=True)
 
 
-
 class Event(BaseModel):
     """Event History."""
-    id = pw.IntegerField()
-    session_id = pw.IntegerField()
+    id = pw.ForeignKeyField(Object)
+    session_id = pw.IntegerField(Session)
     last_seen = pw.DateTimeField()
     time_offset = pw.FloatField()
     alive = pw.IntegerField(default=1)
@@ -90,24 +101,6 @@ class Event(BaseModel):
     updates = pw.IntegerField(null=False)
 
 
-class Session(BaseModel):
-    """Session Reference Data."""
-    session_id = pw.AutoField()
-    session_uuid = pw.CharField()
-    start_time = pw.DateTimeField()
-    datasource = pw.CharField(default=None)
-    author = pw.CharField(default=None)
-    title = pw.CharField(default=None)
-    lat = pw.FloatField()
-    lon = pw.FloatField()
-    time = pw.DateTimeField()
-    time_offset = pw.FloatField()
-
-
-class TestTable(BaseModel):
-    debug = pw.CharField()
-
-
 def init_db(drop=True):
     """Initialize the database and execute create table statements."""
     db_path = Path(config.DB_LOC)
@@ -119,5 +112,5 @@ def init_db(drop=True):
 
     DB.connect()
     if drop:
-        DB.drop_tables([Object, Event, Session, TestTable])
-    DB.create_tables([Object, Event, Session, TestTable])
+        DB.drop_tables([Session, Object, Event])
+    DB.create_tables([Session, Object, Event])
