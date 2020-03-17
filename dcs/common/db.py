@@ -3,7 +3,7 @@ from pathlib import Path
 
 import peewee as pw
 
-from dcs.common import config
+from dcs.common.config import DB_LOC
 
 # DB = PooledSqliteDatabase(None,
 #                           check_same_thread=False,
@@ -43,9 +43,20 @@ class Session(BaseModel):
     time_offset = pw.FloatField()
 
 
+class Impact(BaseModel):
+    """Kill records."""
+    session_id = pw.ForeignKeyField(Session)
+    killer = pw.IntegerField(null=True)
+    target = pw.IntegerField()
+    weapon = pw.IntegerField()
+    time_offset = pw.FloatField()
+    killed = pw.IntegerField(default=0, null=True)
+    impact_dist = pw.FloatField()
+
+
 class Object(BaseModel):
     """DCS Object."""
-    id = pw.IntegerField(primary_key=True)
+    id = pw.IntegerField(primary_key=True, unique=True)
     session_id = pw.ForeignKeyField(Session)
     name = pw.CharField(null=True)
     color = pw.CharField(null=True, index=True)
@@ -71,8 +82,8 @@ class Object(BaseModel):
     updates = pw.IntegerField(default=1)
     velocity_kts = pw.FloatField(null=True)
 
-    impactor = pw.CharField(null=True)
-    impactor_dist = pw.FloatField(null=True)
+    impacted = pw.CharField(null=True)
+    impacted_dist = pw.FloatField(null=True)
 
     parent = pw.CharField(null=True)
     parent_dist = pw.FloatField(null=True)
@@ -80,8 +91,9 @@ class Object(BaseModel):
 
 class Event(BaseModel):
     """Event History."""
-    id = pw.ForeignKeyField(Object)
-    session_id = pw.IntegerField(Session)
+    # id = pw.ForeignKeyField(Object)
+    id = pw.IntegerField()
+    session_id = pw.IntegerField()
     last_seen = pw.DateTimeField()
     time_offset = pw.FloatField()
     alive = pw.IntegerField(default=1)
@@ -101,16 +113,42 @@ class Event(BaseModel):
     updates = pw.IntegerField(null=False)
 
 
-def init_db(drop=True):
+def init_db(db_path: Path, drop=True):
     """Initialize the database and execute create table statements."""
-    db_path = Path(config.DB_LOC)
     if db_path.exists():
         db_path.unlink()
     elif not db_path.parent.exists():
         db_path.parent.mkdir()
-    DB.init(config.DB_LOC)
+    DB.init(DB_LOC)
 
     DB.connect()
     if drop:
-        DB.drop_tables([Session, Object, Event])
-    DB.create_tables([Session, Object, Event])
+        DB.drop_tables([Session, Object, Event, Impact])
+    DB.create_tables([Session, Object, Event, Impact])
+    DB.execute_sql(
+        """
+        CREATE VIEW obj_events AS
+            SELECT * FROM event
+            INNER JOIN (SELECT id, session_id, name, color, pilot, platform,
+                            first_seen, type, grp, coalition, impacted, parent,
+                            time_offset AS last_offset
+                        FROM object)
+            USING (id, session_id)
+        """)
+
+    DB.execute_sql(
+        """
+        CREATE VIEW parent_summary AS
+            SELECT pilot, name, type, parent, count(*) total,
+                count(impacted) as impacts
+            FROM (SELECT parent, name, type, impacted
+                  FROM object
+                  WHERE parent is not null AND name IS NOT NULL
+                  ) objs
+            INNER JOIN (
+                SELECT id as parent, pilot
+                FROM object where pilot is not NULL
+            ) pilots
+            USING (parent)
+            GROUP BY name, type, parent, pilot
+        """)
