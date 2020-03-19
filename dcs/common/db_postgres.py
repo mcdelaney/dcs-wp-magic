@@ -1,17 +1,12 @@
 """Model definitions for database."""
 from pathlib import Path
 
-import databases
 import sqlalchemy as sa
-from sqlalchemy.orm import relationship
+from sqlalchemy import schema
 import asyncpg
 
 
 PG_URL = 'postgresql://0.0.0.0:5432/dcs?user=prod&password=pwd'
-# PG_URL = 'sqlite:///data/dcs.db'
-# DB = databases.Database(PG_URL)
-
-
 engine = sa.create_engine(PG_URL)
 metadata = sa.MetaData()
 
@@ -20,16 +15,13 @@ Session = sa.Table(
     "session",
     metadata,
     sa.Column('session_id', sa.Integer, primary_key=True, autoincrement=True),
-    sa.Column('session_uuid', sa.String()),
     sa.Column('start_time', sa.TIMESTAMP()),
     sa.Column('datasource', sa.String()),
     sa.Column('author', sa.String()),
     sa.Column('title', sa.String()),
     sa.Column('lat', sa.Numeric()),
     sa.Column('lon', sa.Numeric()),
-    sa.Column('time', sa.TIMESTAMP()),
     sa.Column('time_offset', sa.Numeric())
-
 )
 
 Impact = sa.Table(
@@ -40,7 +32,7 @@ Impact = sa.Table(
     sa.Column('target', sa.INTEGER()),
     sa.Column('weapon', sa.INTEGER()),
     sa.Column('time_offset', sa.Numeric()),
-    sa.Column('killed', sa.INTEGER()),
+    # sa.Column('killed', sa.INTEGER()),
     sa.Column('impact_dist', sa.Numeric())
 )
 
@@ -49,7 +41,7 @@ Object = sa.Table(
     "object",
     metadata,
     sa.Column('id', sa.INTEGER(), primary_key=True, unique=True),
-    sa.Column('session_id', sa.Integer()),
+    sa.Column('session_id', sa.Integer(), sa.ForeignKey('session.session_id')),
     sa.Column('name', sa.String()),
     sa.Column('color', sa.String()),
     sa.Column('country', sa.String()),
@@ -58,49 +50,50 @@ Object = sa.Table(
     sa.Column('type', sa.String()),
     sa.Column('alive', sa.INTEGER()),
     sa.Column('coalition', sa.String()),
-    sa.Column('first_seen', sa.Numeric()),
-    sa.Column('last_seen', sa.Numeric()),
+    sa.Column('first_seen', sa.Float()),
+    sa.Column('last_seen', sa.Float()),
 
-    sa.Column('lat', sa.Numeric()),
-    sa.Column('lon', sa.Numeric()),
-    sa.Column('alt', sa.Numeric(), ),
-    sa.Column('roll', sa.Numeric()),
-    sa.Column('pitch', sa.Numeric()),
-    sa.Column('yaw', sa.Numeric()),
-    sa.Column('u_coord', sa.Numeric()),
-    sa.Column('v_coord', sa.Numeric()),
-    sa.Column('heading', sa.Numeric()),
+    sa.Column('lat', sa.Float()),
+    sa.Column('lon', sa.Float()),
+    sa.Column('alt', sa.Float(), ),
+    sa.Column('roll', sa.Float()),
+    sa.Column('pitch', sa.Float()),
+    sa.Column('yaw', sa.Float()),
+    sa.Column('u_coord', sa.Float()),
+    sa.Column('v_coord', sa.Float()),
+    sa.Column('heading', sa.Float()),
     sa.Column('updates', sa.INTEGER()),
-    sa.Column('velocity_kts', sa.Numeric()),
+    sa.Column('velocity_kts', sa.Float()),
 
     sa.Column('impacted', sa.INTEGER()),
-    sa.Column('impacted_dist', sa.Numeric()),
+    sa.Column('impacted_dist', sa.Float()),
 
     sa.Column('parent', sa.INTEGER()),
-    sa.Column('parent_dist', sa.Numeric()),
+    sa.Column('parent_dist', sa.Float()),
     sa.Column('updates', sa.Integer())
 )
 
 Event = sa.Table(
     "event",
     metadata,
-    sa.Column('id', sa.INTEGER(),  sa.ForeignKey('object.id')),
+    sa.Column('id', sa.INTEGER(), sa.ForeignKey('object.id')),
     sa.Column('session_id', sa.INTEGER()),
-    sa.Column('last_seen', sa.Numeric()),
+            #   , sa.ForeignKey('session.session_id')),
+    sa.Column('last_seen', sa.Float()),
     sa.Column('alive', sa.INTEGER()),
-    sa.Column('lat', sa.Numeric()),
-    sa.Column('lon', sa.Numeric()),
-    sa.Column('alt', sa.Numeric()),
+    sa.Column('lat', sa.Float()),
+    sa.Column('lon', sa.Float()),
+    sa.Column('alt', sa.Float()),
 
-    sa.Column('roll', sa.Numeric()),
-    sa.Column('pitch', sa.Numeric()),
-    sa.Column('yaw', sa.Numeric()),
-    sa.Column('u_coord', sa.Numeric()),
-    sa.Column('v_coord', sa.Numeric()),
-    sa.Column('heading', sa.Numeric()),
-    # dist_m, sa.Numeric()
-    sa.Column('velocity_kts', sa.Numeric()),
-    sa.Column('secs_since_last_seen', sa.Numeric()),
+    sa.Column('roll', sa.Float()),
+    sa.Column('pitch', sa.Float()),
+    sa.Column('yaw', sa.Float()),
+    sa.Column('u_coord', sa.Float()),
+    sa.Column('v_coord', sa.Float()),
+    sa.Column('heading', sa.Float()),
+    # dist_m, sa.Float()
+    sa.Column('velocity_kts', sa.Float()),
+    # sa.Column('secs_since_last_seen', sa.Float()),
     sa.Column('updates', sa.INTEGER())
 )
 
@@ -108,14 +101,13 @@ Event = sa.Table(
 async def init_db(db_path: Path=None, drop=True):
     """Initialize the database and execute create table statements."""
     DB = await asyncpg.connect(PG_URL)
-    # await DB.connect()
+
     if drop:
         for table in [Session, Object, Event, Impact]:
             await DB.execute(f"drop table if exists {table.name} CASCADE")
 
-
     for table in [Session, Object, Event, Impact]:
-        await DB.execute(str(sa.schema.CreateTable(table)))
+        await DB.execute(str(schema.CreateTable(table)))
 
     await DB.execute(
         """
