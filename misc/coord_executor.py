@@ -3,7 +3,7 @@ import logging
 import sys
 import socket
 import select
-from dcs import core, wp_ctrl
+from dcs.coords import wp_ctrl
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -49,8 +49,6 @@ def main():
                         sock.close()
                         CONNECTION_LIST.remove(sock)
                         continue
-
-    server_socket.close()
 
 
 if __name__=="__main__":

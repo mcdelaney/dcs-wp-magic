@@ -4,6 +4,7 @@
 import argparse
 import asyncio
 from asyncio.log import logging
+import gzip
 from functools import partial
 import sys
 from pathlib import Path
@@ -19,12 +20,22 @@ LOG.setLevel(logging.INFO)
 async def handle_req(reader, writer, filename: str) -> None:
     """Send data."""
     try:
-        with open(filename, 'rb') as fp_:
-            lines = fp_.readlines()
-        handshake = await reader.read(4026)
-        for line in lines:
-            writer.write(line)
-            await writer.drain()
+        LOG.info('Connection started...')
+        if filename.endswith('.gz'):
+            fp_ = gzip.open(filename, 'rb')
+        else:
+            fp_ = open(filename, 'rb')
+                # lines = fp_.readlines()
+        await reader.read(4026)
+
+        while True:
+            line = fp_.read()
+            if line:
+                writer.write(line)
+            else:
+                break
+
+        await writer.drain()
         writer.close()
         LOG.info("All lines sent...closing...")
     except (ConnectionResetError, BrokenPipeError):

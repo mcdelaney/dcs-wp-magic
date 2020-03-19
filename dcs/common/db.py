@@ -50,7 +50,7 @@ class Impact(BaseModel):
     target = pw.IntegerField()
     weapon = pw.IntegerField()
     time_offset = pw.FloatField()
-    killed = pw.IntegerField(default=0, null=True)
+    # killed = pw.IntegerField(default=0, null=True)
     impact_dist = pw.FloatField()
 
 

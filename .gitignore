@@ -27,3 +27,4 @@ tests/data/**/**
 beam-output**/**/**
 beam-input**/**/**
 *.prof
+.vscode/settings.json

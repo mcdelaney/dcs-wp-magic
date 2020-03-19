@@ -1,28 +1,24 @@
 """Model definitions for database."""
-from pathlib import Path
-
-import sqlalchemy as sa
 from sqlalchemy import schema
-import asyncpg
-
+import sqlalchemy as sa
+from sqlalchemy.ext.declarative import declarative_base
 
 PG_URL = 'postgresql://0.0.0.0:5432/dcs?user=prod&password=pwd'
 engine = sa.create_engine(PG_URL)
-metadata = sa.MetaData()
+metadata = sa.MetaData(engine)
+Base = declarative_base(engine, metadata)
 
 
-Session = sa.Table(
-    "session",
-    metadata,
-    sa.Column('session_id', sa.Integer, primary_key=True, autoincrement=True),
-    sa.Column('start_time', sa.TIMESTAMP()),
-    sa.Column('datasource', sa.String()),
-    sa.Column('author', sa.String()),
-    sa.Column('title', sa.String()),
-    sa.Column('lat', sa.Numeric()),
-    sa.Column('lon', sa.Numeric()),
-    sa.Column('time_offset', sa.Numeric())
-)
+class Session(Base):
+    __tablename__ = 'session'
+    session_id =sa.Column(sa.Integer, primary_key=True)
+    start_time = sa.Column(sa.TIMESTAMP())
+    datasource = sa.Column(sa.String())
+    author = sa.Column(sa.String())
+    title= sa.Column(sa.String())
+    lat = sa.Column(sa.Numeric())
+    lon = sa.Column(sa.Numeric())
+
 
 Impact = sa.Table(
     "impact",
@@ -32,7 +28,6 @@ Impact = sa.Table(
     sa.Column('target', sa.INTEGER()),
     sa.Column('weapon', sa.INTEGER()),
     sa.Column('time_offset', sa.Numeric()),
-    # sa.Column('killed', sa.INTEGER()),
     sa.Column('impact_dist', sa.Numeric())
 )
 
@@ -78,38 +73,33 @@ Event = sa.Table(
     metadata,
     sa.Column('id', sa.INTEGER(), sa.ForeignKey('object.id')),
     sa.Column('session_id', sa.INTEGER()),
-            #   , sa.ForeignKey('session.session_id')),
     sa.Column('last_seen', sa.Float()),
     sa.Column('alive', sa.INTEGER()),
     sa.Column('lat', sa.Float()),
     sa.Column('lon', sa.Float()),
     sa.Column('alt', sa.Float()),
-
     sa.Column('roll', sa.Float()),
     sa.Column('pitch', sa.Float()),
     sa.Column('yaw', sa.Float()),
     sa.Column('u_coord', sa.Float()),
     sa.Column('v_coord', sa.Float()),
     sa.Column('heading', sa.Float()),
-    # dist_m, sa.Float()
     sa.Column('velocity_kts', sa.Float()),
-    # sa.Column('secs_since_last_seen', sa.Float()),
     sa.Column('updates', sa.INTEGER())
 )
 
 
-async def init_db(db_path: Path=None, drop=True):
+async def drop_and_recreate_tables():
     """Initialize the database and execute create table statements."""
-    DB = await asyncpg.connect(PG_URL)
+    con = engine.connect()
 
-    if drop:
-        for table in [Session, Object, Event, Impact]:
-            await DB.execute(f"drop table if exists {table.name} CASCADE")
+    for table in ['Session', 'Object', 'Event', 'Impact']:
+        con.execute(f"drop table if exists {table} CASCADE")
 
-    for table in [Session, Object, Event, Impact]:
-        await DB.execute(str(schema.CreateTable(table)))
+    metadata.create_all()
 
-    await DB.execute(
+
+    con.execute(
         """
         CREATE VIEW obj_events AS
             SELECT * FROM event evt
@@ -120,7 +110,7 @@ async def init_db(db_path: Path=None, drop=True):
             USING (id, session_id)
         """)
 
-    await DB.execute(
+    con.execute(
         """
         CREATE OR REPLACE VIEW parent_summary AS
             SELECT session_id, pilot, name, type, parent, count(*) total,
@@ -137,7 +127,8 @@ async def init_db(db_path: Path=None, drop=True):
             GROUP BY session_id, name, type, parent, pilot
         """)
 
-    await DB.execute(
+    con.execute(
         "DROP TABLE IF EXISTS event_t_ CASCADE;"
         "CREATE UNLOGGED TABLE IF NOT EXISTS event_temp (LIKE event INCLUDING DEFAULTS);"
         )
+    con.close()
