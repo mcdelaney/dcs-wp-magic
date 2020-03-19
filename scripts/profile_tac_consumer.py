@@ -48,10 +48,6 @@ if __name__=='__main__':
 
     if args.profile:
         prof_filename = 'callgrind.tacview.prof'
-        thread_stats = yappi.get_thread_stats()
-        mem_stats = yappi.get_mem_usage()
         stats = yappi.get_func_stats()
         stats.sort('ttot', 'asc')
         stats.save(prof_filename, type='callgrind') # type: ignore
-        mem_stats.print_all() # type: ignore
-        thread_stats.print_all() # type: ignore
