@@ -15,6 +15,7 @@ fileHandler.setFormatter(logFormatter)
 
 
 class CoordApp(Flask):
+    logger: logging.Logger
     def __init__(self, app_name):
         super().__init__(app_name)
         self.user = "someone_somewhere"
