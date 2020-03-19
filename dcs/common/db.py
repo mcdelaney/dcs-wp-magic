@@ -1,154 +1,136 @@
 """Model definitions for database."""
-from pathlib import Path
+from sqlalchemy import schema
+import sqlalchemy as sa
+from sqlalchemy.ext.declarative import declarative_base
 
-import peewee as pw
-
-from dcs.common.config import DB_LOC
-
-# DB = PooledSqliteDatabase(None,
-#                           check_same_thread=False,
-#                           max_connections=10,
-#                           pragmas={
-#                               'journal_mode': 'wal',
-#                               'synchronous': 'OFF',
-#                               'cache_size': -1024 * 1000
-#                           })
-
-DB = pw.SqliteDatabase(None,
-                       pragmas={
-                           'journal_mode': 'wal',
-                           'synchronous': 'OFF',
-                           'cache_size': -1024 * 4000
-                       })
+PG_URL = 'postgresql://0.0.0.0:5432/dcs?user=prod&password=pwd'
+engine = sa.create_engine(PG_URL)
+metadata = sa.MetaData(engine)
+Base = declarative_base(engine, metadata)
 
 
-class BaseModel(pw.Model):
-    """Base model with DB defined from which all others inherit."""
-    class Meta:  # pylint: disable=too-few-public-methods
-        """Set global database."""
-        database = DB
+class Session(Base): # type: ignore
+    def __init__(self, *args, **kwargs):
+        super()
+    __tablename__ = 'session'
+    session_id =sa.Column(sa.Integer, primary_key=True)
+    start_time = sa.Column(sa.TIMESTAMP())
+    datasource = sa.Column(sa.String())
+    author = sa.Column(sa.String())
+    title= sa.Column(sa.String())
+    lat = sa.Column(sa.Numeric())
+    lon = sa.Column(sa.Numeric())
 
 
-class Session(BaseModel):
-    """Session Reference Data."""
-    session_id = pw.AutoField()
-    session_uuid = pw.CharField()
-    start_time = pw.DateTimeField()
-    datasource = pw.CharField(default=None)
-    author = pw.CharField(default=None)
-    title = pw.CharField(default=None)
-    lat = pw.FloatField()
-    lon = pw.FloatField()
-    time = pw.DateTimeField()
-    time_offset = pw.FloatField()
+Impact = sa.Table(
+    "impact",
+    metadata,
+    sa.Column('session_id', sa.INTEGER()),
+    sa.Column('killer', sa.INTEGER()),
+    sa.Column('target', sa.INTEGER()),
+    sa.Column('weapon', sa.INTEGER()),
+    sa.Column('time_offset', sa.Numeric()),
+    sa.Column('impact_dist', sa.Numeric())
+)
 
 
-class Impact(BaseModel):
-    """Kill records."""
-    session_id = pw.ForeignKeyField(Session)
-    killer = pw.IntegerField(null=True)
-    target = pw.IntegerField()
-    weapon = pw.IntegerField()
-    time_offset = pw.FloatField()
-    # killed = pw.IntegerField(default=0, null=True)
-    impact_dist = pw.FloatField()
+Object = sa.Table(
+    "object",
+    metadata,
+    sa.Column('id', sa.INTEGER(), primary_key=True, unique=True),
+    sa.Column('session_id', sa.Integer(), sa.ForeignKey('session.session_id')),
+    sa.Column('name', sa.String()),
+    sa.Column('color', sa.String()),
+    sa.Column('country', sa.String()),
+    sa.Column('grp', sa.String()),
+    sa.Column('pilot', sa.String()),
+    sa.Column('type', sa.String()),
+    sa.Column('alive', sa.INTEGER()),
+    sa.Column('coalition', sa.String()),
+    sa.Column('first_seen', sa.Float()),
+    sa.Column('last_seen', sa.Float()),
+
+    sa.Column('lat', sa.Float()),
+    sa.Column('lon', sa.Float()),
+    sa.Column('alt', sa.Float(), ),
+    sa.Column('roll', sa.Float()),
+    sa.Column('pitch', sa.Float()),
+    sa.Column('yaw', sa.Float()),
+    sa.Column('u_coord', sa.Float()),
+    sa.Column('v_coord', sa.Float()),
+    sa.Column('heading', sa.Float()),
+    sa.Column('updates', sa.INTEGER()),
+    sa.Column('velocity_kts', sa.Float()),
+
+    sa.Column('impacted', sa.INTEGER()),
+    sa.Column('impacted_dist', sa.Float()),
+
+    sa.Column('parent', sa.INTEGER()),
+    sa.Column('parent_dist', sa.Float()),
+    sa.Column('updates', sa.Integer())
+)
+
+Event = sa.Table(
+    "event",
+    metadata,
+    sa.Column('id', sa.INTEGER(), sa.ForeignKey('object.id')),
+    sa.Column('session_id', sa.INTEGER()),
+    sa.Column('last_seen', sa.Float()),
+    sa.Column('alive', sa.INTEGER()),
+    sa.Column('lat', sa.Float()),
+    sa.Column('lon', sa.Float()),
+    sa.Column('alt', sa.Float()),
+    sa.Column('roll', sa.Float()),
+    sa.Column('pitch', sa.Float()),
+    sa.Column('yaw', sa.Float()),
+    sa.Column('u_coord', sa.Float()),
+    sa.Column('v_coord', sa.Float()),
+    sa.Column('heading', sa.Float()),
+    sa.Column('velocity_kts', sa.Float()),
+    sa.Column('updates', sa.INTEGER())
+)
 
 
-class Object(BaseModel):
-    """DCS Object."""
-    id = pw.IntegerField(primary_key=True, unique=True)
-    session_id = pw.ForeignKeyField(Session)
-    name = pw.CharField(null=True)
-    color = pw.CharField(null=True, index=True)
-    country = pw.CharField(null=True)
-    grp = pw.CharField(null=True)
-    pilot = pw.CharField(null=True)
-    platform = pw.CharField(null=True)
-    type = pw.CharField(null=True)
-    alive = pw.IntegerField(default=1, index=True)
-    first_seen = pw.DateTimeField()
-    last_seen = pw.DateTimeField(index=True)
-    time_offset = pw.FloatField()
-    coalition = pw.CharField(null=True)
-    lat = pw.FloatField()
-    lon = pw.FloatField()
-    alt = pw.FloatField(default=1)
-    roll = pw.FloatField(null=True)
-    pitch = pw.FloatField(null=True)
-    yaw = pw.FloatField(null=True)
-    u_coord = pw.FloatField(null=True)
-    v_coord = pw.FloatField(null=True)
-    heading = pw.FloatField(null=True)
-    updates = pw.IntegerField(default=1)
-    velocity_kts = pw.FloatField(null=True)
-
-    impacted = pw.CharField(null=True)
-    impacted_dist = pw.FloatField(null=True)
-
-    parent = pw.CharField(null=True)
-    parent_dist = pw.FloatField(null=True)
-
-
-class Event(BaseModel):
-    """Event History."""
-    # id = pw.ForeignKeyField(Object)
-    id = pw.IntegerField()
-    session_id = pw.IntegerField()
-    last_seen = pw.DateTimeField()
-    time_offset = pw.FloatField()
-    alive = pw.IntegerField(default=1)
-    lat = pw.FloatField(null=True)
-    lon = pw.FloatField(null=True)
-    alt = pw.FloatField(null=True)
-
-    roll = pw.FloatField(null=True)
-    pitch = pw.FloatField(null=True)
-    yaw = pw.FloatField(null=True)
-    u_coord = pw.FloatField(null=True)
-    v_coord = pw.FloatField(null=True)
-    heading = pw.FloatField(null=True)
-    # dist_m = pw.FloatField(null=True)
-    velocity_kts = pw.FloatField(null=True)
-    secs_since_last_seen = pw.FloatField(null=True)
-    updates = pw.IntegerField(null=False)
-
-
-def init_db(db_path: Path, drop=True):
+def drop_and_recreate_tables():
     """Initialize the database and execute create table statements."""
-    if db_path.exists():
-        db_path.unlink()
-    elif not db_path.parent.exists():
-        db_path.parent.mkdir()
-    DB.init(DB_LOC)
+    con = engine.connect()
 
-    DB.connect()
-    if drop:
-        DB.drop_tables([Session, Object, Event, Impact])
-    DB.create_tables([Session, Object, Event, Impact])
-    DB.execute_sql(
+    for table in ['Session', 'Object', 'Event', 'Impact']:
+        con.execute(f"drop table if exists {table} CASCADE")
+
+    metadata.create_all()
+
+
+    con.execute(
         """
         CREATE VIEW obj_events AS
-            SELECT * FROM event
-            INNER JOIN (SELECT id, session_id, name, color, pilot, platform,
-                            first_seen, type, grp, coalition, impacted, parent,
-                            time_offset AS last_offset
-                        FROM object)
+            SELECT * FROM event evt
+            INNER JOIN (SELECT id, session_id, name, color, pilot, first_seen,
+                        type, grp, coalition, impacted, parent
+                            --,time_offset AS last_offset
+                        FROM object) obj
             USING (id, session_id)
         """)
 
-    DB.execute_sql(
+    con.execute(
         """
-        CREATE VIEW parent_summary AS
-            SELECT pilot, name, type, parent, count(*) total,
+        CREATE OR REPLACE VIEW parent_summary AS
+            SELECT session_id, pilot, name, type, parent, count(*) total,
                 count(impacted) as impacts
-            FROM (SELECT parent, name, type, impacted
+            FROM (SELECT parent, name, type, impacted, session_id
                   FROM object
                   WHERE parent is not null AND name IS NOT NULL
                   ) objs
             INNER JOIN (
-                SELECT id as parent, pilot
+                SELECT id as parent, pilot, session_id
                 FROM object where pilot is not NULL
             ) pilots
-            USING (parent)
-            GROUP BY name, type, parent, pilot
+            USING (parent, session_id)
+            GROUP BY session_id, name, type, parent, pilot
         """)
+
+    con.execute(
+        "DROP TABLE IF EXISTS event_t_ CASCADE;"
+        "CREATE UNLOGGED TABLE IF NOT EXISTS event_temp (LIKE event INCLUDING DEFAULTS);"
+        )
+    con.close()

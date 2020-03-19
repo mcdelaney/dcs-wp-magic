@@ -17,7 +17,7 @@ import struct
 import pandas as pd
 import psycopg2 as pg
 import sqlalchemy as sa
-from dcs.common.db_postgres import drop_and_recreate_tables, Object, Event, Impact, PG_URL
+from dcs.common.db import Object, Event, Impact, PG_URL
 import asyncpg
 
 DB = None
@@ -651,7 +651,6 @@ async def consumer(host=HOST,
              "debug: %s --  iters %s -- bulk-mode: %s", DEBUG, max_iters, bulk)
     global DB
     DB = await asyncpg.connect(PG_URL)
-    await drop_and_recreate_tables()
     tasks_complete = int(1)  # I know this is wrong.  It just makes division easier.
     sock = AsyncSocketReader(host, port)
     copy_writer = BinCopyWriter(Event.c, PG_URL, 10)
