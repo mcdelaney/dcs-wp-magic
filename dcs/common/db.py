@@ -129,8 +129,4 @@ def drop_and_recreate_tables():
             GROUP BY session_id, name, type, parent, pilot
         """)
 
-    con.execute(
-        "DROP TABLE IF EXISTS event_t_ CASCADE;"
-        "CREATE UNLOGGED TABLE IF NOT EXISTS event_temp (LIKE event INCLUDING DEFAULTS);"
-        )
     con.close()
